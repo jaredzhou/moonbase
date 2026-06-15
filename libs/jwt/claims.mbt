@@ -1,7 +1,7 @@
 ///|
 /// Trait for JWT claims. Types implementing Claims can be used with
 /// Token parsing to handle JSON deserialization and claim validation.
-pub trait Claims : FromJson + ToJson {
+pub trait Claims : Default + FromJson + ToJson {
   /// Validate registered claims (exp, nbf) with a clock leeway in seconds
   validate(Self, leeway : Int64) -> Unit raise JwtError
   /// Set issued-at and not-before timestamps (called during signing)
