@@ -22,9 +22,9 @@ pub fn Parser::Parser() -> Parser {
 /// Returns self for chaining.
 pub fn Parser::register(
   self : Parser,
-  method : SigningMethod,
+  sig_method : SigningMethod,
 ) -> Parser {
-  self.methods[method.alg()] = method
+  self.methods[sig_method.alg()] = sig_method
   self
 }
 
@@ -47,7 +47,7 @@ pub fn Parser::without_claims_validation(self : Parser) -> Parser {
 /// The algorithm is read from the JWT header; the parser looks up
 /// the corresponding SigningMethod in its registry for verification.
 /// The provided claims object is populated from the token payload.
-pub fn Parser::parse[C : Claims](
+pub fn[C : Claims] Parser::parse(
   self : Parser,
   token_string : String,
   claims : C,
@@ -56,7 +56,7 @@ pub fn Parser::parse[C : Claims](
   let parts_iter = token_string.split(".")
   let parts: Array[String] = []
   for p in parts_iter {
-    parts.push(p.to_string())
+    parts.push(p.to_owned())
   }
   if parts.length() != 3 {
     raise MalformedToken("token must have exactly 3 dot-separated parts")
@@ -87,7 +87,7 @@ pub fn Parser::parse[C : Claims](
   }
 
   // Look up registered signing method
-  let method = match self.methods.get(alg) {
+  let sig_method = match self.methods.get(alg) {
     Some(m) => m
     None => raise InvalidAlgorithm("no registered method for \{alg}")
   }
@@ -97,7 +97,7 @@ pub fn Parser::parse[C : Claims](
   let sig_bytes = @base64.decode(sig_part, url_safe=true) catch {
     _ => raise MalformedToken("invalid base64url in signature")
   }
-  method.verify(signing_input, sig_bytes)
+  sig_method.verify(signing_input, sig_bytes)
 
   // Decode and deserialize claims
   let claims_bytes = @base64.decode(claims_part, url_safe=true) catch {
@@ -121,7 +121,7 @@ pub fn Parser::parse[C : Claims](
       raw: Some(token_string),
       header,
       claims: claims_json,
-      method,
+      sig_method,
       signature: Some(sig_bytes),
       valid: true,
     },

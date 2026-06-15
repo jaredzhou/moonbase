@@ -114,15 +114,11 @@ test "valid token passes validation" {
 ///|
 test "signed string is deterministic for same input" {
   let key = b"deterministic-key-for-testing-x"
-  let method = HMACSHA256(key)
+  let sig_method = HMACSHA256(key)
   let claims = Json::object({})
-  let token1 = Token::Token(method, claims)
-  let token2 = Token::Token(method, claims)
-  let signed1 = signed_string(token1) catch {
-    _ => "error1"
-  }
-  let signed2 = signed_string(token2) catch {
-    _ => "error2"
-  }
+  let token1 = Token::Token(sig_method, claims)
+  let token2 = Token::Token(sig_method, claims)
+  let signed1 = signed_string(token1)
+  let signed2 = signed_string(token2)
   assert_eq(signed1, signed2)
 }

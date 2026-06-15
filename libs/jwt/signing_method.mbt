@@ -25,7 +25,7 @@ pub fn SigningMethod::alg(self : SigningMethod) -> String {
 pub fn SigningMethod::sign(
   self : SigningMethod,
   signing_string : String,
-) -> Bytes raise JwtError {
+) -> Bytes {
   match self {
     HMACSHA256(key) => {
       let hasher = @crypto.SHA256::new()

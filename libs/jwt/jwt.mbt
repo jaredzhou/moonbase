@@ -4,7 +4,7 @@ pub(all) struct Token {
   mut raw: String?
   mut header: Map[String, Json]
   mut claims: Json
-  mut method: SigningMethod
+  mut sig_method: SigningMethod
   mut signature: Bytes?
   mut valid: Bool
 }
@@ -12,14 +12,14 @@ pub(all) struct Token {
 ///|
 /// Create a new Token with the given signing method and claims.
 pub fn Token::Token(
-  method : SigningMethod,
+  sig_method : SigningMethod,
   claims : Json,
 ) -> Token {
   {
     raw: None,
-    header: build_header(method.alg()),
+    header: build_header(sig_method.alg()),
     claims,
-    method,
+    sig_method,
     signature: None,
     valid: false,
   }
@@ -28,7 +28,7 @@ pub fn Token::Token(
 ///|
 /// Sign the token and produce the compact JWT string
 /// in `header.payload.signature` format.
-pub fn signed_string(token : Token) -> String raise JwtError {
+pub fn signed_string(token : Token) -> String {
   let header_str = Json::object(token.header).stringify()
   let header_enc = @base64.encode(@encoding/utf8.encode(header_str), url_safe=true)
 
@@ -36,7 +36,7 @@ pub fn signed_string(token : Token) -> String raise JwtError {
   let claims_enc = @base64.encode(@encoding/utf8.encode(claims_str), url_safe=true)
 
   let signing_input = header_enc + "." + claims_enc
-  let sig_bytes = token.method.sign(signing_input)
+  let sig_bytes = token.sig_method.sign(signing_input)
   let sig_enc = @base64.encode(sig_bytes, url_safe=true)
 
   header_enc + "." + claims_enc + "." + sig_enc
@@ -48,7 +48,7 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
   let parts_iter = token_string.split(".")
   let parts: Array[String] = []
   for p in parts_iter {
-    parts.push(p.to_string())
+    parts.push(p.to_owned())
   }
   if parts.length() != 3 {
     raise MalformedToken("token must have exactly 3 dot-separated parts")
@@ -89,7 +89,7 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
     raw: Some(token_string),
     header,
     claims,
-    method: HMACSHA256(b""),
+    sig_method: HMACSHA256(b""),
     signature: Some(sig_bytes),
     valid: false,
   }

@@ -22,7 +22,7 @@ pub(all) struct RegisteredClaims {
   mut not_before: Int64?
   mut issued_at: Int64?
   mut id: String?
-}
+} derive(Debug)
 
 ///|
 /// Create empty RegisteredClaims.

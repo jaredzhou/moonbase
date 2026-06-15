@@ -6,6 +6,4 @@ pub suberror JwtError {
   TokenNotYetValid(not_before~ : Int64, now~ : Int64)
   MalformedToken(String)
   InvalidAlgorithm(String)
-  UnverifiableToken(String)
-  InvalidKey
 } derive(Debug)

@@ -16,7 +16,7 @@ test {
   let parts_iter = jwt_string.split(".")
   let parts: Array[String] = []
   for p in parts_iter {
-    parts.push(p.to_string())
+    parts.push(p.to_owned())
   }
   assert_eq(parts.length(), 3)
 }
