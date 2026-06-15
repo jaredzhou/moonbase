@@ -63,8 +63,10 @@ test "parse with wrong key fails" {
 
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(verify_key))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(signed) catch {
-    _ => abort("should have failed with wrong key")
+  try parser.parse(signed) catch {
+    _ => ()
+  } noraise {
+    _ => assert_eq(true, false)
   }
 }
 
@@ -72,8 +74,10 @@ test "parse with wrong key fails" {
 test "parse malformed token" {
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(b"key"))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse("not-a-jwt") catch {
-    _ => abort("should have failed on malformed token")
+  try parser.parse("not-a-jwt") catch {
+    _ => ()
+  } noraise {
+    _ => assert_eq(true, false)
   }
 }
 
@@ -81,7 +85,9 @@ test "parse malformed token" {
 test "parse with invalid base64 header" {
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(b"key"))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse("not!valid@base64.x.y") catch {
-    _ => abort("should have failed on invalid base64")
+  try parser.parse("not!valid@base64.x.y") catch {
+    _ => ()
+  } noraise {
+    _ => assert_eq(true, false)
   }
 }

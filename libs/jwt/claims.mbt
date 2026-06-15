@@ -18,7 +18,7 @@ pub(all) struct RegisteredClaims {
   mut nbf: Int64?
   mut iat: Int64?
   mut jti: String?
-} derive(Debug, FromJson, ToJson)
+} derive(Debug, Default, FromJson, ToJson)
 
 ///|
 /// Create empty RegisteredClaims.
