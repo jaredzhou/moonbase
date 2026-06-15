@@ -36,7 +36,7 @@ test {
     .register(@jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"))
   let registered_claims = @jwt.RegisteredClaims::RegisteredClaims()
   let parsed = try parser.parse(jwt_string, registered_claims) catch {
-    _ => panic!("parse failed")
+    _ => panic()
   }
   assert_eq(parsed.valid, true)
 }
@@ -48,7 +48,7 @@ test {
 test {
   let key = b"my-secret-key-for-testing-32b"
   let sig_method = @jwt.new_hmac_sha256(key)
-  let claims_json = @json.parse("{\"sub\":\"user-42\",\"iss\":\"my-app\"}").unwrap()
+  let claims_json = @json.parse("{\"sub\":\"user-42\",\"iss\":\"my-app\"}") catch { _ => panic() }
   let token = @jwt.Token::Token(sig_method, claims_json)
   let jwt_string = @jwt.signed_string(token)
 
@@ -56,7 +56,7 @@ test {
     .register(@jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"))
   let claims = @jwt.RegisteredClaims::RegisteredClaims()
   let _ = try parser.parse(jwt_string, claims) catch {
-    _ => panic!("parse failed")
+    _ => panic()
   }
   assert_eq(claims.subject, Some("user-42"))
   assert_eq(claims.issuer, Some("my-app"))
@@ -75,7 +75,7 @@ test {
   let parsed = @jwt.parse_unverified(jwt_string)
   match parsed.header.get("alg") {
     Some(Json::String(alg)) => assert_eq(alg, "HS256")
-    _ => panic!("missing alg")
+    _ => panic()
   }
   assert_eq(parsed.valid, false)
 }
