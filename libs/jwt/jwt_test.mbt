@@ -50,7 +50,7 @@ test "parse and verify hs256" {
   try parser.parse(signed, registered_claims) catch {
     _ => abort("parse should not fail")
   } noraise {
-    parsed => assert_eq(parsed.valid, true)
+    (parsed, _) => assert_eq(parsed.valid, true)
   }
 }
 

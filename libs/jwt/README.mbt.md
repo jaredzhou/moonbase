@@ -35,7 +35,7 @@ test {
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"))
   let registered_claims = @jwt.RegisteredClaims::RegisteredClaims()
-  let parsed = try parser.parse(jwt_string, registered_claims) catch {
+  let (parsed, _) = try parser.parse(jwt_string, registered_claims) catch {
     _ => panic()
   }
   assert_eq(parsed.valid, true)
@@ -54,12 +54,12 @@ test {
 
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"))
-  let claims = @jwt.RegisteredClaims::RegisteredClaims()
-  let _ = try parser.parse(jwt_string, claims) catch {
+  let input_claims = @jwt.RegisteredClaims::RegisteredClaims()
+  let (_, populated) = try parser.parse(jwt_string, input_claims) catch {
     _ => panic()
   }
-  assert_eq(claims.subject, Some("user-42"))
-  assert_eq(claims.issuer, Some("my-app"))
+  assert_eq(populated.subject, Some("user-42"))
+  assert_eq(populated.issuer, Some("my-app"))
 }
 ```
 

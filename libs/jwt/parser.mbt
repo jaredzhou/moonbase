@@ -51,7 +51,7 @@ pub fn Parser::parse[C : Claims](
   self : Parser,
   token_string : String,
   claims : C,
-) -> Token raise JwtError {
+) -> (Token, C) raise JwtError {
   // Split token into 3 parts
   let parts_iter = token_string.split(".")
   let parts: Array[String] = []
@@ -116,12 +116,15 @@ pub fn Parser::parse[C : Claims](
     parsed_claims.validate(self.leeway)
   }
 
-  {
-    raw: Some(token_string),
-    header,
-    claims: claims_json,
-    method,
-    signature: Some(sig_bytes),
-    valid: true,
-  }
+  (
+    {
+      raw: Some(token_string),
+      header,
+      claims: claims_json,
+      method,
+      signature: Some(sig_bytes),
+      valid: true,
+    },
+    parsed_claims,
+  )
 }
