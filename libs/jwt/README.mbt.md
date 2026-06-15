@@ -58,8 +58,8 @@ test {
   let (_, populated) = try parser.parse(jwt_string, input_claims) catch {
     _ => panic()
   }
-  assert_eq(populated.subject, Some("user-42"))
-  assert_eq(populated.issuer, Some("my-app"))
+  assert_eq(populated.sub, Some("user-42"))
+  assert_eq(populated.iss, Some("my-app"))
 }
 ```
 
