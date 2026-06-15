@@ -22,20 +22,20 @@ test "registered claims to_json round trip" {
 
   let json = claims.to_json()
   let parsed : RegisteredClaims = @json.from_json(json)
-  match parsed.iss { Some(s) => assert_eq(s, "test-issuer"); None => abort() }
-  match parsed.sub { Some(s) => assert_eq(s, "user-123"); None => abort() }
-  match parsed.exp { Some(e) => assert_eq(e, 2000000000L); None => abort() }
-  match parsed.iat { Some(i) => assert_eq(i, 1000000000L); None => abort() }
-  match parsed.jti { Some(j) => assert_eq(j, "jti-001"); None => abort() }
+  match parsed.iss { Some(s) => assert_eq(s, "test-issuer"); None => abort("expected Some") }
+  match parsed.sub { Some(s) => assert_eq(s, "user-123"); None => abort("expected Some") }
+  match parsed.exp { Some(e) => assert_eq(e, 2000000000L); None => abort("expected Some") }
+  match parsed.iat { Some(i) => assert_eq(i, 1000000000L); None => abort("expected Some") }
+  match parsed.jti { Some(j) => assert_eq(j, "jti-001"); None => abort("expected Some") }
 }
 
 ///|
 test "registered claims from_json empty" {
   let json = Json::object({})
   let parsed : RegisteredClaims = @json.from_json(json)
-  match parsed.iss { None => (); Some(_) => abort() }
-  match parsed.sub { None => (); Some(_) => abort() }
-  match parsed.exp { None => (); Some(_) => abort() }
+  match parsed.iss { None => (); Some(_) => abort("expected None") }
+  match parsed.sub { None => (); Some(_) => abort("expected None") }
+  match parsed.exp { None => (); Some(_) => abort("expected None") }
 }
 
 ///|
