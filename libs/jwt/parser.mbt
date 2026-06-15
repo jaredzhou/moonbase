@@ -109,7 +109,9 @@ pub fn[C : Claims] Parser::parse(
   let claims_json = @json.parse(claims_str) catch {
     _ => raise MalformedToken("invalid JSON in payload")
   }
-  let parsed_claims = claims.from_json(claims_json)
+  let parsed_claims : C = @json.from_json(claims_json) catch {
+    _ => raise MalformedToken("invalid JSON in payload")
+  }
 
   // Validate claims
   if !self.skip_claims_validation {
