@@ -30,10 +30,10 @@ pub fn Token::Token(
 /// in `header.payload.signature` format.
 pub fn signed_string(token : Token) -> String raise JwtError {
   let header_str = Json::object(token.header).stringify()
-  let header_enc = @base64.encode(header_str.to_bytes(), url_safe=true)
+  let header_enc = @base64.encode(@encoding/utf8.encode(header_str), url_safe=true)
 
   let claims_str = token.claims.stringify()
-  let claims_enc = @base64.encode(claims_str.to_bytes(), url_safe=true)
+  let claims_enc = @base64.encode(@encoding/utf8.encode(claims_str), url_safe=true)
 
   let signing_input = header_enc + "." + claims_enc
   let sig_bytes = token.method.sign(signing_input)
@@ -60,7 +60,9 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
   let header_bytes = @base64.decode(header_part, url_safe=true) catch {
     _ => raise MalformedToken("invalid base64url in header")
   }
-  let header_str = header_bytes.to_string()
+  let header_str = @encoding/utf8.decode(header_bytes) catch {
+    _ => raise MalformedToken("invalid UTF-8 in header")
+  }
   let header_json = @json.parse(header_str) catch {
     _ => raise MalformedToken("invalid JSON in header")
   }
@@ -72,7 +74,9 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
   let claims_bytes = @base64.decode(claims_part, url_safe=true) catch {
     _ => raise MalformedToken("invalid base64url in payload")
   }
-  let claims_str = claims_bytes.to_string()
+  let claims_str = @encoding/utf8.decode(claims_bytes) catch {
+    _ => raise MalformedToken("invalid UTF-8 in payload")
+  }
   let claims = @json.parse(claims_str) catch {
     _ => raise MalformedToken("invalid JSON in payload")
   }

@@ -69,7 +69,9 @@ pub fn Parser::parse[C : Claims](
   let header_bytes = @base64.decode(header_part, url_safe=true) catch {
     _ => raise MalformedToken("invalid base64url in header")
   }
-  let header_str = header_bytes.to_string()
+  let header_str = @encoding/utf8.decode(header_bytes) catch {
+    _ => raise MalformedToken("invalid UTF-8 in header")
+  }
   let header_json = @json.parse(header_str) catch {
     _ => raise MalformedToken("invalid JSON in header")
   }
@@ -101,7 +103,9 @@ pub fn Parser::parse[C : Claims](
   let claims_bytes = @base64.decode(claims_part, url_safe=true) catch {
     _ => raise MalformedToken("invalid base64url in payload")
   }
-  let claims_str = claims_bytes.to_string()
+  let claims_str = @encoding/utf8.decode(claims_bytes) catch {
+    _ => raise MalformedToken("invalid UTF-8 in payload")
+  }
   let claims_json = @json.parse(claims_str) catch {
     _ => raise MalformedToken("invalid JSON in payload")
   }

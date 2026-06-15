@@ -6,6 +6,12 @@ pub enum SigningMethod {
 }
 
 ///|
+/// Create a new HMACSHA256 signing method with the given key.
+pub fn new_hmac_sha256(key : Bytes) -> SigningMethod {
+  HMACSHA256(key)
+}
+
+///|
 /// Returns the JWT algorithm identifier (e.g. "HS256").
 pub fn SigningMethod::alg(self : SigningMethod) -> String {
   match self {
@@ -23,7 +29,7 @@ pub fn SigningMethod::sign(
   match self {
     HMACSHA256(key) => {
       let hasher = @crypto.SHA256::new()
-      let sig = @crypto.hmac(hasher, key, signing_string.to_bytes())
+      let sig = @crypto.hmac(hasher, key, @encoding/utf8.encode(signing_string))
       Bytes::from_array(sig)
     }
   }
