@@ -46,11 +46,10 @@ test "parse and verify hs256" {
 
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(key))
-  try parser.parse(signed) catch {
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(signed) catch {
     _ => abort("parse should not fail")
-  } noraise {
-    (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) => assert_eq(parsed.valid, true)
   }
+  assert_eq(parsed.valid, true)
 }
 
 ///|
