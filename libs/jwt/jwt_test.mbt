@@ -49,7 +49,7 @@ test "parse and verify hs256" {
   try parser.parse(signed) catch {
     _ => abort("parse should not fail")
   } noraise {
-    (parsed, _ : @jwt.RegisteredClaims) => assert_eq(parsed.valid, true)
+    (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) => assert_eq(parsed.valid, true)
   }
 }
 
