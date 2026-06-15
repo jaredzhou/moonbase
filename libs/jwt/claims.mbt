@@ -1,7 +1,7 @@
 ///|
 /// Trait for JWT claims. Types implementing Claims can be used with
 /// Token parsing to handle JSON deserialization and claim validation.
-pub trait Claims : Default + FromJson + ToJson {
+pub trait Claims : FromJson + ToJson {
   /// Validate registered claims (exp, nbf) with a clock leeway in seconds
   validate(Self, leeway : Int64) -> Unit raise JwtError
   /// Set issued-at and not-before timestamps (called during signing)
@@ -18,7 +18,7 @@ pub(all) struct RegisteredClaims {
   mut nbf: Int64?
   mut iat: Int64?
   mut jti: String?
-} derive(Debug, Default, FromJson, ToJson)
+} derive(Debug, FromJson, ToJson)
 
 ///|
 /// Create empty RegisteredClaims.
