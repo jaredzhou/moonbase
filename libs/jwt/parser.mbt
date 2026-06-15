@@ -50,6 +50,7 @@ pub fn Parser::without_claims_validation(self : Parser) -> Parser {
 pub fn[C : Claims] Parser::parse(
   self : Parser,
   token_string : String,
+  claims : C,
 ) -> (Token, C) raise JwtError {
   // Split token into 3 parts
   let parts_iter = token_string.split(".")
