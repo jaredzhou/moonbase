@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/libs/url"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub let empty_url : URL
+
+pub fn escape(StringView, Encoding) -> String
+
+pub fn parse(String) -> URL raise URLParseError
+
+pub fn parse_request_uri(String) -> URL raise URLParseError
+
+pub fn path_segment_escape(String) -> String
+
+pub fn path_segment_unescape(String) -> String raise URLParseError
+
+pub fn query_escape(String) -> String
+
+pub fn query_unescape(String) -> String raise URLParseError
+
+// Errors
+pub suberror URLParseError {
+  URLParseError(String)
+} derive(@debug.Debug)
+
+// Types and methods
+type Encoding derive(Eq)
+
+pub(all) struct URL {
+  scheme : String?
+  opaque_str : String?
+  user_info : UserInfo?
+  host : String?
+  path : String?
+  query : String?
+  fragment : String?
+} derive(Eq)
+pub impl Show for URL
+
+pub(all) struct UserInfo {
+  username : String
+  password : String?
+} derive(Eq)
+pub impl Show for UserInfo
+
+// Type aliases
+
+// Traits
+

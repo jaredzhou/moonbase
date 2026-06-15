@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+}
+
+import {
+  "moonbitlang/core/bench",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/random",
+} for "test"
