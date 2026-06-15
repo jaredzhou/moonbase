@@ -56,8 +56,8 @@ test {
   let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(jwt_string) catch {
     _ => panic()
   }
-  assert_eq(populated.sub, Some("user-42"))
-  assert_eq(populated.iss, Some("my-app"))
+  match populated.sub { Some(s) => assert_eq(s, "user-42"); _ => panic() }
+  match populated.iss { Some(s) => assert_eq(s, "my-app"); _ => panic() }
 }
 ```
 

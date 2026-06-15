@@ -22,20 +22,20 @@ test "registered claims to_json round trip" {
 
   let json = claims.to_json()
   let parsed : RegisteredClaims = @json.from_json(json)
-  assert_eq(parsed.iss, Some("test-issuer"))
-  assert_eq(parsed.sub, Some("user-123"))
-  assert_eq(parsed.exp, Some(2000000000L))
-  assert_eq(parsed.iat, Some(1000000000L))
-  assert_eq(parsed.jti, Some("jti-001"))
+  match parsed.iss { Some(s) => assert_eq(s, "test-issuer"); None => abort() }
+  match parsed.sub { Some(s) => assert_eq(s, "user-123"); None => abort() }
+  match parsed.exp { Some(e) => assert_eq(e, 2000000000L); None => abort() }
+  match parsed.iat { Some(i) => assert_eq(i, 1000000000L); None => abort() }
+  match parsed.jti { Some(j) => assert_eq(j, "jti-001"); None => abort() }
 }
 
 ///|
 test "registered claims from_json empty" {
   let json = Json::object({})
   let parsed : RegisteredClaims = @json.from_json(json)
-  assert_eq(parsed.iss, None)
-  assert_eq(parsed.sub, None)
-  assert_eq(parsed.exp, None)
+  match parsed.iss { None => (); Some(_) => abort() }
+  match parsed.sub { None => (); Some(_) => abort() }
+  match parsed.exp { None => (); Some(_) => abort() }
 }
 
 ///|
