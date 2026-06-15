@@ -21,7 +21,7 @@ test "registered claims to_json round trip" {
   claims.jti = Some("jti-001")
 
   let json = claims.to_json()
-  let parsed : RegisteredClaims = @json.from_json(json)
+  let parsed : RegisteredClaims = RegisteredClaims::RegisteredClaims().from_json(json)
   assert_eq(parsed.iss, Some("test-issuer"))
   assert_eq(parsed.sub, Some("user-123"))
   assert_eq(parsed.exp, Some(2000000000L))
@@ -32,7 +32,7 @@ test "registered claims to_json round trip" {
 ///|
 test "registered claims from_json empty" {
   let json = Json::object({})
-  let parsed : RegisteredClaims = @json.from_json(json)
+  let parsed : RegisteredClaims = RegisteredClaims::RegisteredClaims().from_json(json)
   assert_eq(parsed.iss, None)
   assert_eq(parsed.sub, None)
   assert_eq(parsed.exp, None)
@@ -44,7 +44,7 @@ test "registered claims aud array" {
   let aud_arr : Array[Json] = [Json::string("aud1"), Json::string("aud2")]
   obj["aud"] = Json::array(aud_arr)
   let json = Json::object(obj)
-  let parsed : RegisteredClaims = @json.from_json(json)
+  let parsed : RegisteredClaims = RegisteredClaims::RegisteredClaims().from_json(json)
   match parsed.aud {
     Some(aud) => {
       assert_eq(aud.length(), 2)

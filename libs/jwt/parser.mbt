@@ -47,7 +47,7 @@ pub fn Parser::without_claims_validation(self : Parser) -> Parser {
 /// The algorithm is read from the JWT header; the parser looks up
 /// the corresponding SigningMethod in its registry for verification.
 /// The provided claims object is populated from the token payload.
-pub fn[C : Claims + @json.FromJson] Parser::parse(
+pub fn[C : Claims] Parser::parse(
   self : Parser,
   token_string : String,
   claims : C,
@@ -109,9 +109,7 @@ pub fn[C : Claims + @json.FromJson] Parser::parse(
   let claims_json = @json.parse(claims_str) catch {
     _ => raise MalformedToken("invalid JSON in payload")
   }
-  let parsed_claims : C = @json.from_json(claims_json) catch {
-    _ => raise MalformedToken("invalid JSON in payload")
-  }
+  let parsed_claims = claims.from_json(claims_json)
 
   // Validate claims
   if !self.skip_claims_validation {
