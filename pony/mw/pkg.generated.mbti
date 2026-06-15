@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/pony/mw"
+
+import {
+  "jaredzhou/pony",
+}
+
+// Values
+pub fn cors(allow_origins? : Array[String], allow_methods? : Array[String], allow_headers? : Array[String], max_age? : Int) -> @pony.Middleware
+
+pub fn logger() -> @pony.Middleware
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
