@@ -34,7 +34,7 @@ test {
 
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"))
-  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(jwt_string, @jwt.RegisteredClaims::RegisteredClaims()) catch {
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(jwt_string) catch {
     _ => panic()
   }
   assert_eq(parsed.valid, true)
@@ -53,7 +53,7 @@ test {
 
   let parser = @jwt.Parser::Parser()
     .register(@jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"))
-  let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(jwt_string, @jwt.RegisteredClaims::RegisteredClaims()) catch {
+  let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(jwt_string) catch {
     _ => panic()
   }
   assert_eq(populated.sub, Some("user-42"))
