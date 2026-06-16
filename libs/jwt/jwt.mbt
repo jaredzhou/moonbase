@@ -26,30 +26,29 @@ pub fn Token::Token(sig_method : SigningMethod, claims : Json) -> Token {
 /// Sign the token and produce the compact JWT string
 /// in `header.payload.signature` format.
 pub fn signed_string(token : Token) -> String {
-  sign(token.sig_method, token.claims)
-}
-
-///|
-/// Sign claims with the given signing method and produce the compact JWT string.
-pub fn sign(sig_method : SigningMethod, claims : Json) -> String {
-  let header = build_header(sig_method.alg())
-  let header_str = Json::object(header).stringify()
+  let header_str = Json::object(token.header).stringify()
   let header_enc = @base64.encode(
     @encoding/utf8.encode(header_str),
     url_safe=true,
   )
 
-  let claims_str = claims.stringify()
+  let claims_str = token.claims.stringify()
   let claims_enc = @base64.encode(
     @encoding/utf8.encode(claims_str),
     url_safe=true,
   )
 
   let signing_input = header_enc + "." + claims_enc
-  let sig_bytes = sig_method.sign(signing_input)
+  let sig_bytes = token.sig_method.sign(signing_input)
   let sig_enc = @base64.encode(sig_bytes, url_safe=true)
 
   header_enc + "." + claims_enc + "." + sig_enc
+}
+
+///|
+/// Sign claims with the given signing method and produce the compact JWT string.
+pub fn sign(sig_method : SigningMethod, claims : Json) -> String {
+  signed_string(Token::Token(sig_method, claims))
 }
 
 ///|
