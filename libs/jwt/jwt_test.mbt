@@ -1,10 +1,8 @@
 ///|
-test "round trip hs256" {
+test "sign and parse round trip" {
   let key = b"my-secret-key-for-testing-32b"
   let sig_method = @jwt.new_hmac_sha256(key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
-  let signed = @jwt.signed_string(token)
+  let signed = @jwt.sign(sig_method, Json::object({}))
   let parts_iter = signed.split(".")
   let parts : Array[String] = []
   for p in parts_iter {
@@ -17,19 +15,27 @@ test "round trip hs256" {
 }
 
 ///|
-test "parse unverified" {
-  let key = b"key-for-unverified-test-32bytes"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
+test "signed_string via Token" {
+  let key = b"my-secret-key-for-testing-32b"
+  let token = @jwt.Token::Token(@jwt.new_hmac_sha256(key), Json::object({}))
   let signed = @jwt.signed_string(token)
+  let parts_iter = signed.split(".")
+  let parts : Array[String] = []
+  for p in parts_iter {
+    parts.push(p.to_owned())
+  }
+  assert_eq(parts.length(), 3)
+}
+
+///|
+test "parse unverified" {
+  let signed = @jwt.sign(@jwt.new_hmac_sha256(b"key-for-unverified-test-32bytes"), Json::object({}))
   let parsed = @jwt.parse_unverified(signed)
-  let header = parsed.header
-  match header.get("alg") {
+  match parsed.header.get("alg") {
     Some(Json::String(alg)) => assert_eq(alg, "HS256")
     _ => ()
   }
-  match header.get("typ") {
+  match parsed.header.get("typ") {
     Some(Json::String(typ)) => assert_eq(typ, "JWT")
     _ => ()
   }
@@ -37,17 +43,13 @@ test "parse unverified" {
 }
 
 ///|
-test "parse and verify hs256" {
+test "parse convenience single method" {
   let key = b"secure-secret-key-for-parse-test"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
-  let signed = @jwt.signed_string(token)
-
-  let parser = @jwt.Parser::Parser().register(@jwt.new_hmac_sha256(key))
-  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(signed) catch {
-    _ => abort("parse should not fail")
-  }
+  let signed = @jwt.sign(@jwt.new_hmac_sha256(key), Json::object({}))
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
+    signed,
+    @jwt.new_hmac_sha256(key),
+  )
   assert_eq(parsed.valid, true)
 }
 
@@ -55,13 +57,35 @@ test "parse and verify hs256" {
 test "parse with wrong key fails" {
   let sign_key = b"correct-key-that-is-32-bytes-l"
   let verify_key = b"wrong-key-that-is-also-32-byte"
-  let sig_method = @jwt.new_hmac_sha256(sign_key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
-  let signed = @jwt.signed_string(token)
+  let signed = @jwt.sign(@jwt.new_hmac_sha256(sign_key), Json::object({}))
+  let _ : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
+    signed,
+    @jwt.new_hmac_sha256(verify_key),
+  ) catch {
+    _ => return
+  }
+  assert_eq(true, false)
+}
 
-  let parser = @jwt.Parser::Parser().register(@jwt.new_hmac_sha256(verify_key))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(signed) catch {
+///|
+test "parse_with multiple methods" {
+  let key_a = b"key-a-for-multi-method-testing"
+  let key_b = b"key-b-for-multi-method-testing"
+  let signed = @jwt.sign(@jwt.new_hmac_sha256(key_a), Json::object({}))
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse_with(
+    signed,
+    [@jwt.new_hmac_sha256(key_b), @jwt.new_hmac_sha256(key_a)],
+  )
+  assert_eq(parsed.valid, true)
+}
+
+///|
+test "parse_with no matching method fails" {
+  let signed = @jwt.sign(@jwt.new_hmac_sha256(b"correct-key-for-no-match"), Json::object({}))
+  let _ : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse_with(
+    signed,
+    [@jwt.new_hmac_sha256(b"wrong-key-only")],
+  ) catch {
     _ => return
   }
   assert_eq(true, false)
