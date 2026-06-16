@@ -9,11 +9,10 @@ A JWT (JSON Web Token) library for MoonBit, providing HMAC-SHA256 signing, claim
 ```mbt check
 ///|
 test {
-  let key = b"my-secret-key-for-testing-32b"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
-  let jwt_string = @jwt.signed_string(token)
+  let jwt_string = @jwt.sign(
+    @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
+    Json::object({}),
+  )
   let parts_iter = jwt_string.split(".")
   let parts : Array[String] = []
   for p in parts_iter {
@@ -23,25 +22,19 @@ test {
 }
 ```
 
-### Parse and verify a token
+### Quick parse and verify
 
 ```mbt check
 ///|
 test {
-  let key = b"my-secret-key-for-testing-32b"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
-  let jwt_string = @jwt.signed_string(token)
-
-  let parser = @jwt.Parser::Parser().register(
+  let jwt_string = @jwt.sign(
     @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
+    Json::object({}),
   )
-  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,
-  ) catch {
-    _ => panic()
-  }
+    b"my-secret-key-for-testing-32b",
+  )
   assert_eq(parsed.valid, true)
 }
 ```
@@ -51,22 +44,14 @@ test {
 ```mbt check
 ///|
 test {
-  let key = b"my-secret-key-for-testing-32b"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let claims_json = @json.parse("{\"sub\":\"user-42\",\"iss\":\"my-app\"}") catch {
-    _ => panic()
-  }
-  let token = @jwt.Token::Token(sig_method, claims_json)
-  let jwt_string = @jwt.signed_string(token)
-
-  let parser = @jwt.Parser::Parser().register(
+  let jwt_string = @jwt.sign(
     @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
+    @json.parse("{\"sub\":\"user-42\",\"iss\":\"my-app\"}") catch { _ => panic() },
   )
-  let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(
+  let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,
-  ) catch {
-    _ => panic()
-  }
+    b"my-secret-key-for-testing-32b",
+  )
   match populated.sub {
     Some(s) => assert_eq(s, "user-42")
     _ => panic()
@@ -78,34 +63,15 @@ test {
 }
 ```
 
-### Quick parse with a secret key
-
-```mbt check
-///|
-test {
-  let key = b"my-secret-key-for-testing-32b"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let token = @jwt.Token::Token(sig_method, Json::object({}))
-  let jwt_string = @jwt.signed_string(token)
-
-  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
-    jwt_string,
-    b"my-secret-key-for-testing-32b",
-  )
-  assert_eq(parsed.valid, true)
-}
-```
-
 ### Parse unverified (no signature check)
 
 ```mbt check
 ///|
 test {
-  let key = b"my-secret-key-for-testing-32b"
-  let sig_method = @jwt.new_hmac_sha256(key)
-  let claims = Json::object({})
-  let token = @jwt.Token::Token(sig_method, claims)
-  let jwt_string = @jwt.signed_string(token)
+  let jwt_string = @jwt.sign(
+    @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
+    Json::object({}),
+  )
   let parsed = @jwt.parse_unverified(jwt_string)
   match parsed.header.get("alg") {
     Some(Json::String(alg)) => assert_eq(alg, "HS256")
@@ -120,7 +86,7 @@ test {
 ### Token
 
 - `Token::Token(sig_method, claims)` — Create a new token
-- `signed_string(token)` — Sign and produce the compact JWT string
+- `sign(sig_method, claims)` — Sign and produce the compact JWT string
 - `parse(token_string, key)` — Parse and verify with HS256 secret key
 - `parse_unverified(token_string)` — Parse without signature verification
 
