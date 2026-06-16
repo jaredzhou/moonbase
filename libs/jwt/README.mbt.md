@@ -88,7 +88,7 @@ test {
   let token = @jwt.Token::Token(sig_method, Json::object({}))
   let jwt_string = @jwt.signed_string(token)
 
-  let (parsed, claims) = @jwt.parse(
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,
     b"my-secret-key-for-testing-32b",
   )
