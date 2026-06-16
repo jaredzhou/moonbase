@@ -109,10 +109,10 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
 /// Returns the parsed token and populated claims.
 pub fn[C : Claims] parse(
   token_string : String,
-  key : Bytes,
+  sig_method : SigningMethod,
 ) -> (Token, C) raise JwtError {
   Parser::Parser()
-    .register(new_hmac_sha256(key))
+    .register(sig_method)
     .parse(token_string)
 }
 

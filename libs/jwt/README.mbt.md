@@ -33,7 +33,7 @@ test {
   )
   let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,
-    b"my-secret-key-for-testing-32b",
+    @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
   )
   assert_eq(parsed.valid, true)
 }
@@ -50,7 +50,7 @@ test {
   )
   let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,
-    b"my-secret-key-for-testing-32b",
+    @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
   )
   match populated.sub {
     Some(s) => assert_eq(s, "user-42")
@@ -87,7 +87,7 @@ test {
 
 - `Token::Token(sig_method, claims)` — Create a new token
 - `sign(sig_method, claims)` — Sign and produce the compact JWT string
-- `parse(token_string, key)` — Parse and verify with HS256 secret key
+- `parse(token_string, sig_method)` — Parse and verify with given signing method
 - `parse_unverified(token_string)` — Parse without signature verification
 
 ### Parser
