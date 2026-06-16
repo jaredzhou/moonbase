@@ -1,20 +1,17 @@
 ///|
 /// A parsed or newly-created JWT token.
 pub(all) struct Token {
-  mut raw: String?
-  mut header: Map[String, Json]
-  mut claims: Json
-  mut sig_method: SigningMethod
-  mut signature: Bytes?
-  mut valid: Bool
+  mut raw : String?
+  mut header : Map[String, Json]
+  mut claims : Json
+  mut sig_method : SigningMethod
+  mut signature : Bytes?
+  mut valid : Bool
 }
 
 ///|
 /// Create a new Token with the given signing method and claims.
-pub fn Token::Token(
-  sig_method : SigningMethod,
-  claims : Json,
-) -> Token {
+pub fn Token::Token(sig_method : SigningMethod, claims : Json) -> Token {
   {
     raw: None,
     header: build_header(sig_method.alg()),
@@ -30,10 +27,16 @@ pub fn Token::Token(
 /// in `header.payload.signature` format.
 pub fn signed_string(token : Token) -> String {
   let header_str = Json::object(token.header).stringify()
-  let header_enc = @base64.encode(@encoding/utf8.encode(header_str), url_safe=true)
+  let header_enc = @base64.encode(
+    @encoding/utf8.encode(header_str),
+    url_safe=true,
+  )
 
   let claims_str = token.claims.stringify()
-  let claims_enc = @base64.encode(@encoding/utf8.encode(claims_str), url_safe=true)
+  let claims_enc = @base64.encode(
+    @encoding/utf8.encode(claims_str),
+    url_safe=true,
+  )
 
   let signing_input = header_enc + "." + claims_enc
   let sig_bytes = token.sig_method.sign(signing_input)
@@ -46,7 +49,7 @@ pub fn signed_string(token : Token) -> String {
 /// Parse a JWT token string without signature verification.
 pub fn parse_unverified(token_string : String) -> Token raise JwtError {
   let parts_iter = token_string.split(".")
-  let parts: Array[String] = []
+  let parts : Array[String] = []
   for p in parts_iter {
     parts.push(p.to_owned())
   }
@@ -93,6 +96,19 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
     signature: Some(sig_bytes),
     valid: false,
   }
+}
+
+///|
+/// Parse and verify a JWT token with HMAC-SHA256 and the given secret key.
+/// Returns the parsed token and populated claims.
+pub fn[C : Claims] parse(
+  token_string : String,
+  key : Bytes,
+  claims : C,
+) -> (Token, C) raise JwtError {
+  Parser::Parser()
+    .register(new_hmac_sha256(key))
+    .parse(token_string, claims)
 }
 
 ///|

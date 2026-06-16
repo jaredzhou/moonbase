@@ -1,0 +1,73 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/libs/jwt"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn new_hmac_sha256(Bytes) -> SigningMethod
+
+pub fn parse_unverified(String) -> Token raise JwtError
+
+pub fn signed_string(Token) -> String
+
+// Errors
+pub suberror JwtError {
+  InvalidSignature
+  TokenExpired(expired_at~ : Int64, now~ : Int64)
+  TokenNotYetValid(not_before~ : Int64, now~ : Int64)
+  MalformedToken(String)
+  InvalidAlgorithm(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct Parser {
+  mut methods : Map[String, SigningMethod]
+  mut leeway : Int64
+  mut skip_claims_validation : Bool
+}
+pub fn Parser::Parser() -> Self
+pub fn[C : Claims] Parser::parse(Self, String) -> (Token, C) raise JwtError
+pub fn Parser::register(Self, SigningMethod) -> Self
+pub fn Parser::with_leeway(Self, Int64) -> Self
+pub fn Parser::without_claims_validation(Self) -> Self
+
+pub(all) struct RegisteredClaims {
+  mut iss : String?
+  mut sub : String?
+  mut aud : Array[String]?
+  mut exp : Int64?
+  mut nbf : Int64?
+  mut iat : Int64?
+  mut jti : String?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn RegisteredClaims::RegisteredClaims() -> Self
+pub impl Claims for RegisteredClaims
+
+pub enum SigningMethod {
+  HMACSHA256(Bytes)
+}
+pub fn SigningMethod::alg(Self) -> String
+pub fn SigningMethod::sign(Self, String) -> Bytes
+pub fn SigningMethod::verify(Self, String, Bytes) -> Unit raise JwtError
+
+pub(all) struct Token {
+  mut raw : String?
+  mut header : Map[String, Json]
+  mut claims : Json
+  mut sig_method : SigningMethod
+  mut signature : Bytes?
+  mut valid : Bool
+}
+pub fn Token::Token(SigningMethod, Json) -> Self
+
+// Type aliases
+
+// Traits
+pub trait Claims : @json.FromJson + ToJson {
+  fn validate(Self, Int64) -> Unit raise JwtError
+  fn set_issued_now(Self, Int64) -> Unit
+}
+

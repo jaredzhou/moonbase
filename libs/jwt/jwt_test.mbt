@@ -6,7 +6,7 @@ test "round trip hs256" {
   let token = @jwt.Token::Token(sig_method, claims)
   let signed = @jwt.signed_string(token)
   let parts_iter = signed.split(".")
-  let parts: Array[String] = []
+  let parts : Array[String] = []
   for p in parts_iter {
     parts.push(p.to_owned())
   }
@@ -44,9 +44,8 @@ test "parse and verify hs256" {
   let token = @jwt.Token::Token(sig_method, claims)
   let signed = @jwt.signed_string(token)
 
-  let parser = @jwt.Parser::Parser()
-    .register(@jwt.new_hmac_sha256(key))
-  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(signed) catch {
+  let parser = @jwt.Parser::Parser().register(@jwt.new_hmac_sha256(key))
+  let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(signed) catch {
     _ => abort("parse should not fail")
   }
   assert_eq(parsed.valid, true)
@@ -61,9 +60,8 @@ test "parse with wrong key fails" {
   let token = @jwt.Token::Token(sig_method, claims)
   let signed = @jwt.signed_string(token)
 
-  let parser = @jwt.Parser::Parser()
-    .register(@jwt.new_hmac_sha256(verify_key))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse(signed) catch {
+  let parser = @jwt.Parser::Parser().register(@jwt.new_hmac_sha256(verify_key))
+  let _ : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(signed) catch {
     _ => return
   }
   assert_eq(true, false)
@@ -71,9 +69,8 @@ test "parse with wrong key fails" {
 
 ///|
 test "parse malformed token" {
-  let parser = @jwt.Parser::Parser()
-    .register(@jwt.new_hmac_sha256(b"key"))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse("not-a-jwt") catch {
+  let parser = @jwt.Parser::Parser().register(@jwt.new_hmac_sha256(b"key"))
+  let _ : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse("not-a-jwt") catch {
     _ => return
   }
   assert_eq(true, false)
@@ -81,9 +78,10 @@ test "parse malformed token" {
 
 ///|
 test "parse with invalid base64 header" {
-  let parser = @jwt.Parser::Parser()
-    .register(@jwt.new_hmac_sha256(b"key"))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = try parser.parse("not!valid@base64.x.y") catch {
+  let parser = @jwt.Parser::Parser().register(@jwt.new_hmac_sha256(b"key"))
+  let _ : (@jwt.Token, @jwt.RegisteredClaims) = parser.parse(
+    "not!valid@base64.x.y",
+  ) catch {
     _ => return
   }
   assert_eq(true, false)

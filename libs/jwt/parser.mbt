@@ -9,21 +9,14 @@ pub(all) struct Parser {
 ///|
 /// Create a new Parser with default settings.
 pub fn Parser::Parser() -> Parser {
-  {
-    methods: {},
-    leeway: 0L,
-    skip_claims_validation: false,
-  }
+  { methods: {}, leeway: 0L, skip_claims_validation: false }
 }
 
 ///|
 /// Register a signing method for verification.
 /// The method's alg() value is used as the key in the internal registry.
 /// Returns self for chaining.
-pub fn Parser::register(
-  self : Parser,
-  sig_method : SigningMethod,
-) -> Parser {
+pub fn Parser::register(self : Parser, sig_method : SigningMethod) -> Parser {
   self.methods[sig_method.alg()] = sig_method
   self
 }
@@ -53,7 +46,7 @@ pub fn[C : Claims] Parser::parse(
 ) -> (Token, C) raise JwtError {
   // Split token into 3 parts
   let parts_iter = token_string.split(".")
-  let parts: Array[String] = []
+  let parts : Array[String] = []
   for p in parts_iter {
     parts.push(p.to_owned())
   }

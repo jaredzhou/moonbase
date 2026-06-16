@@ -1,6 +1,6 @@
 import {
-  "moonbitlang/x/crypto" @crypto,
-  "moonbitlang/x/codec/base64" @base64,
-  "moonbitlang/core/json" @json,
+  "moonbitlang/x/crypto",
+  "moonbitlang/x/codec/base64",
+  "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
