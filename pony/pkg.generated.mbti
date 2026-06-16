@@ -192,7 +192,7 @@ type ApiError derive(ToJson, @debug.Debug)
 pub fn ApiError::new(Int, String) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
 
-pub struct Context {
+pub(all) struct Context {
   http_method : HttpMethod
   url_str : String
   url : @url.URL
@@ -201,26 +201,26 @@ pub struct Context {
   resp_headers : Map[String, String]
   queries : Values
   mut form_values : Values?
-  exts : Array[(ExtKey, @any.Any)]
+  exts : ExtStore
   mut path_params : Array[ParamKV]
   req_body : &@io.Reader
   resp_writer : @http.ServerConnection
 }
 pub async fn Context::form(Self, String) -> String?
-pub fn[T] Context::get_ext(Self, ExtKey) -> T raise ExtError
+pub fn[K, V] Context::get_ext(Self, K) -> V raise ExtError
 pub fn Context::header(Self, String) -> String?
 pub async fn[T : @json.FromJson] Context::json(Self) -> T
 pub async fn Context::no_content(Self) -> Unit
 pub fn Context::param(Self, String) -> String?
 pub fn Context::query(Self, String) -> String?
 pub async fn Context::redirect(Self, String, http_status? : Int) -> Unit
-pub fn Context::remove_ext(Self, ExtKey) -> Unit
+pub fn[K] Context::remove_ext(Self, K) -> Unit
 pub async fn Context::response_error(Self, Int, String) -> Unit
 pub async fn[T : ToJson] Context::response_ok(Self, T) -> Unit
 pub fn Context::set_content_type(Self, String) -> Unit
-pub fn[T] Context::set_ext(Self, ExtKey, T) -> Unit
+pub fn[K, V] Context::set_ext(Self, K, V) -> Unit
 pub fn Context::set_header(Self, String, String) -> Unit
-pub fn[T] Context::try_get_ext(Self, ExtKey) -> T?
+pub fn[K, V] Context::try_get_ext(Self, K) -> V?
 pub fn Context::wildcard(Self) -> String?
 pub async fn Context::write_bytes(Self, Int, Bytes) -> Unit
 pub async fn[T : ToJson] Context::write_json(Self, Int, msg? : String, T) -> Unit
@@ -230,13 +230,12 @@ pub impl Show for Context
 
 type Endpoint derive(@debug.Debug)
 
-pub(all) extenum ExtKey {
-  RequestId
-  UserId
-}
-pub impl Eq for ExtKey
-pub impl Show for ExtKey
-pub impl @debug.Debug for ExtKey
+pub(all) struct ExtStore(Array[(String, @any.Any)])
+pub fn[K, V] ExtStore::get(Self, K) -> V raise ExtError
+pub fn ExtStore::new() -> Self
+pub fn[K] ExtStore::remove(Self, K) -> Unit
+pub fn[K, V] ExtStore::set(Self, K, V) -> Unit
+pub fn[K, V] ExtStore::try_get(Self, K) -> V?
 
 pub(all) struct Handler(async (Context) -> Unit) derive(@debug.Debug)
 
@@ -274,6 +273,9 @@ pub impl Show for NodeType
 
 type ParamKV
 
+pub(all) struct RequestId {
+}
+
 pub enum RouteResult {
   Found(Endpoint, Array[String])
   MethodNotAllowed
@@ -308,6 +310,9 @@ pub struct Server {
 pub fn Server::Server(String, Router) -> Self
 pub async fn Server::start(Self) -> Unit
 pub fn Server::with_timeout(Self, read? : Int, write? : Int) -> Self
+
+pub(all) struct UserId {
+}
 
 pub(all) struct Values(Map[String, Array[String]])
 pub fn Values::get(Self, String) -> String?

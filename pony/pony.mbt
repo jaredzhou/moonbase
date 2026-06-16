@@ -115,7 +115,10 @@ fn ExtStore::find(self : ExtStore, key : String) -> Int? {
 fn[T] decode_from_any(key : String, v : @any.Any) -> T raise ExtError {
   v.to() catch {
     @any.TypeMismatch(expect~, actual~) =>
-      raise ExtError::DecodeError(key=key, msg="expected '\{expect.name()}' but found '\{actual.name()}'")
+      raise ExtError::DecodeError(
+        key~,
+        msg="expected '\{expect.name()}' but found '\{actual.name()}'",
+      )
   }
 }
 
@@ -556,7 +559,7 @@ pub async fn Server::start(self : Server) -> Unit {
   server.run_forever((req, req_body, resp_writer) => {
     let ctx = self.router.build_ctx(req, req_body, resp_writer)
     self.request_id += 1
-    ctx.set_ext(RequestId::{}, self.request_id.to_string())
+    ctx.set_ext(RequestId::{  }, self.request_id.to_string())
     self.router.handler(ctx)
   })
 }

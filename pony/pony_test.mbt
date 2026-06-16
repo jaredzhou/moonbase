@@ -192,7 +192,10 @@ async test "test_query" {
       base + "/search?tag=web&tag=framework&tag=fast",
     )
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "q= page=1 has_flag=false flag_val=none tags=[web, framework, fast]")
+    assert_eq(
+      body.text(),
+      "q= page=1 has_flag=false flag_val=none tags=[web, framework, fast]",
+    )
 
     // mixed: multi-value + key-without-value
     let (resp, body) = @http.get(base + "/search?tag=rust&flag&tag=go")
@@ -261,18 +264,8 @@ async test "test_write" {
     },
     name="bytes",
   )
-  r.add(
-    HttpMethod::Post,
-    "/done",
-    ctx => ctx.no_content(),
-    name="no_content",
-  )
-  r.add(
-    HttpMethod::Get,
-    "/go",
-    ctx => ctx.redirect("/ping"),
-    name="redirect",
-  )
+  r.add(HttpMethod::Post, "/done", ctx => ctx.no_content(), name="no_content")
+  r.add(HttpMethod::Get, "/go", ctx => ctx.redirect("/ping"), name="redirect")
 
   @async.with_task_group() <| group => {
     let port = 19879
@@ -285,7 +278,10 @@ async test "test_write" {
     // write_bytes + set_content_type
     let (resp, _body) = @http.get(base + "/bytes")
     assert_eq(resp.code, 200)
-    assert_eq(resp.headers.get("content-type").unwrap_or(""), "application/octet-stream")
+    assert_eq(
+      resp.headers.get("content-type").unwrap_or(""),
+      "application/octet-stream",
+    )
 
     // no_content
     let (resp, _) = @http.post(base + "/done", b"")
@@ -342,16 +338,17 @@ async test "test_mount" {
 
 ///|
 /// JWT middleware: decode bearer token and set user_id in ext.
+
 ///|
 /// JWT middleware: decode bearer token and set user_id in ext.
 async test "test_jwt" {
   let r = Router::Router()
-  r.use_mw(@mw.jwt())
+  r.use_mw(@mw.jwt(@jwt.new_hmac_sha256(b"secret")))
   r.add(
     HttpMethod::Get,
     "/me",
     ctx => {
-      let user : String = ctx.get_ext(@pony.UserId::{}) catch {
+      let user : String = ctx.get_ext(@pony.UserId::{  }) catch {
         _ => "anonymous"
       }
       ctx.write_text(200, "user=" + user)
@@ -362,21 +359,20 @@ async test "test_jwt" {
   @async.with_task_group() <| group => {
     let port = 19882
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      let server = @http.Server::Server(@socket.Addr::parse("127.0.0.1:\{port}"))
+      let server = @http.Server::Server(
+        @socket.Addr::parse("127.0.0.1:\{port}"),
+      )
       server.run_forever((req, req_body, conn) => r.handle(req, req_body, conn))
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
 
-
-    let payload:Json = {"sub": "user-123"}
-    let token = @jwt.sign(payload.stringify(), "secret")
-    let (resp, body) = @http.get(
-      base + "/me",
-      headers={ "Authorization": "Bearer \{token}" },
-    )
+    let token_str = @jwt.sign(@jwt.new_hmac_sha256(b"secret"), { "sub": "alice" })
+    let (resp, body) = @http.get(base + "/me", headers={
+      "Authorization": "Bearer \{token_str}",
+    })
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "user=user-123")
+    assert_eq(body.text(), "user=alice")
 
     // no token
     let (resp, body) = @http.get(base + "/me")
@@ -398,7 +394,7 @@ async test "test_server" {
     HttpMethod::Get,
     "/hello",
     ctx => {
-      let id = ctx.get_ext(@pony.RequestId::{}) catch { _ => "?" }
+      let id = ctx.get_ext(@pony.RequestId::{  }) catch { _ => "?" }
       ctx.write_text(200, "req=" + id)
     },
     name="hello",
@@ -407,9 +403,7 @@ async test "test_server" {
   let s = Server::Server("127.0.0.1:19881", r)
 
   @async.with_task_group() <| group => {
-    group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      s.start()
-    }
+    group.spawn_bg(no_wait=true, allow_failure=true) <| () => { s.start() }
     @async.sleep(500)
 
     let (resp, body) = @http.get("http://127.0.0.1:19881/hello")
@@ -418,6 +412,7 @@ async test "test_server" {
   }
 }
 
+///|
 test "any test" {
   let user = @any.of("User-1")
   assert_eq(user.to(), "User-1")
@@ -426,11 +421,11 @@ test "any test" {
 ///|
 test "ext_store" {
   let s = ExtStore::new()
-  s.set(RequestId::{}, "REQ-42")
-  s.set(UserId::{}, "USER-99")
+  s.set(RequestId::{  }, "REQ-42")
+  s.set(UserId::{  }, "USER-99")
 
-  let req_id : String = s.get(RequestId::{}) catch { _ => "?" }
-  let user_id : String = s.get(UserId::{}) catch { _ => "?" }
+  let req_id : String = s.get(RequestId::{  }) catch { _ => "?" }
+  let user_id : String = s.get(UserId::{  }) catch { _ => "?" }
 
   assert_eq(req_id, "REQ-42")
   assert_eq(user_id, "USER-99")

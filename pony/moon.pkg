@@ -10,7 +10,6 @@ import {
 }
 
 import {
-  "Tigls/mb-jwt" @jwt,
+  "jaredzhou/libs/jwt",
   "jaredzhou/pony/mw",
 } for "test"
-

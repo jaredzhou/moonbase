@@ -1,8 +1,8 @@
 ///|
 /// JWT middleware. Parses `Authorization: Bearer <token>`,
-/// decodes the payload, and stores the `sub` claim as user_id
-/// via `ctx.set_ext(UserId, ...)`.
-pub fn jwt() -> @pony.Middleware {
+/// verifies the signature, and stores the `sub` claim
+/// as user_id via `ctx.set_ext(UserId, ...)`.
+pub fn jwt(sig_method : @jwt.SigningMethod) -> @pony.Middleware {
   next => {
     ctx => {
       let token = match ctx.header("authorization") {
@@ -12,18 +12,16 @@ pub fn jwt() -> @pony.Middleware {
           return
         }
       }
-      match @jwt.decode(token) {
-        Ok(payload) => {
-          let json = @json.parse(payload) catch { _ => return next(ctx) }
-          match json {
-            Json::Object(m) => match m.get("sub") {
-              Some(Json::String(s)) => ctx.set_ext(@pony.UserId::{}, s)
-              _ => ()
-            }
-            _ => ()
-          }
+      let parsed = @jwt.parse(token, sig_method) catch {
+        _ => {
+          next(ctx)
+          return
         }
-        Err(_) => ()
+      }
+      let (_token, claims) : (@jwt.Token, @jwt.RegisteredClaims) = parsed
+      let user_id = claims.sub.unwrap_or("")
+      if user_id != "" {
+        ctx.set_ext(@pony.UserId::{}, user_id)
       }
       next(ctx)
     }

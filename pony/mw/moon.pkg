@@ -1,8 +1,5 @@
 import {
-  "Tigls/mb-jwt" @jwt,
+  "jaredzhou/libs/jwt",
   "jaredzhou/pony",
   "moonbitlang/core/json",
 }
-
-
-
