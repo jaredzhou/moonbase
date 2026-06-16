@@ -54,7 +54,7 @@ pub fn sign(sig_method : SigningMethod, claims : Json) -> String {
 ///|
 /// Parse a JWT token string without signature verification.
 pub fn parse_unverified(token_string : String) -> Token raise JwtError {
-  Parser::Parser().parse_unverified(token_string)
+  Parser::parse_unverified(token_string)
 }
 
 ///|

@@ -37,7 +37,7 @@ pub fn Parser::without_claims_validation(self : Parser) -> Parser {
 
 ///|
 /// Parse a JWT token string without signature verification.
-pub fn Parser::parse_unverified(self : Parser, token_string : String) -> Token raise JwtError {
+pub fn Parser::parse_unverified(token_string : String) -> Token raise JwtError {
   let parts_iter = token_string.split(".")
   let parts : Array[String] = []
   for p in parts_iter {
