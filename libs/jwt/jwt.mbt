@@ -118,7 +118,7 @@ pub fn[C : Claims] parse(
 ///|
 /// Parse and verify a JWT token with multiple accepted signing methods.
 /// The parser will use the method matching the token's `alg` header.
-pub fn[C : Claims] parse(
+pub fn[C : Claims] parse_with(
   token_string : String,
   methods : Array[SigningMethod],
 ) -> (Token, C) raise JwtError {
