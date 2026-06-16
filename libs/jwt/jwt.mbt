@@ -105,8 +105,7 @@ pub fn parse_unverified(token_string : String) -> Token raise JwtError {
 }
 
 ///|
-/// Parse and verify a JWT token with HMAC-SHA256 and the given secret key.
-/// Returns the parsed token and populated claims.
+/// Parse and verify a JWT token with the given signing method.
 pub fn[C : Claims] parse(
   token_string : String,
   sig_method : SigningMethod,
@@ -114,6 +113,20 @@ pub fn[C : Claims] parse(
   Parser::Parser()
     .register(sig_method)
     .parse(token_string)
+}
+
+///|
+/// Parse and verify a JWT token with multiple accepted signing methods.
+/// The parser will use the method matching the token's `alg` header.
+pub fn[C : Claims] parse(
+  token_string : String,
+  methods : Array[SigningMethod],
+) -> (Token, C) raise JwtError {
+  let mut parser = Parser::Parser()
+  for m in methods {
+    parser = parser.register(m)
+  }
+  parser.parse(token_string)
 }
 
 ///|
