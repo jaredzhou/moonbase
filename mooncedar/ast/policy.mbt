@@ -68,7 +68,6 @@ pub(all) enum PolicyEffect {
 // ---------------------------------------------------------------------------
 
 /// Construct an EntityUID in builder contexts.
-@alias("uid")
 pub fn entity_uid(type_ : String, id : String) -> EntityUID {
   { type_, id }
 }

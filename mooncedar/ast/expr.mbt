@@ -185,9 +185,9 @@ fn Expr::eq(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Eq, self, rhs)
 }
 
-/// self != rhs  — desugared: not_(eq(self, rhs))
+/// self != rhs
 fn Expr::ne(self : Expr, rhs : Expr) -> Expr {
-  (BinaryApp(Ne, self, rhs))
+  BinaryApp(Ne, self, rhs)
 }
 
 /// self < rhs
@@ -200,14 +200,14 @@ fn Expr::le(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(LessEq, self, rhs)
 }
 
-/// self > rhs  — desugared: not_(le(self, rhs))
+/// self > rhs
 fn Expr::gt(self : Expr, rhs : Expr) -> Expr {
-  (BinaryApp(Gt, self, rhs))
+  BinaryApp(Gt, self, rhs)
 }
 
-/// self >= rhs  — desugared: not_(lt(self, rhs))
+/// self >= rhs
 fn Expr::ge(self : Expr, rhs : Expr) -> Expr {
-  (BinaryApp(Ge, self, rhs))
+  BinaryApp(Ge, self, rhs)
 }
 
 /// self + rhs
