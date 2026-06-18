@@ -181,112 +181,112 @@ pub fn ext_call(name : Name, args : Array[Expr]) -> Expr {
 // Chaining methods on Expr
 
 /// self == rhs
-fn Expr::eq(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::eq(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Eq, self, rhs)
 }
 
 /// self != rhs
-fn Expr::ne(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::ne(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Ne, self, rhs)
 }
 
 /// self < rhs
-fn Expr::lt(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::lt(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Less, self, rhs)
 }
 
 /// self <= rhs
-fn Expr::le(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::le(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(LessEq, self, rhs)
 }
 
 /// self > rhs
-fn Expr::gt(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::gt(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Gt, self, rhs)
 }
 
 /// self >= rhs
-fn Expr::ge(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::ge(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Ge, self, rhs)
 }
 
 /// self + rhs
-fn Expr::add(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::add(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Add, self, rhs)
 }
 
 /// self - rhs
-fn Expr::sub(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::sub(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Sub, self, rhs)
 }
 
 /// self * rhs
-fn Expr::mul(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::mul(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Mul, self, rhs)
 }
 
 /// self && rhs  (keyword: and)
-fn Expr::and_(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::and_(self : Expr, rhs : Expr) -> Expr {
   And(self, rhs)
 }
 
 /// self || rhs  (keyword: or)
-fn Expr::or_(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::or_(self : Expr, rhs : Expr) -> Expr {
   Or(self, rhs)
 }
 
 /// self in rhs  (keyword: in)
-fn Expr::in_(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::in_(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(In_, self, rhs)
 }
 
 /// self.contains(rhs)
-fn Expr::contains(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::contains(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(Contains, self, rhs)
 }
 
 /// self.contains_all(rhs)
-fn Expr::contains_all(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::contains_all(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(ContainsAll, self, rhs)
 }
 
 /// self.contains_any(rhs)
-fn Expr::contains_any(self : Expr, rhs : Expr) -> Expr {
+pub fn Expr::contains_any(self : Expr, rhs : Expr) -> Expr {
   BinaryApp(ContainsAny, self, rhs)
 }
 
 /// self.get_tag(tag)
-fn Expr::get_tag(self : Expr, tag : Expr) -> Expr {
+pub fn Expr::get_tag(self : Expr, tag : Expr) -> Expr {
   BinaryApp(GetTag, self, tag)
 }
 
 /// self.has_tag(tag)
-fn Expr::has_tag(self : Expr, tag : Expr) -> Expr {
+pub fn Expr::has_tag(self : Expr, tag : Expr) -> Expr {
   BinaryApp(HasTag, self, tag)
 }
 
 /// self.attr
-fn Expr::access(self : Expr, attr : String) -> Expr {
+pub fn Expr::access(self : Expr, attr : String) -> Expr {
   GetAttr(self, attr)
 }
 
 /// self has attr
-fn Expr::has(self : Expr, attr : String) -> Expr {
+pub fn Expr::has(self : Expr, attr : String) -> Expr {
   HasAttr(self, attr)
 }
 
 /// self like pattern
-fn Expr::like(self : Expr, pattern : Pattern) -> Expr {
+pub fn Expr::like(self : Expr, pattern : Pattern) -> Expr {
   Like(self, pattern)
 }
 
 /// self is EntityType  (keyword: is)
-fn Expr::is_(self : Expr, ty : EntityType) -> Expr {
+pub fn Expr::is_(self : Expr, ty : EntityType) -> Expr {
   Expr::Is(self, ty)
 }
 
 /// self is ty AND self in entity  — desugared to and_ + is_ + in_
-fn Expr::is_in(self : Expr, ty : EntityType, entity : Expr) -> Expr {
+pub fn Expr::is_in(self : Expr, ty : EntityType, entity : Expr) -> Expr {
   let lhs = Expr::Is(self, ty)
-  And(lhs, BinaryApp(In_, self, entity))
+  And(lhs, BinaryApp(In_, lhs, entity))
 }

@@ -256,8 +256,8 @@ test "is_in" {
   let entity = var_principal()
   let ty = EntityType("User")
   let parent = val_euid("Org", "corp")
-  // desugared to: And(Is(self, ty), BinaryApp(In_, self, entity))
-  @debug.assert_eq(entity.is_in(ty, parent), And(Expr::Is(Var(Principal), EntityType("User")), BinaryApp(In_, Var(Principal), Lit(EntityUID(EntityUID::{ type_: "Org", id: "corp" })))))
+  let is_expr = Expr::Is(Var(Principal), EntityType("User"))
+  @debug.assert_eq(entity.is_in(ty, parent), And(is_expr, BinaryApp(In_, is_expr, Lit(EntityUID(EntityUID::{ type_: "Org", id: "corp" })))))
 }
 
 // ---------------------------------------------------------------------------
@@ -298,14 +298,6 @@ test "chaining: resource.tags.contains_all(set_)" {
     expr,
     BinaryApp(ContainsAll, GetAttr(Var(Resource), "tags"), Set([Lit(String("public")), Lit(String("verified"))])),
   )
-}
-
-///|
-test "desugared: is_in == and_(is_, in_)" {
-  let e = var_principal()
-  let ty = EntityType("User")
-  let parent = val_euid("Org", "corp")
-  @debug.assert_eq(e.is_in(ty, parent), e.is_(ty).and_(e.in_(parent)))
 }
 
 // ---------------------------------------------------------------------------

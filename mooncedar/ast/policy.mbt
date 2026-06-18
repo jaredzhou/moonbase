@@ -86,11 +86,11 @@ pub fn default() -> Policy {
 // Effect
 // ---------------------------------------------------------------------------
 
-fn Policy::permit(self : Policy) -> Policy {
+pub fn Policy::permit(self : Policy) -> Policy {
   Policy::{ ..self, effect: Permit }
 }
 
-fn Policy::forbid(self : Policy) -> Policy {
+pub fn Policy::forbid(self : Policy) -> Policy {
   Policy::{ ..self, effect: Forbid }
 }
 
@@ -98,19 +98,19 @@ fn Policy::forbid(self : Policy) -> Policy {
 // Scope — principal
 // ---------------------------------------------------------------------------
 
-fn Policy::principal_eq(self : Policy, type_ : String, id : String) -> Policy {
+pub fn Policy::principal_eq(self : Policy, type_ : String, id : String) -> Policy {
   Policy::{ ..self, principal: Eq(EntityUID::{ type_, id }) }
 }
 
-fn Policy::principal_in(self : Policy, type_ : String, id : String) -> Policy {
+pub fn Policy::principal_in(self : Policy, type_ : String, id : String) -> Policy {
   Policy::{ ..self, principal: In(EntityUID::{ type_, id }) }
 }
 
-fn Policy::principal_is(self : Policy, type_ : String) -> Policy {
+pub fn Policy::principal_is(self : Policy, type_ : String) -> Policy {
   Policy::{ ..self, principal: Is(EntityType(type_)) }
 }
 
-fn Policy::principal_is_in(self : Policy, ty : String, parent_ty : String, parent_id : String) -> Policy {
+pub fn Policy::principal_is_in(self : Policy, ty : String, parent_ty : String, parent_id : String) -> Policy {
   Policy::{ ..self, principal: IsIn(EntityType(ty), EntityUID::{ type_: parent_ty, id: parent_id }) }
 }
 
@@ -118,15 +118,15 @@ fn Policy::principal_is_in(self : Policy, ty : String, parent_ty : String, paren
 // Scope — action
 // ---------------------------------------------------------------------------
 
-fn Policy::action_eq(self : Policy, type_ : String, id : String) -> Policy {
+pub fn Policy::action_eq(self : Policy, type_ : String, id : String) -> Policy {
   Policy::{ ..self, action: Eq(EntityUID::{ type_, id }) }
 }
 
-fn Policy::action_in(self : Policy, type_ : String, id : String) -> Policy {
+pub fn Policy::action_in(self : Policy, type_ : String, id : String) -> Policy {
   Policy::{ ..self, action: In(EntityUID::{ type_, id }) }
 }
 
-fn Policy::action_in_set(self : Policy, entities : Array[(String, String)]) -> Policy {
+pub fn Policy::action_in_set(self : Policy, entities : Array[(String, String)]) -> Policy {
   Policy::{ ..self, action: InSet(entities.map(fn(e : (String, String)) -> EntityUID {
     let (t, i) = e
     EntityUID::{ type_: t, id: i }
@@ -137,19 +137,19 @@ fn Policy::action_in_set(self : Policy, entities : Array[(String, String)]) -> P
 // Scope — resource
 // ---------------------------------------------------------------------------
 
-fn Policy::resource_eq(self : Policy, type_ : String, id : String) -> Policy {
+pub fn Policy::resource_eq(self : Policy, type_ : String, id : String) -> Policy {
   Policy::{ ..self, resource: Eq(EntityUID::{ type_, id }) }
 }
 
-fn Policy::resource_in(self : Policy, type_ : String, id : String) -> Policy {
+pub fn Policy::resource_in(self : Policy, type_ : String, id : String) -> Policy {
   Policy::{ ..self, resource: In(EntityUID::{ type_, id }) }
 }
 
-fn Policy::resource_is(self : Policy, type_ : String) -> Policy {
+pub fn Policy::resource_is(self : Policy, type_ : String) -> Policy {
   Policy::{ ..self, resource: Is(EntityType(type_)) }
 }
 
-fn Policy::resource_is_in(self : Policy, ty : String, parent_ty : String, parent_id : String) -> Policy {
+pub fn Policy::resource_is_in(self : Policy, ty : String, parent_ty : String, parent_id : String) -> Policy {
   Policy::{ ..self, resource: IsIn(EntityType(ty), EntityUID::{ type_: parent_ty, id: parent_id }) }
 }
 
@@ -157,11 +157,11 @@ fn Policy::resource_is_in(self : Policy, ty : String, parent_ty : String, parent
 // Metadata
 // ---------------------------------------------------------------------------
 
-fn Policy::with_id(self : Policy, id : String) -> Policy {
+pub fn Policy::with_id(self : Policy, id : String) -> Policy {
   Policy::{ ..self, id }
 }
 
-fn Policy::annotate(self : Policy, key : String, value : String) -> Policy {
+pub fn Policy::annotate(self : Policy, key : String, value : String) -> Policy {
   Policy::{ ..self, annotations: self.annotations + [Annotation::{ key, value }] }
 }
 
@@ -169,10 +169,10 @@ fn Policy::annotate(self : Policy, key : String, value : String) -> Policy {
 // Conditions
 // ---------------------------------------------------------------------------
 
-fn Policy::when_(self : Policy, body : Expr) -> Policy {
+pub fn Policy::when_(self : Policy, body : Expr) -> Policy {
   Policy::{ ..self, conditions: self.conditions + [Condition::{ kind: When, body }] }
 }
 
-fn Policy::unless(self : Policy, body : Expr) -> Policy {
+pub fn Policy::unless(self : Policy, body : Expr) -> Policy {
   Policy::{ ..self, conditions: self.conditions + [Condition::{ kind: Unless, body }] }
 }
