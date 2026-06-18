@@ -2,6 +2,18 @@
 
 MoonBit 实现的 Cedar 策略语言解析器与 AST。`jaredzhou/mooncedar@0.1.0`
 
+## 参考
+
+| 来源 | 地址 |
+|------|------|
+| Cedar 官方规范 | https://www.cedarpolicy.com |
+| Rust 实现 (AWS) | https://github.com/cedar-policy/cedar |
+| Go 实现 | https://github.com/cedar-policy/cedar-go |
+
+Cedar 是 AWS 开源的策略语言，用于定义 IAM 风格的细粒度权限控制。
+本项目 AST 结构和解析策略主要参考 Rust 版的 `cedar-policy-core/src/ast/`
+和 Go 版的 `cedar-go/x/exp/ast/`。
+
 ---
 
 ## 项目结构
