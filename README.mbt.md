@@ -94,21 +94,28 @@ A full [Cedar](https://www.cedarpolicy.com/) policy engine implemented in MoonBi
 - **Authorizer** — `evaluate`, `reauthorize`, `concretize`, `is_authorized`
 
 ```moonbit
-let store = mooncedar::new_map_entity_store()
-store.add(entity_from_json(#{ /* entities */ }))
+// Dependencies: "jaredzhou/mooncedar", "jaredzhou/mooncedar/parser",
+//               "jaredzhou/mooncedar/evaluator", "jaredzhou/mooncedar/ast",
+//               "moonbitlang/core/json"
 
-let policies = @jaredzhou/mooncedar/parser.parse_multi(r#" ... "#).unwrap()
-
-let auth = mooncedar::is_authorized(
-  uid("User::\"alice\""),
-  uid("Action::\"view\""),
-  uid("Document::\"doc-1\""),
-  store,
-  policies,
+let policies = @parser.parse_policies(
+  #|permit (principal == User::"alice", action == Action::"view", resource in Album::"jane_vacation");|
 )
-match auth.decision {
-  Allow => println("allowed!")
-  Deny => println("denied!")
+
+let entities_src = #|[{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
+let store = @json.from_json(@json.parse(entities_src))
+
+let req = @evaluator.Request::{
+  principal: @evaluator.concrete_uid("User", "alice"),
+  action: @evaluator.concrete_uid("Action", "view"),
+  resource: @evaluator.concrete_uid("Photo", "VacationPhoto94.jpg"),
+  context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
+}
+
+let result = @mooncedar.is_authorized(req, policies.iter(), store)
+match result.decision {
+  @mooncedar.Decision::Allow => println("allowed!")
+  _ => println("denied!")
 }
 ```
 

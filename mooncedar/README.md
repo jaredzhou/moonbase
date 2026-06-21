@@ -13,16 +13,14 @@ Add to your `moon.mod`:
 ## Quick Start
 
 ```moonbit
-// 1. Define a policy
+// 1. Parse a Cedar policy
 let policies = @parser.parse_policies(
   #|permit (principal == User::"alice", action == Action::"view", resource in Album::"jane_vacation");|
 )
 
 // 2. Build an entity store from JSON
-let entities = @json.parse(
-  #|[{"uid":{"type":"User","id":"alice"},"attrs":{"role":["String","admin"]},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
-)
-let store : @evaluator.MapEntityStore = @json.from_json(entities)
+let entities_src = #|[{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
+let store : @evaluator.MapEntityStore = @json.from_json(@json.parse(entities_src))
 
 // 3. Create a request
 let req = @evaluator.Request::{
@@ -35,10 +33,10 @@ let req = @evaluator.Request::{
 // 4. Authorize
 let result = is_authorized(req, policies.iter(), store)
 match result.decision {
-  Decision::Allow => println("permitted (\{result.determining_policies[0].policy_id})")
+  Decision::Allow => println("permitted")
   Decision::Deny => println("denied")
 }
-// => permitted (policy0)
+// => permitted
 ```
 
 ## Packages
@@ -65,21 +63,22 @@ Full Cedar policy syntax support:
 ### Expression Builder
 
 ```moonbit
-let e = @ast.Expr::var_principal()
-  .eq(@ast.Expr::lit_str("alice"))
-  .and(@ast.Expr::var_resource()
-    .has_tag(@ast.Expr::lit_str("confidential"))
+let e = @ast.var_principal()
+  .eq(@ast.val_str("alice"))
+  .and_(@ast.var_resource()
+    .has_tag(@ast.val_str("confidential"))
   )
 ```
 
 ### Policy Builder
 
 ```moonbit
-let policy = @ast.Policy::permit()
+let policy = @ast.default()
+  .permit()
   .principal_eq("User", "alice")
   .action_eq("Action", "view")
   .resource_in("Album", "photos")
-  .when_(@ast.Expr::var_resource().has_tag(@ast.Expr::lit_str("public")))
+  .when_(@ast.var_resource().has_tag(@ast.val_str("public")))
 ```
 
 ### Strategy Validation
@@ -115,9 +114,9 @@ let req = @evaluator.Request::{
   context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
 }
 
-let answer = evaluate(req, policies.iter(), store1)         // partial result
-let answer = answer.reauthorize(req, store2, Map([]))        // fill unknowns
-let result = answer.concretize()                              // final decision
+let answer = evaluate(req, policies.iter(), store1)        // partial result
+let answer = answer.reauthorize(req, store2, Map([]))      // fill unknowns
+let result = answer.concretize()                           // final decision
 ```
 
 ### JSON Serialization
