@@ -1,6 +1,6 @@
 name = "jaredzhou/pony"
 
-version = "0.1.0"
+version = "0.1.1"
 
 readme = "README.mbt.md"
 
@@ -15,7 +15,7 @@ description = ""
 preferred_target = "native"
 
 import {
-  "jaredzhou/libs@0.1.0",
+  "jaredzhou/libs@0.1.1",
   "moonbitlang/async@0.19.4",
   "tonyfettes/any@0.1.5",
 }

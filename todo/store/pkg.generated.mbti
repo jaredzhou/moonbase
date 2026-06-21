@@ -1,0 +1,55 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/todo/store"
+
+import {
+  "jaredzhou/mooncedar/ast",
+  "jaredzhou/mooncedar/evaluator",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn add_list(ServerState, ListData) -> Unit
+
+pub fn empty_state() -> ServerState
+
+pub fn init_state(String, String) -> ServerState
+
+pub fn list_to_entity(ListData) -> @ast.Entity
+
+pub fn new_list(Int, String, String) -> ListData
+
+pub fn update_list_entity(ServerState, ListData) -> Unit
+
+// Errors
+
+// Types and methods
+pub(all) struct ListData {
+  id : Int
+  mut name : String
+  mut owner : String
+  mut readers : Array[String]
+  mut editors : Array[String]
+  mut tasks : Array[TaskData]
+} derive(@debug.Debug)
+
+pub(all) struct ServerState {
+  mut lists : Array[ListData]
+  entities : @evaluator.MapEntityStore
+  policies : Array[@ast.Policy]
+}
+
+pub(all) struct TaskData {
+  id : Int
+  mut name : String
+  mut state : TaskState
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TaskState {
+  Todo
+  Done
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

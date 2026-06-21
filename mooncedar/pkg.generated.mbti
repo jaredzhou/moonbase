@@ -1,0 +1,62 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/mooncedar"
+
+import {
+  "jaredzhou/mooncedar/ast",
+  "jaredzhou/mooncedar/evaluator",
+  "jaredzhou/mooncedar/parser",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn[S : @evaluator.EntityStore] evaluate(@evaluator.Request, Iter[@ast.Policy], S) -> PartialAuthorizationAnswer
+
+pub fn[S : @evaluator.EntityStore] is_authorized(@evaluator.Request, Iter[@ast.Policy], S) -> AuthorizationResult
+
+pub fn parse_policies(String) -> Array[@ast.Policy] raise @parser.ParseError
+
+pub fn stringify(@ast.Policy) -> String
+
+pub fn stringify_expr(@ast.Expr) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct AuthorizationResult {
+  decision : Decision
+  determining_policies : Array[DiagnosticReason]
+  errors : Array[DiagnosticError]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Decision {
+  Allow
+  Deny
+} derive(Eq, @debug.Debug)
+
+type DecisionRecord derive(Eq, @debug.Debug)
+
+pub(all) struct DiagnosticError {
+  policy_id : String
+  position : @ast.Position
+  message : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DiagnosticReason {
+  policy_id : String
+  position : @ast.Position
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PartialAuthorizationAnswer {
+  satisfied : Array[DecisionRecord]
+  residuals : Array[ResidualRecord]
+  errors : Array[DiagnosticError]
+} derive(@debug.Debug)
+pub fn PartialAuthorizationAnswer::concretize(Self) -> AuthorizationResult
+pub fn[S : @evaluator.EntityStore] PartialAuthorizationAnswer::reauthorize(Self, @evaluator.Request, S, Map[String, @ast.Value]) -> Self
+
+type ResidualRecord derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

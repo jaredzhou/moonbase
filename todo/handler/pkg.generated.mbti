@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/todo/handler"
+
+import {
+  "jaredzhou/pony",
+  "jaredzhou/todo/store",
+}
+
+// Values
+pub fn build_list_routes(@pony.Router, @store.ServerState) -> @pony.Router
+
+pub fn build_task_routes(@pony.Router, @store.ServerState) -> @pony.Router
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

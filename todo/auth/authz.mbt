@@ -2,7 +2,9 @@
 
 ///|
 /// Error raised by authorize_or_fail when access is denied.
-pub(all) suberror AccessDenied { AccessDenied(String) } derive(Debug)
+pub(all) suberror AccessDenied {
+  AccessDenied(String)
+} derive(Debug)
 
 ///|
 /// Check if the given user is authorized to perform an action on a resource.
@@ -21,7 +23,11 @@ pub fn try_authorize(
     resource: @evaluator.concrete_uid(resource_type, resource_id),
     context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
   }
-  let result = @mooncedar.is_authorized(req, state.policies.iter(), state.entities)
+  let result = @mooncedar.is_authorized(
+    req,
+    state.policies.iter(),
+    state.entities,
+  )
   result.decision == @mooncedar.Decision::Allow
 }
 
@@ -35,7 +41,9 @@ pub fn authorize_or_fail(
   resource_id : String,
   state : @store.ServerState,
 ) -> Unit raise AccessDenied {
-  if !try_authorize(user, action_type, action_id, resource_type, resource_id, state) {
+  if !try_authorize(
+      user, action_type, action_id, resource_type, resource_id, state,
+    ) {
     raise AccessDenied("403: access denied")
   }
 }

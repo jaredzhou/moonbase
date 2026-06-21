@@ -1,31 +1,36 @@
 // Cedar parser -- policy-level recursive descent with ArrayView threading.
 
+///|
 /// Parse one or more Cedar policies from source text.
+/// Each policy is validated immediately after parsing.
 pub fn parse_policies(src : String) -> Array[@ast.Policy] raise ParseError {
   let tokens = tokenize(src)
   let policies : Array[@ast.Policy] = []
   let mut auto_id = 0
-  for rest = tokens[:] {
+  let _ = for rest = tokens[:] {
     match rest {
-      [{kind: EOF, ..}] => break
+      [{ kind: EOF, .. }] => break rest
       _ => {
-          let (raw, rest) = parse_policy(rest)
-          let mut policy = raw
-          if policy.id == "" {
-            let n = if auto_id == 0 { "" } else { auto_id.to_string() }
-            policy = { ..policy, id: "policy\{n}" }
-            auto_id = auto_id + 1
-          }
-          policies.push(policy)
-          continue rest
+        let (raw, rest) = parse_policy(rest)
+        let mut policy = raw
+        if policy.id == "" {
+          let n = if auto_id == 0 { "" } else { auto_id.to_string() }
+          policy = { ..policy, id: "policy\{n}" }
+          auto_id = auto_id + 1
+        }
+        policies.push(policy)
+        continue rest
       }
     }
   }
   policies
 }
 
+///|
 /// Parse a single policy: @annotations effect(principal, action, resource) conditions;
-fn parse_policy(tokens : ArrayView[Token]) -> (@ast.Policy, ArrayView[Token]) raise ParseError {
+fn parse_policy(
+  tokens : ArrayView[Token],
+) -> (@ast.Policy, ArrayView[Token]) raise ParseError {
   // annotations: @key(value) @key ...
   let (anns, rest) = parse_annotations(tokens)
 
@@ -69,7 +74,7 @@ fn parse_policy(tokens : ArrayView[Token]) -> (@ast.Policy, ArrayView[Token]) ra
     raise ParseError("expected ';'", rest[0].pos)
   }
 
-  ({
+  let policy : @ast.Policy = {
     id,
     effect,
     annotations: anns,
@@ -77,14 +82,30 @@ fn parse_policy(tokens : ArrayView[Token]) -> (@ast.Policy, ArrayView[Token]) ra
     action,
     resource,
     conditions: conds,
-  }, rest)
+  }
+
+  // Semantic validation: check scope constraint validity per PARC position
+  @ast.validate_policy(policy) catch {
+    @ast.ValidationError(msg, _) =>
+      raise ParseError(msg, @ast.Position::{
+        filename: "",
+        offset: 0,
+        line: 0,
+        column: 0,
+      })
+  }
+
+  (policy, rest)
 }
 
 // ---------------------------------------------------------------------------
 // Annotations: @key(value) @key ...
 // ---------------------------------------------------------------------------
 
-fn parse_annotations(tokens : ArrayView[Token]) -> (Array[@ast.Annotation], ArrayView[Token]) raise ParseError {
+///|
+fn parse_annotations(
+  tokens : ArrayView[Token],
+) -> (Array[@ast.Annotation], ArrayView[Token]) raise ParseError {
   let annotations : Array[@ast.Annotation] = []
   let rest = for rest = tokens {
     match rest {
@@ -99,7 +120,10 @@ fn parse_annotations(tokens : ArrayView[Token]) -> (Array[@ast.Annotation], Arra
   (annotations, rest)
 }
 
-fn parse_annotation(tokens : ArrayView[Token]) -> (@ast.Annotation, ArrayView[Token]) raise ParseError {
+///|
+fn parse_annotation(
+  tokens : ArrayView[Token],
+) -> (@ast.Annotation, ArrayView[Token]) raise ParseError {
   guard tokens is [head, .. rest] else {
     raise ParseError("expected annotation key", tokens[0].pos)
   }
@@ -123,9 +147,12 @@ fn parse_annotation(tokens : ArrayView[Token]) -> (@ast.Annotation, ArrayView[To
   }
 }
 
+///|
 /// Extract @id annotation value as the policy id, removing it from annotations.
 /// Returns ("", anns) if no @id annotation is present.
-fn extract_id(anns : Array[@ast.Annotation]) -> (String, Array[@ast.Annotation]) {
+fn extract_id(
+  anns : Array[@ast.Annotation],
+) -> (String, Array[@ast.Annotation]) {
   let mut matched_id = ""
   let filtered = []
   for ann in anns {
@@ -142,7 +169,10 @@ fn extract_id(anns : Array[@ast.Annotation]) -> (String, Array[@ast.Annotation])
 // Effect: permit | forbid
 // ---------------------------------------------------------------------------
 
-fn parse_effect(tokens : ArrayView[Token]) -> (@ast.PolicyEffect, ArrayView[Token]) raise ParseError {
+///|
+fn parse_effect(
+  tokens : ArrayView[Token],
+) -> (@ast.PolicyEffect, ArrayView[Token]) raise ParseError {
   guard tokens is [head, .. rest] else {
     raise ParseError("expected 'permit' or 'forbid'", tokens[0].pos)
   }
@@ -157,37 +187,54 @@ fn parse_effect(tokens : ArrayView[Token]) -> (@ast.PolicyEffect, ArrayView[Toke
 // Scope: principal, action, resource
 // ---------------------------------------------------------------------------
 
-fn parse_scope_principal(tokens : ArrayView[Token]) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
+///|
+fn parse_scope_principal(
+  tokens : ArrayView[Token],
+) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
   guard tokens is [{ kind: Ident("principal"), .. }, .. rest] else {
     raise ParseError("expected 'principal'", tokens[0].pos)
   }
   parse_scope_op(rest)
 }
 
-fn parse_scope_action(tokens : ArrayView[Token]) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
+///|
+fn parse_scope_action(
+  tokens : ArrayView[Token],
+) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
   guard tokens is [{ kind: Ident("action"), .. }, .. rest] else {
     raise ParseError("expected 'action'", tokens[0].pos)
   }
   parse_scope_op(rest)
 }
 
-fn parse_scope_resource(tokens : ArrayView[Token]) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
+///|
+fn parse_scope_resource(
+  tokens : ArrayView[Token],
+) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
   guard tokens is [{ kind: Ident("resource"), .. }, .. rest] else {
     raise ParseError("expected 'resource'", tokens[0].pos)
   }
   parse_scope_op(rest)
 }
 
-fn parse_scope_op(tokens : ArrayView[Token]) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
+///|
+fn parse_scope_op(
+  tokens : ArrayView[Token],
+) -> (@ast.ScopeConstraint, ArrayView[Token]) raise ParseError {
   match tokens {
     [{ kind: Op(Eq), .. }, .. rest] => {
       let (entity, rest) = parse_entity_uid(rest)
       (@ast.Eq(entity), rest)
     }
-    [{ kind: Keyword(In), .. }, .. rest] => {
-      let (entity, rest) = parse_entity_uid(rest)
-      (@ast.In(entity), rest)
-    }
+    [{ kind: Keyword(In), .. }, .. rest] =>
+      // InSet: action in [EntityUID, EntityUID, ...]
+      if rest.length() > 0 && rest[0].kind == Bracket('[') {
+        let (entities, rest) = parse_entity_uid_list(rest[1:])
+        (@ast.InSet(entities), rest)
+      } else {
+        let (entity, rest) = parse_entity_uid(rest)
+        (@ast.In(entity), rest)
+      }
     [{ kind: Keyword(Is), .. }, .. rest] => {
       let (etype, rest) = parse_entity_type(rest)
       match rest {
@@ -206,39 +253,76 @@ fn parse_scope_op(tokens : ArrayView[Token]) -> (@ast.ScopeConstraint, ArrayView
 // Entity UIDs and types
 // ---------------------------------------------------------------------------
 
-fn parse_entity_uid(tokens : ArrayView[Token]) -> (@ast.EntityUID, ArrayView[Token]) raise ParseError {
+///|
+fn parse_entity_uid(
+  tokens : ArrayView[Token],
+) -> (@ast.EntityUID, ArrayView[Token]) raise ParseError {
   guard tokens is [{ kind: Ident(first), .. }, .. rest] else {
     raise ParseError("expected entity type (uppercase)", tokens[0].pos)
   }
   let mut etype = first
-  // let mut rest = rest
   for rest = rest {
-    match rest{
-      [{kind: Symbol("::"), ..}, .. rest] => {
+    match rest {
+      [{ kind: Symbol("::"), .. }, .. rest] =>
         match rest {
-          [head, .. r3] => match head.kind {
-            Ident(next) => {
-              etype = "\{etype}::\{next}"
-              continue r3
-            }
-            String(id) => return ({ type_: etype, id }, r3)
-            _ => raise ParseError("expected type or id after ::", head.pos)
+          [{ kind: Ident(next), .. }, .. r3] => {
+            etype = "\{etype}::\{next}"
+            continue r3
           }
+          [{ kind: String(id), .. }, .. r3] => return ({ type_: etype, id }, r3)
+          [t, ..] => raise ParseError("expected type or id after ::", t.pos)
           [] => raise ParseError("expected type or id after ::", tokens[0].pos)
         }
+      _ =>
+        raise ParseError("expected '::' in entity UID", @ast.Position::{
+          filename: "",
+          offset: 0,
+          line: 0,
+          column: 0,
+        })
+    }
+  }
+  raise ParseError("expected '::' in entity UID", @ast.Position::{
+    filename: "",
+    offset: 0,
+    line: 0,
+    column: 0,
+  })
+}
+
+///|
+/// Parse a comma-separated list of entity UIDs: EntityUID, EntityUID, ... ]
+/// The '[' is already consumed by the caller.
+fn parse_entity_uid_list(
+  tokens : ArrayView[Token],
+) -> (Array[@ast.EntityUID], ArrayView[Token]) raise ParseError {
+  let entities : Array[@ast.EntityUID] = []
+  let rest = for rest = tokens {
+    match rest {
+      [{ kind: Bracket(']'), .. }, .. r1] => break r1
+      _ => {
+        let (entity, r2) = parse_entity_uid(rest)
+        entities.push(entity)
+        continue match r2 {
+            [{ kind: Symbol(","), .. }, .. r3] => r3
+            _ => r2
+          }
       }
-     _ => raise ParseError("expected '::' in entity UID",
-    @ast.Position::{filename: "", offset: 0, line: 0, column: 0})
-  }}
+    }
+  }
+  (entities, rest)
 }
 
 // ---------------------------------------------------------------------------
 // Conditions
 // ---------------------------------------------------------------------------
 
-fn parse_conditions(tokens : ArrayView[Token]) -> (Array[@ast.Condition], ArrayView[Token]) raise ParseError {
+///|
+fn parse_conditions(
+  tokens : ArrayView[Token],
+) -> (Array[@ast.Condition], ArrayView[Token]) raise ParseError {
   let conds : Array[@ast.Condition] = []
-  let rest  = for rest = tokens {
+  let rest = for rest = tokens {
     match rest {
       [{ kind: Keyword(When), .. }, .. rest] => {
         let (expr, rest) = parse_cond_body(rest)
@@ -256,7 +340,10 @@ fn parse_conditions(tokens : ArrayView[Token]) -> (Array[@ast.Condition], ArrayV
   (conds, rest)
 }
 
-fn parse_cond_body(tokens : ArrayView[Token]) -> (@ast.Expr, ArrayView[Token]) raise ParseError {
+///|
+fn parse_cond_body(
+  tokens : ArrayView[Token],
+) -> (@ast.Expr, ArrayView[Token]) raise ParseError {
   guard tokens is [{ kind: Bracket('{'), .. }, .. rest] else {
     raise ParseError("expected '{' in condition", tokens[0].pos)
   }
@@ -264,11 +351,18 @@ fn parse_cond_body(tokens : ArrayView[Token]) -> (@ast.Expr, ArrayView[Token]) r
   if rest.length() > 0 && rest[0].kind == Bracket('}') {
     (expr, rest[1:])
   } else {
-    raise ParseError("expected '}' after condition",
-      if rest.length() > 0 { rest[0].pos } else { tokens[0].pos })
+    raise ParseError(
+      "expected '}' after condition",
+      if rest.length() > 0 {
+        rest[0].pos
+      } else {
+        tokens[0].pos
+      },
+    )
   }
 }
 
+///|
 fn keyword_string(k : Keyword) -> String {
   match k {
     Permit => "permit"

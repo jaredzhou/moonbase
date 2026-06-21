@@ -46,7 +46,9 @@ test {
 test {
   let jwt_string = @jwt.sign(
     @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
-    @json.parse("{\"sub\":\"user-42\",\"iss\":\"my-app\"}") catch { _ => panic() },
+    @json.parse("{\"sub\":\"user-42\",\"iss\":\"my-app\"}") catch {
+      _ => panic()
+    },
   )
   let (_, populated) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,

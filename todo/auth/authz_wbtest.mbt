@@ -13,14 +13,19 @@ fn test_policies() -> String {
 ///|
 fn test_entities() -> String {
   let s =
-    #|[{"uid":{"type":"Application","id":"TinyTodo"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"User","id":"emina"},"attrs":{"location":["String","DEF33"],"joblevel":["Long","8"]},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"},{"type":"Team","id":"admin"}]},{"uid":{"type":"User","id":"aaron"},"attrs":{"location":["String","ABC17"],"joblevel":["Long","5"]},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"}]},{"uid":{"type":"Team","id":"admin"},"attrs":{},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"}]}]
+    #|[{"uid":{"type":"Application","id":"TinyTodo"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"User","id":"emina"},"attrs":{"location":"DEF33","joblevel":8},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"},{"type":"Team","id":"admin"}]},{"uid":{"type":"User","id":"aaron"},"attrs":{"location":"ABC17","joblevel":5},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"}]},{"uid":{"type":"Team","id":"admin"},"attrs":{},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"}]}]
   s
 }
 
 ///|
 test "anyone can CreateList" {
   let state = @store.init_state(test_policies(), test_entities())
-  @debug.assert_eq(true, try_authorize("aaron", "Action", "CreateList", "Application", "TinyTodo", state))
+  @debug.assert_eq(
+    true,
+    try_authorize(
+      "aaron", "Action", "CreateList", "Application", "TinyTodo", state,
+    ),
+  )
 }
 
 ///|
@@ -29,9 +34,15 @@ test "owner has full control on own list" {
   let list = @store.new_list(0, "MyList", "emina")
   @store.add_list(state, list)
   // Owner can GetList
-  @debug.assert_eq(true, try_authorize("emina", "Action", "GetList", "List", "0", state))
+  @debug.assert_eq(
+    true,
+    try_authorize("emina", "Action", "GetList", "List", "0", state),
+  )
   // Owner can DeleteList
-  @debug.assert_eq(true, try_authorize("emina", "Action", "DeleteList", "List", "0", state))
+  @debug.assert_eq(
+    true,
+    try_authorize("emina", "Action", "DeleteList", "List", "0", state),
+  )
 }
 
 ///|
@@ -40,7 +51,10 @@ test "non-owner, non-reader cannot GetList" {
   let list = @store.new_list(0, "MyList", "emina")
   @store.add_list(state, list)
   // aaron is not owner, not reader, not editor
-  @debug.assert_eq(false, try_authorize("aaron", "Action", "GetList", "List", "0", state))
+  @debug.assert_eq(
+    false,
+    try_authorize("aaron", "Action", "GetList", "List", "0", state),
+  )
 }
 
 ///|
@@ -49,8 +63,14 @@ test "reader can GetList but not DeleteList" {
   let list = @store.new_list(0, "MyList", "emina")
   list.readers.push("aaron")
   @store.add_list(state, list)
-  @debug.assert_eq(true, try_authorize("aaron", "Action", "GetList", "List", "0", state))
-  @debug.assert_eq(false, try_authorize("aaron", "Action", "DeleteList", "List", "0", state))
+  @debug.assert_eq(
+    true,
+    try_authorize("aaron", "Action", "GetList", "List", "0", state),
+  )
+  @debug.assert_eq(
+    false,
+    try_authorize("aaron", "Action", "DeleteList", "List", "0", state),
+  )
 }
 
 ///|
@@ -59,8 +79,14 @@ test "editor can CreateTask and UpdateTask" {
   let list = @store.new_list(0, "MyList", "emina")
   list.editors.push("aaron")
   @store.add_list(state, list)
-  @debug.assert_eq(true, try_authorize("aaron", "Action", "CreateTask", "List", "0", state))
-  @debug.assert_eq(true, try_authorize("aaron", "Action", "UpdateTask", "List", "0", state))
+  @debug.assert_eq(
+    true,
+    try_authorize("aaron", "Action", "CreateTask", "List", "0", state),
+  )
+  @debug.assert_eq(
+    true,
+    try_authorize("aaron", "Action", "UpdateTask", "List", "0", state),
+  )
 }
 
 ///|

@@ -25,7 +25,10 @@ test "val_str" {
 
 ///|
 test "val_euid" {
-  @debug.assert_eq(val_euid("User", "alice"), Lit(EntityUID(EntityUID::{ type_: "User", id: "alice" })))
+  @debug.assert_eq(
+    val_euid("User", "alice"),
+    Lit(EntityUID(EntityUID::{ type_: "User", id: "alice" })),
+  )
 }
 
 ///|
@@ -103,14 +106,20 @@ test "ext_call" {
 test "eq" {
   let lhs = var_principal()
   let rhs = val_str("alice")
-  @debug.assert_eq(lhs.eq(rhs), BinaryApp(Eq, Var(Principal), Lit(String("alice"))))
+  @debug.assert_eq(
+    lhs.eq(rhs),
+    BinaryApp(Eq, Var(Principal), Lit(String("alice"))),
+  )
 }
 
 ///|
 test "ne" {
   let lhs = var_principal()
   let rhs = val_str("alice")
-  @debug.assert_eq(lhs.ne(rhs), BinaryApp(Ne, Var(Principal), Lit(String("alice"))))
+  @debug.assert_eq(
+    lhs.ne(rhs),
+    BinaryApp(Ne, Var(Principal), Lit(String("alice"))),
+  )
 }
 
 ///|
@@ -184,42 +193,78 @@ test "or_" {
 test "in_" {
   let entity = val_euid("Photo", "sunset")
   let parent = val_euid("Album", "vacation")
-  @debug.assert_eq(entity.in_(parent), BinaryApp(In_, Lit(EntityUID(EntityUID::{ type_: "Photo", id: "sunset" })), Lit(EntityUID(EntityUID::{ type_: "Album", id: "vacation" }))))
+  @debug.assert_eq(
+    entity.in_(parent),
+    BinaryApp(
+      In_,
+      Lit(EntityUID(EntityUID::{ type_: "Photo", id: "sunset" })),
+      Lit(EntityUID(EntityUID::{ type_: "Album", id: "vacation" })),
+    ),
+  )
 }
 
 ///|
 test "contains" {
   let set_expr = set_([val_str("a")])
   let elem = val_str("a")
-  @debug.assert_eq(set_expr.contains(elem), BinaryApp(Contains, Set([Lit(String("a"))]), Lit(String("a"))))
+  @debug.assert_eq(
+    set_expr.contains(elem),
+    BinaryApp(Contains, Set([Lit(String("a"))]), Lit(String("a"))),
+  )
 }
 
 ///|
 test "contains_all" {
   let set_expr = set_([val_str("a"), val_str("b")])
   let subset = set_([val_str("a")])
-  @debug.assert_eq(set_expr.contains_all(subset), BinaryApp(ContainsAll, Set([Lit(String("a")), Lit(String("b"))]), Set([Lit(String("a"))])))
+  @debug.assert_eq(
+    set_expr.contains_all(subset),
+    BinaryApp(
+      ContainsAll,
+      Set([Lit(String("a")), Lit(String("b"))]),
+      Set([Lit(String("a"))]),
+    ),
+  )
 }
 
 ///|
 test "contains_any" {
   let set_expr = set_([val_str("a")])
   let other = set_([val_str("a"), val_str("b")])
-  @debug.assert_eq(set_expr.contains_any(other), BinaryApp(ContainsAny, Set([Lit(String("a"))]), Set([Lit(String("a")), Lit(String("b"))])))
+  @debug.assert_eq(
+    set_expr.contains_any(other),
+    BinaryApp(
+      ContainsAny,
+      Set([Lit(String("a"))]),
+      Set([Lit(String("a")), Lit(String("b"))]),
+    ),
+  )
 }
 
 ///|
 test "get_tag" {
   let entity = val_euid("User", "alice")
   let tag = val_str("department")
-  @debug.assert_eq(entity.get_tag(tag), BinaryApp(GetTag, Lit(EntityUID(EntityUID::{ type_: "User", id: "alice" })), Lit(String("department"))))
+  @debug.assert_eq(
+    entity.get_tag(tag),
+    GetTag(
+      Lit(EntityUID(EntityUID::{ type_: "User", id: "alice" })),
+      Lit(String("department")),
+    ),
+  )
 }
 
 ///|
 test "has_tag" {
   let entity = val_euid("User", "alice")
   let tag = val_str("department")
-  @debug.assert_eq(entity.has_tag(tag), BinaryApp(HasTag, Lit(EntityUID(EntityUID::{ type_: "User", id: "alice" })), Lit(String("department"))))
+  @debug.assert_eq(
+    entity.has_tag(tag),
+    HasTag(
+      Lit(EntityUID(EntityUID::{ type_: "User", id: "alice" })),
+      Lit(String("department")),
+    ),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -248,7 +293,10 @@ test "like" {
 ///|
 test "is_" {
   let entity = var_principal()
-  @debug.assert_eq(entity.is_(EntityType("User")), Expr::Is(Var(Principal), EntityType("User")))
+  @debug.assert_eq(
+    entity.is_(EntityType("User")),
+    Expr::Is(Var(Principal), EntityType("User")),
+  )
 }
 
 ///|
@@ -257,7 +305,17 @@ test "is_in" {
   let ty = EntityType("User")
   let parent = val_euid("Org", "corp")
   let is_expr = Expr::Is(Var(Principal), EntityType("User"))
-  @debug.assert_eq(entity.is_in(ty, parent), And(is_expr, BinaryApp(In_, is_expr, Lit(EntityUID(EntityUID::{ type_: "Org", id: "corp" })))))
+  @debug.assert_eq(
+    entity.is_in(ty, parent),
+    And(
+      is_expr,
+      BinaryApp(
+        In_,
+        is_expr,
+        Lit(EntityUID(EntityUID::{ type_: "Org", id: "corp" })),
+      ),
+    ),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +325,10 @@ test "is_in" {
 ///|
 test "chaining: principal.dept == 'engineering'" {
   let expr = var_principal().access("dept").eq(val_str("engineering"))
-  @debug.assert_eq(expr, BinaryApp(Eq, GetAttr(Var(Principal), "dept"), Lit(String("engineering"))))
+  @debug.assert_eq(
+    expr,
+    BinaryApp(Eq, GetAttr(Var(Principal), "dept"), Lit(String("engineering"))),
+  )
 }
 
 ///|
@@ -288,15 +349,27 @@ test "chaining: principal.dept == 'engineering' && resource.public == true" {
 ///|
 test "chaining: not_(principal.age.lt(18))" {
   let expr = not_(var_principal().access("age").lt(val_long(18L)))
-  @debug.assert_eq(expr, UnaryApp(Not, BinaryApp(Less, GetAttr(Var(Principal), "age"), Lit(Long(18L)))))
+  @debug.assert_eq(
+    expr,
+    UnaryApp(
+      Not,
+      BinaryApp(Less, GetAttr(Var(Principal), "age"), Lit(Long(18L))),
+    ),
+  )
 }
 
 ///|
 test "chaining: resource.tags.contains_all(set_)" {
-  let expr = var_resource().access("tags").contains_all(set_([val_str("public"), val_str("verified")]))
+  let expr = var_resource()
+    .access("tags")
+    .contains_all(set_([val_str("public"), val_str("verified")]))
   @debug.assert_eq(
     expr,
-    BinaryApp(ContainsAll, GetAttr(Var(Resource), "tags"), Set([Lit(String("public")), Lit(String("verified"))])),
+    BinaryApp(
+      ContainsAll,
+      GetAttr(Var(Resource), "tags"),
+      Set([Lit(String("public")), Lit(String("verified"))]),
+    ),
   )
 }
 
@@ -358,7 +431,10 @@ test "policy principal_is" {
 ///|
 test "policy principal_is_in" {
   let p = default().principal_is_in("User", "Org", "corp")
-  @debug.assert_eq(p.principal, IsIn(EntityType("User"), EntityUID::{ type_: "Org", id: "corp" }))
+  @debug.assert_eq(
+    p.principal,
+    IsIn(EntityType("User"), EntityUID::{ type_: "Org", id: "corp" }),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -380,7 +456,13 @@ test "policy action_in" {
 ///|
 test "policy action_in_set" {
   let p = default().action_in_set([("PhotoOp", "view"), ("PhotoOp", "delete")])
-  @debug.assert_eq(p.action, InSet([EntityUID::{ type_: "PhotoOp", id: "view" }, EntityUID::{ type_: "PhotoOp", id: "delete" }]))
+  @debug.assert_eq(
+    p.action,
+    InSet([
+      EntityUID::{ type_: "PhotoOp", id: "view" },
+      EntityUID::{ type_: "PhotoOp", id: "delete" },
+    ]),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -390,13 +472,19 @@ test "policy action_in_set" {
 ///|
 test "policy resource_eq" {
   let p = default().resource_eq("Photo", "sunset.jpg")
-  @debug.assert_eq(p.resource, Eq(EntityUID::{ type_: "Photo", id: "sunset.jpg" }))
+  @debug.assert_eq(
+    p.resource,
+    Eq(EntityUID::{ type_: "Photo", id: "sunset.jpg" }),
+  )
 }
 
 ///|
 test "policy resource_in" {
   let p = default().resource_in("Photo", "sunset.jpg")
-  @debug.assert_eq(p.resource, In(EntityUID::{ type_: "Photo", id: "sunset.jpg" }))
+  @debug.assert_eq(
+    p.resource,
+    In(EntityUID::{ type_: "Photo", id: "sunset.jpg" }),
+  )
 }
 
 ///|
@@ -408,7 +496,10 @@ test "policy resource_is" {
 ///|
 test "policy resource_is_in" {
   let p = default().resource_is_in("Photo", "Album", "vacation")
-  @debug.assert_eq(p.resource, IsIn(EntityType("Photo"), EntityUID::{ type_: "Album", id: "vacation" }))
+  @debug.assert_eq(
+    p.resource,
+    IsIn(EntityType("Photo"), EntityUID::{ type_: "Album", id: "vacation" }),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -424,7 +515,10 @@ test "policy with_id" {
 ///|
 test "policy annotate" {
   let p = default().annotate("source", "admin").annotate("priority", "high")
-  @debug.assert_eq(p.annotations, [Annotation::{ key: "source", value: "admin" }, Annotation::{ key: "priority", value: "high" }])
+  @debug.assert_eq(p.annotations, [
+    Annotation::{ key: "source", value: "admin" },
+    Annotation::{ key: "priority", value: "high" },
+  ])
 }
 
 // ---------------------------------------------------------------------------
@@ -491,7 +585,10 @@ test "chaining: forbid policy with unless" {
   @debug.assert_eq(p.id, "deny-banned")
   @debug.assert_eq(p.principal, Is(EntityType("User")))
   @debug.assert_eq(p.action, Eq(EntityUID::{ type_: "PhotoOp", id: "delete" }))
-  @debug.assert_eq(p.resource, Eq(EntityUID::{ type_: "Photo", id: "secret.png" }))
+  @debug.assert_eq(
+    p.resource,
+    Eq(EntityUID::{ type_: "Photo", id: "secret.png" }),
+  )
   @debug.assert_eq(p.conditions.length(), 1)
   @debug.assert_eq(p.conditions[0].kind, Unless)
 }
@@ -502,7 +599,10 @@ test "chaining: forbid policy with unless" {
 
 ///|
 test "entity_uid helper" {
-  @debug.assert_eq(entity_uid("User", "alice"), EntityUID::{ type_: "User", id: "alice" })
+  @debug.assert_eq(entity_uid("User", "alice"), EntityUID::{
+    type_: "User",
+    id: "alice",
+  })
 }
 
 ///|

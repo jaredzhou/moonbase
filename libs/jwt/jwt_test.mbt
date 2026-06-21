@@ -29,7 +29,10 @@ test "signed_string via Token" {
 
 ///|
 test "parse unverified" {
-  let signed = @jwt.sign(@jwt.new_hmac_sha256(b"key-for-unverified-test-32bytes"), Json::object({}))
+  let signed = @jwt.sign(
+    @jwt.new_hmac_sha256(b"key-for-unverified-test-32bytes"),
+    Json::object({}),
+  )
   let parsed = @jwt.parse_unverified(signed)
   match parsed.header.get("alg") {
     Some(Json::String(alg)) => assert_eq(alg, "HS256")
@@ -81,11 +84,13 @@ test "parse_with multiple methods" {
 
 ///|
 test "parse_with no matching method fails" {
-  let signed = @jwt.sign(@jwt.new_hmac_sha256(b"correct-key-for-no-match"), Json::object({}))
-  let _ : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse_with(
-    signed,
-    [@jwt.new_hmac_sha256(b"wrong-key-only")],
-  ) catch {
+  let signed = @jwt.sign(
+    @jwt.new_hmac_sha256(b"correct-key-for-no-match"),
+    Json::object({}),
+  )
+  let _ : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse_with(signed, [
+    @jwt.new_hmac_sha256(b"wrong-key-only"),
+  ]) catch {
     _ => return
   }
   assert_eq(true, false)

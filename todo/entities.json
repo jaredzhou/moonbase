@@ -1,0 +1,145 @@
+[
+  {
+    "uid": {
+      "type": "Application",
+      "id": "TinyTodo"
+    },
+    "attrs": {},
+    "tags": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "emina"
+    },
+    "attrs": {
+      "location": "DEF33",
+      "joblevel": 8
+    },
+    "tags": {},
+    "parents": [
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      },
+      {
+        "type": "Team",
+        "id": "admin"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "aaron"
+    },
+    "attrs": {
+      "location": "ABC17",
+      "joblevel": 5
+    },
+    "tags": {},
+    "parents": [
+      {
+        "type": "Team",
+        "id": "interns"
+      },
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "andrew"
+    },
+    "attrs": {
+      "location": "XYZ77",
+      "joblevel": 5
+    },
+    "tags": {},
+    "parents": [
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      },
+      {
+        "type": "Team",
+        "id": "admin"
+      },
+      {
+        "type": "Team",
+        "id": "temp"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "kesha"
+    },
+    "attrs": {
+      "location": "ABC17",
+      "joblevel": 5
+    },
+    "tags": {},
+    "parents": [
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      },
+      {
+        "type": "Team",
+        "id": "temp"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "Team",
+      "id": "temp"
+    },
+    "attrs": {},
+    "tags": {},
+    "parents": [
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "Team",
+      "id": "admin"
+    },
+    "attrs": {},
+    "tags": {},
+    "parents": [
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "Team",
+      "id": "interns"
+    },
+    "attrs": {},
+    "tags": {},
+    "parents": [
+      {
+        "type": "Application",
+        "id": "TinyTodo"
+      },
+      {
+        "type": "Team",
+        "id": "temp"
+      }
+    ]
+  }
+]

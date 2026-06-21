@@ -5,7 +5,7 @@ test "init loads base entities" {
   let policies_src =
     #|permit(principal,action,resource);
   let entities_src =
-    #|[{"uid":{"type":"Application","id":"TinyTodo"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"User","id":"emina"},"attrs":{"location":["String","DEF33"],"joblevel":["Long","8"]},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"},{"type":"Team","id":"admin"}]}]
+    #|[{"uid":{"type":"Application","id":"TinyTodo"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"User","id":"emina"},"attrs":{"location":"DEF33","joblevel":8},"tags":{},"parents":[{"type":"Application","id":"TinyTodo"},{"type":"Team","id":"admin"}]}]
   let state = init_state(policies_src, entities_src)
   @debug.assert_eq(1, state.policies.length())
   // Entity store should have Application and User

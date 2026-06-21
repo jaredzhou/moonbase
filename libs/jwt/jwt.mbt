@@ -63,9 +63,7 @@ pub fn[C : Claims] parse(
   token_string : String,
   sig_method : SigningMethod,
 ) -> (Token, C) raise JwtError {
-  Parser::Parser()
-    .register(sig_method)
-    .parse(token_string)
+  Parser::Parser().register(sig_method).parse(token_string)
 }
 
 ///|

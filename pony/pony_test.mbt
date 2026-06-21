@@ -367,7 +367,9 @@ async test "test_jwt" {
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
 
-    let token_str = @jwt.sign(@jwt.new_hmac_sha256(b"secret"), { "sub": "alice" })
+    let token_str = @jwt.sign(@jwt.new_hmac_sha256(b"secret"), {
+      "sub": "alice",
+    })
     let (resp, body) = @http.get(base + "/me", headers={
       "Authorization": "Bearer \{token_str}",
     })

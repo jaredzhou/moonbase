@@ -11,7 +11,9 @@
 
 name = "jaredzhou/libs"
 
-version = "0.1.0"
+version = "0.1.1"
+
+preferred_target = "native"
 
 readme = "README.mbt.md"
 

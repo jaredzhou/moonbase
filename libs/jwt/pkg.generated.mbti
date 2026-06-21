@@ -9,7 +9,13 @@ import {
 // Values
 pub fn new_hmac_sha256(Bytes) -> SigningMethod
 
+pub fn[C : Claims] parse(String, SigningMethod) -> (Token, C) raise JwtError
+
 pub fn parse_unverified(String) -> Token raise JwtError
+
+pub fn[C : Claims] parse_with(String, Array[SigningMethod]) -> (Token, C) raise JwtError
+
+pub fn sign(SigningMethod, Json) -> String
 
 pub fn signed_string(Token) -> String
 
@@ -30,6 +36,7 @@ pub(all) struct Parser {
 }
 pub fn Parser::Parser() -> Self
 pub fn[C : Claims] Parser::parse(Self, String) -> (Token, C) raise JwtError
+pub fn Parser::parse_unverified(String) -> Token raise JwtError
 pub fn Parser::register(Self, SigningMethod) -> Self
 pub fn Parser::with_leeway(Self, Int64) -> Self
 pub fn Parser::without_claims_validation(Self) -> Self
