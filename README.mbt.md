@@ -70,6 +70,66 @@ assert_eq!(u.query?, "q=v")
 assert_eq!(u.fragment?, "frag")
 ```
 
+#### jwt
+
+JWT creation, signing, parsing, and validation with HMAC-SHA256 (HS256). Supports registered claims (RFC 7519) and extensible custom claims.
+
+```moonbit
+let method = new_hmac_sha256(b"secret-key")
+let claims = RegisteredClaims::new(subject="user123")
+let token = Token::sign(method, claims)
+
+let parser = Parser::new()
+let (token, claims) = parser.parse("eyJhbG...", method)
+assert_eq!(claims.subject?, "user123")
+```
+
+### mooncedar
+
+A full [Cedar](https://www.cedarpolicy.com/) policy engine implemented in MoonBit, featuring:
+
+- **Parser** — lexer and recursive descent parser for Cedar policy syntax
+- **AST** — expression builder and policy builder with chainable API
+- **Evaluator** — expression evaluation, scope matching, pluggable entity stores (trait-based)
+- **Authorizer** — `evaluate`, `reauthorize`, `concretize`, `is_authorized`
+
+```moonbit
+let store = mooncedar::new_map_entity_store()
+store.add(entity_from_json(#{ /* entities */ }))
+
+let policies = @jaredzhou/mooncedar/parser.parse_multi(r#" ... "#).unwrap()
+
+let auth = mooncedar::is_authorized(
+  uid("User::\"alice\""),
+  uid("Action::\"view\""),
+  uid("Document::\"doc-1\""),
+  store,
+  policies,
+)
+match auth.decision {
+  Allow => println("allowed!")
+  Deny => println("denied!")
+}
+```
+
+### todo (TinyTodo)
+
+A demo application showcasing Cedar policy-based authorization in a multi-user todo app. Built with `pony` for HTTP routing and `mooncedar` for policy evaluation.
+
+- **Authorization model** — role-based (Owner, Editor, Reader) with Cedar policies
+- **REST API** — CRUD for lists and tasks, share/unshare lists
+- **CLI client** — interactive command-line client
+
+```bash
+# Start the server
+moon run main
+
+# Use the CLI client
+moon run ./todo/client emina list
+moon run ./todo/client emina new "groceries"
+moon run ./todo/client emina share groceries aaron Editor
+```
+
 ## Getting Started
 
 ```bash
