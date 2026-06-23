@@ -16,8 +16,19 @@ fn entity(
 }
 
 ///|
-fn empty_store() -> MapEntityStore {
-  MapEntityStore::{ entities: Map([]) }
+/// Local entity store for tests (avoids pulling in MapEntityStore from root).
+struct TestStore {
+  entities : Map[@ast.EntityUID, @ast.Entity]
+} derive(Debug, Eq)
+
+///|
+impl EntityStore for TestStore with fn get_entity(self, uid : @ast.EntityUID) -> @ast.Entity? {
+  self.entities.get(uid)
+}
+
+///|
+fn empty_store() -> TestStore {
+  TestStore::{ entities: Map([]) }
 }
 
 ///|
@@ -447,7 +458,7 @@ test "scope_match: Eq non-matching" {
 ///|
 test "scope_match: In descendant via hierarchy" {
   let e = entity(uid("User", "alice"), Map([]), Map([]), [uid("Team", "admins")])
-  let store = MapEntityStore::{ entities: Map([(uid("User", "alice"), e)]) }
+  let store = TestStore::{ entities: Map([(uid("User", "alice"), e)]) }
   @debug.assert_eq(
     true,
     scope_match(
@@ -508,7 +519,7 @@ test "scope_match: IsIn" {
   let e = entity(uid("Photo", "sunset.jpg"), Map([]), Map([]), [
     uid("Album", "vacation"),
   ])
-  let store = MapEntityStore::{
+  let store = TestStore::{
     entities: Map([(uid("Photo", "sunset.jpg"), e)]),
   }
   let sc = @ast.ScopeConstraint::IsIn(
@@ -533,7 +544,7 @@ test "is_descendant: direct parent" {
   let e = entity(uid("Photo", "sunset.jpg"), Map([]), Map([]), [
     uid("Album", "vacation"),
   ])
-  let store = MapEntityStore::{
+  let store = TestStore::{
     entities: Map([(uid("Photo", "sunset.jpg"), e)]),
   }
   @debug.assert_eq(
@@ -559,7 +570,7 @@ test "is_descendant: transitive" {
   let eng = entity(uid("Team", "engineering"), Map([]), Map([]), [
     uid("Org", "corp"),
   ])
-  let store = MapEntityStore::{
+  let store = TestStore::{
     entities: Map([
       (uid("User", "alice"), alice),
       (uid("Team", "engineering"), eng),
@@ -1300,7 +1311,7 @@ test "eval_expr: GetAttr from entity" {
     Map([]),
     [],
   )
-  let store = MapEntityStore::{ entities: Map([(uid("x", "y"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("x", "y"), ent)]) }
   let e = @ast.Expr::GetAttr(
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("x", "y"))),
     "name",
@@ -1320,7 +1331,7 @@ test "eval_expr: HasAttr entity has attribute" {
     Map([]),
     [],
   )
-  let store = MapEntityStore::{ entities: Map([(uid("x", "y"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("x", "y"), ent)]) }
   let e = @ast.Expr::HasAttr(
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("x", "y"))),
     "name",
@@ -1334,7 +1345,7 @@ test "eval_expr: HasAttr entity has attribute" {
 ///|
 test "eval_expr: HasAttr entity lacks attribute" {
   let ent = entity(uid("x", "y"), Map([]), Map([]), [])
-  let store = MapEntityStore::{ entities: Map([(uid("x", "y"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("x", "y"), ent)]) }
   let e = @ast.Expr::HasAttr(
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("x", "y"))),
     "missing",
@@ -1421,7 +1432,7 @@ test "eval_expr: BinaryApp In hierarchy match" {
   let ent = entity(uid("User", "alice"), Map([]), Map([]), [
     uid("Team", "admins"),
   ])
-  let store = MapEntityStore::{ entities: Map([(uid("User", "alice"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("User", "alice"), ent)]) }
   let e = @ast.Expr::BinaryApp(
     @ast.BinaryOp::In_,
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("User", "alice"))),
@@ -1437,7 +1448,7 @@ test "eval_expr: BinaryApp In hierarchy match" {
 test "eval_expr: GetTag" {
   let tags = Map([("env", @ast.Value::String("prod"))])
   let ent = entity(uid("User", "alice"), Map([]), tags, [])
-  let store = MapEntityStore::{ entities: Map([(uid("User", "alice"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("User", "alice"), ent)]) }
   let e = @ast.Expr::GetTag(
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("User", "alice"))),
     @ast.Expr::Lit(@ast.Literal::String("env")),
@@ -1453,7 +1464,7 @@ test "eval_expr: GetTag" {
 test "eval_expr: HasTag" {
   let tags = Map([("env", @ast.Value::String("prod"))])
   let ent = entity(uid("User", "alice"), Map([]), tags, [])
-  let store = MapEntityStore::{ entities: Map([(uid("User", "alice"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("User", "alice"), ent)]) }
   let e = @ast.Expr::HasTag(
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("User", "alice"))),
     @ast.Expr::Lit(@ast.Literal::String("env")),
@@ -1467,7 +1478,7 @@ test "eval_expr: HasTag" {
 ///|
 test "eval_expr: HasTag missing" {
   let ent = entity(uid("User", "alice"), Map([]), Map([]), [])
-  let store = MapEntityStore::{ entities: Map([(uid("User", "alice"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("User", "alice"), ent)]) }
   let e = @ast.Expr::HasTag(
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("User", "alice"))),
     @ast.Expr::Lit(@ast.Literal::String("missing")),
@@ -1622,7 +1633,7 @@ test "eval_policy: scope In match" {
   let ent = entity(uid("User", "alice"), Map([]), Map([]), [
     uid("Team", "admins"),
   ])
-  let store = MapEntityStore::{ entities: Map([(uid("User", "alice"), ent)]) }
+  let store = TestStore::{ entities: Map([(uid("User", "alice"), ent)]) }
   let p = @ast.Policy::{
     id: "p1",
     effect: @ast.PolicyEffect::Permit,

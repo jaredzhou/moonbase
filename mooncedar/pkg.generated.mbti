@@ -6,6 +6,7 @@ import {
   "jaredzhou/mooncedar/evaluator",
   "jaredzhou/mooncedar/parser",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -18,6 +19,14 @@ pub fn parse_policies(String) -> Array[@ast.Policy] raise @parser.ParseError
 pub fn stringify(@ast.Policy) -> String
 
 pub fn stringify_expr(@ast.Expr) -> String
+
+pub fn cedar_entity_from_json(Json, @json.JsonPath) -> @ast.Entity raise @json.JsonDecodeError
+
+pub fn cedar_value_from_json(Json, @json.JsonPath) -> @ast.Value raise @json.JsonDecodeError
+
+pub fn cedar_value_from_object(Map[String, Json], @json.JsonPath) -> @ast.Value raise @json.JsonDecodeError
+
+pub fn new_map_store() -> MapEntityStore
 
 // Errors
 
@@ -55,6 +64,13 @@ pub fn PartialAuthorizationAnswer::concretize(Self) -> AuthorizationResult
 pub fn[S : @evaluator.EntityStore] PartialAuthorizationAnswer::reauthorize(Self, @evaluator.Request, S, Map[String, @ast.Value]) -> Self
 
 type ResidualRecord derive(Eq, @debug.Debug)
+
+pub(all) struct MapEntityStore {
+  entities : Map[@ast.EntityUID, @ast.Entity]
+} derive(Eq, @debug.Debug)
+pub impl @evaluator.EntityStore for MapEntityStore
+pub impl ToJson for MapEntityStore
+pub impl @json.FromJson for MapEntityStore
 
 // Type aliases
 

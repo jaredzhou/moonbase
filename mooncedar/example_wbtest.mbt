@@ -8,7 +8,7 @@ test "example: parse policy + entities from strings, authorize → Allow" {
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{"role":["String","admin"]},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
 
   let policies = @parser.parse_policies(policy_src)
-  let store : @evaluator.MapEntityStore = @json.from_json(
+  let store : MapEntityStore = @json.from_json(
     @json.parse(entities_src),
   )
 
@@ -31,7 +31,7 @@ test "example: resource not in hierarchy — Deny" {
   let entities_src =
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"other_album"}]}]
 
-  let store : @evaluator.MapEntityStore = @json.from_json(
+  let store : MapEntityStore = @json.from_json(
     @json.parse(entities_src),
   )
 
@@ -55,7 +55,7 @@ test "example: forbid overrides permit" {
   let src =
     #|permit (principal,action,resource);forbid(principal,action,resource);
   let policies = @parser.parse_policies(src)
-  let store = @evaluator.new_map_store()
+  let store = new_map_store()
   let result = is_authorized(empty_req(), policies.iter(), store)
   @debug.assert_eq(Decision::Deny, result.decision)
 }

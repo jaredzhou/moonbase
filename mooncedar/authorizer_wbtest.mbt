@@ -11,8 +11,8 @@ fn entity(
 }
 
 ///|
-fn empty_store() -> @evaluator.MapEntityStore {
-  @evaluator.MapEntityStore::{ entities: Map([]) }
+fn empty_store() -> MapEntityStore {
+  MapEntityStore::{ entities: Map([]) }
 }
 
 ///|
@@ -516,7 +516,7 @@ test "reauthorize cat4: in resolves with added entity" {
   )
 
   // Reauthorize: store now has User::"alice" as child of Team::"admins"
-  let store2 : @evaluator.MapEntityStore = @json.from_json(@json.parse(
+  let store2 : MapEntityStore = @json.from_json(@json.parse(
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
   ))
   let answer2 = answer1.reauthorize(req, store2, Map([]))
@@ -584,7 +584,7 @@ test "reauthorize cat4: forbid resolves to deny" {
   )
 
   // Reauthorize: entity resolved → forbidden action → AuthorizeDeny
-  let store2 : @evaluator.MapEntityStore = @json.from_json(@json.parse(
+  let store2 : MapEntityStore = @json.from_json(@json.parse(
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
   ))
   let answer2 = answer1.reauthorize(req, store2, Map([]))
@@ -619,7 +619,7 @@ test "reauthorize cat4: satisfied carries forward" {
   )
 
   // Reauthorize: residual resolves → two satisfied
-  let store2 : @evaluator.MapEntityStore = @json.from_json(@json.parse(
+  let store2 : MapEntityStore = @json.from_json(@json.parse(
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
   ))
   let answer2 = answer1.reauthorize(req, store2, Map([]))
@@ -661,7 +661,7 @@ test "reauthorize combined: mapping + entity expansion" {
   )
 
   // Reauthorize: mapping resolves unknown("x") + entity store resolves in
-  let store2 : @evaluator.MapEntityStore = @json.from_json(@json.parse(
+  let store2 : MapEntityStore = @json.from_json(@json.parse(
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
   ))
   let mapping = Map([("x", @ast.Value::Bool(true))])
