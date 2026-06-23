@@ -19,8 +19,9 @@ let policies = @parser.parse_policies(
 )
 
 // 2. Build an entity store from JSON
-let entities_src = #|[{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
-let store : @evaluator.MapEntityStore = @json.from_json(@json.parse(entities_src))
+let entities_src =
+  #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
+let store : MapEntityStore = @json.from_json(@json.parse(entities_src))
 
 // 3. Create a request
 let req = @evaluator.Request::{
@@ -43,10 +44,12 @@ match result.decision {
 
 | Package | Imports | Purpose |
 |---------|---------|---------|
-| `jaredzhou/mooncedar` | `@parser`, `@evaluator`, `@ast` | Top-level: `is_authorized`, `evaluate`, `reauthorize`, `concretize` |
-| `jaredzhou/mooncedar/ast` | — | AST types: `Expr`, `Policy`, `EntityUID`, `Value`, `Entity` |
+| `jaredzhou/mooncedar` | `@parser`, `@evaluator`, `@ast`, `@json` | Top-level: `is_authorized`, `evaluate`, `reauthorize`, `concretize`, `MapEntityStore`, `new_map_store` |
+| `jaredzhou/mooncedar/ast` | — | AST types: `Expr`, `Policy`, `EntityUID`, `Value`, `Entity` + builder methods |
 | `jaredzhou/mooncedar/parser` | `@ast` | Lexer + recursive descent parser + `stringify` |
-| `jaredzhou/mooncedar/evaluator` | `@ast` | Expression evaluator, scope matching, entity store trait |
+| `jaredzhou/mooncedar/evaluator` | `@ast` | `EntityStore` trait, expression evaluator, scope matching, CPE semantics |
+
+Root-level `entity_store.mbt` provides `MapEntityStore` and Cedar JSON entity parsing.
 
 ## Features
 
@@ -63,10 +66,10 @@ Full Cedar policy syntax support:
 ### Expression Builder
 
 ```moonbit
-let e = @ast.var_principal()
-  .eq(@ast.val_str("alice"))
-  .and_(@ast.var_resource()
-    .has_tag(@ast.val_str("confidential"))
+let e = @ast.expr_principal()
+  .eq(@ast.expr_str("alice"))
+  .and_(@ast.expr_resource()
+    .has_tag(@ast.expr_str("confidential"))
   )
 ```
 
@@ -78,7 +81,7 @@ let policy = @ast.default()
   .principal_eq("User", "alice")
   .action_eq("Action", "view")
   .resource_in("Album", "photos")
-  .when_(@ast.var_resource().has_tag(@ast.val_str("public")))
+  .when_(@ast.expr_resource().has_tag(@ast.expr_str("public")))
 ```
 
 ### Strategy Validation
@@ -91,9 +94,12 @@ let errors = @ast.validate_policies(policies)
 
 ```moonbit
 // In-memory store
-let store = @evaluator.new_map_store()
+let store = new_map_store()
 
-// Custom backend via trait
+// From JSON
+let store : MapEntityStore = @json.from_json(@json.parse(entities_src))
+
+// Custom backend via trait (pub(open) — implementable from any package)
 struct DbStore { conn : Connection }
 pub impl @evaluator.EntityStore for DbStore with get_entity(self, uid) {
   db_lookup(self.conn, uid)
@@ -104,32 +110,26 @@ Entity hierarchy: `is_descendant` uses BFS for ancestor traversal. Wildcard matc
 
 ### Partial Evaluation
 
-Support for unknown PARC (principal, action, resource, context) slots — policies evaluate to residual expressions that can be re-evaluated when more information is available:
+Support for 4 sources of unknown during partial eval — policies evaluate to residual expressions that can be re-evaluated when more information is available:
 
 ```moonbit
-let req = @evaluator.Request::{
-  principal: @evaluator.EntityUIDEntry::Unknown(@ast.EntityType("User")),
-  action: @evaluator.concrete_uid("Action", "view"),
-  resource: @evaluator.concrete_uid("Photo", "x"),
-  context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
-}
-
+// Unknown principal, entity missing, or unknown("x") in policy conditions
 let answer = evaluate(req, policies.iter(), store1)        // partial result
-let answer = answer.reauthorize(req, store2, Map([]))      // fill unknowns
+let answer = answer.reauthorize(req, store2, mapping)      // fill unknowns
 let result = answer.concretize()                           // final decision
 ```
 
+The `reauthorize` method accepts an expanded entity store and a `Map[String, Value]` mapping to resolve unknowns by name.
+
 ### JSON Serialization
 
-Entity stores and entity UIDs serialize to/from Cedar-compatible JSON format:
+Entity stores serialize to/from Cedar-compatible JSON format:
 
 ```moonbit
-let json_str = (#|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[]}]
-let store : @evaluator.MapEntityStore = @json.from_json(@json.parse(json_str))
-
-// Serialize back
+let json_str =
+  #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[]}]
+let store : MapEntityStore = @json.from_json(@json.parse(json_str))
 let json = store.to_json()
-println(json.stringify())
 ```
 
 ### Stringify (AST -> Cedar Source)
@@ -140,11 +140,12 @@ let src = @parser.stringify(policies)
 
 ## Status
 
-- **546 tests** passing (parser, evaluator, authorizer, JSON)
-- Entity stores as pluggable traits
+- **569 tests** passing (parser, evaluator, authorizer, JSON, reauthorize)
+- Entity stores as pluggable traits (`pub(open)`)
 - JSON serialization (Cedar-compatible format)
 - Policy validation
 - Full expression evaluation (18 expression variants, 12 binary + 3 unary operators)
+- Partial evaluation with reauthorize (5-category coverage per partial_source.md spec)
 
 ## License
 
