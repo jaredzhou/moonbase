@@ -1,20 +1,7 @@
-// Evaluator types — EvalResult, Dereference, EntityStore, EvalError.
+// Evaluator types — Dereference, EntityStore, EvalError.
 // References:
 //   Rust: cedar-policy-core/src/evaluator.rs
 //   Go:   cedar-go/internal/eval/
-
-// ---------------------------------------------------------------------------
-// EvalResult — unified partial evaluation return type
-// ---------------------------------------------------------------------------
-
-///|
-/// Result of evaluating an expression.
-/// Value(v) means a concrete value was produced.
-/// Residual(e) means the expression could not be reduced and is returned as-is.
-pub(all) enum EvalResult {
-  Value(@ast.Value)
-  Residual(@ast.Expr)
-} derive(Debug, Eq)
 
 // ---------------------------------------------------------------------------
 // Dereference — entity lookup result
@@ -26,6 +13,73 @@ pub(all) enum Dereference {
   Data(@ast.Entity)
   NoSuchEntity
   Residual(@ast.Expr)
+} derive(Debug, Eq)
+///|
+/// Errors that can occur during expression evaluation.
+pub(all) suberror EvalError {
+  TypeMismatch(String)
+  IntegerOverflow
+  EntityNotFound(String)
+  InvalidOperator(String)
+  ExtensionNotSupported(String)
+  SlotNotSupported
+} derive(Debug, Eq)
+
+// ---------------------------------------------------------------------------
+// Request — PARC slots + context
+// ---------------------------------------------------------------------------
+
+///|
+/// A PARC slot: either a known EntityUID (concrete eval) or a typed Unknown (partial eval).
+pub(all) enum EntityUIDEntry {
+  Concrete(@ast.EntityUID)
+  Unknown(@ast.EntityType)
+} derive(Debug, Eq)
+
+
+///|
+/// Helper: construct a concrete EntityUIDEntry.
+pub fn concrete_uid(type_ : String, id : String) -> EntityUIDEntry {
+  Concrete(@ast.EntityUID::{ type_, id })
+}
+
+/// construct a unknown EntityUIDEntry.
+pub fn unknown_uid(type_ : String) -> EntityUIDEntry {
+  Unknown(@ast.EntityType(type_))
+}
+///|
+/// Request context — three states matching Rust's CPE:
+/// - Concrete(Value::Record(...)): fully known context
+/// - Unknown(Expr): entirely unknown (e.g., Expr::Unknown("context", None))
+/// - Partial(Expr): partially known, containing an Expr::Record where
+///   individual fields may be Expr::Unknown nodes.
+pub(all) enum Context {
+  Concrete(@ast.Value)
+  Unknown
+  Partial(@ast.Expr)
+} derive(Debug, Eq)
+
+/// construct a concrete Context from a Value.
+pub fn concrete_context(value : @ast.Value) -> Context {
+  Concrete(value)
+}
+
+/// construct an unknown Context.
+pub fn unknown_context() -> Context {
+  Unknown
+}
+
+/// construct a partial Context from an Expr.
+pub fn partial_context(expr : @ast.Expr) -> Context {
+  Partial(expr)
+}
+///|
+/// The PARC authorization request.
+pub(all) struct Request {
+  principal : EntityUIDEntry
+  action : EntityUIDEntry
+  resource : EntityUIDEntry
+  context : Context
 } derive(Debug, Eq)
 
 // ---------------------------------------------------------------------------
@@ -107,9 +161,14 @@ fn cedar_entity_from_json(
       }
       let attrs = match obj.get("attrs") {
         Some(Json::Object(m)) => {
-          let attrs : Map[String, @ast.Value] = Map([])
+          let attrs : Map[String, @ast.PartialValue] = Map([])
           for key, val in m {
-            attrs.set(key, cedar_value_from_json(val, path.add_key("attrs").add_key(key)))
+            attrs.set(
+              key,
+              @ast.PartialValue::Value(
+                cedar_value_from_json(val, path.add_key("attrs").add_key(key)),
+              ),
+            )
           }
           attrs
         }
@@ -119,9 +178,14 @@ fn cedar_entity_from_json(
       }
       let tags = match obj.get("tags") {
         Some(Json::Object(m)) => {
-          let tags : Map[String, @ast.Value] = Map([])
+          let tags : Map[String, @ast.PartialValue] = Map([])
           for key, val in m {
-            tags.set(key, cedar_value_from_json(val, path.add_key("tags").add_key(key)))
+            tags.set(
+              key,
+              @ast.PartialValue::Value(
+                cedar_value_from_json(val, path.add_key("tags").add_key(key)),
+              ),
+            )
           }
           tags
         }
@@ -215,56 +279,3 @@ fn cedar_value_from_object(
 pub fn new_map_store() -> MapEntityStore {
   MapEntityStore::{ entities: Map([]) }
 }
-
-// ---------------------------------------------------------------------------
-// EvalError
-// ---------------------------------------------------------------------------
-
-///|
-/// Errors that can occur during expression evaluation.
-pub(all) suberror EvalError {
-  TypeMismatch(String)
-  IntegerOverflow
-  EntityNotFound(String)
-  InvalidOperator(String)
-  ExtensionNotSupported(String)
-  SlotNotSupported
-} derive(Debug, Eq)
-
-// ---------------------------------------------------------------------------
-// Request — PARC slots + context
-// ---------------------------------------------------------------------------
-
-///|
-/// A PARC slot: either a known EntityUID (concrete eval) or a typed Unknown (partial eval).
-pub(all) enum EntityUIDEntry {
-  Concrete(@ast.EntityUID)
-  Unknown(@ast.EntityType)
-} derive(Debug, Eq)
-
-///|
-/// Helper: construct a concrete EntityUIDEntry.
-pub fn concrete_uid(type_ : String, id : String) -> EntityUIDEntry {
-  Concrete(@ast.EntityUID::{ type_, id })
-}
-
-///|
-/// Request context — three states matching Rust's CPE:
-/// - Concrete(Value::Record(...)): fully known context
-/// - Unknown(Expr): entirely unknown (e.g., Expr::Unknown("context", None))
-/// - Partial(Expr): partially known, containing an Expr::Record where
-///   individual fields may be Expr::Unknown nodes.
-pub(all) enum Context {
-  Concrete(@ast.Value)
-  Unknown(@ast.Expr)
-  Partial(@ast.Expr)
-} derive(Debug, Eq)
-
-///|
-/// The PARC authorization request.
-pub(all) struct Request {
-  principal : EntityUIDEntry
-  action : EntityUIDEntry
-  resource : EntityUIDEntry
-  context : Context
-} derive(Debug, Eq)

@@ -12,9 +12,9 @@ pub fn concrete_uid(String, String) -> EntityUIDEntry
 
 pub fn eval_binary(@ast.BinaryOp, @ast.Value, @ast.Value) -> @ast.Value raise EvalError
 
-pub fn[S : EntityStore] eval_expr(@ast.Expr, Request, S) -> EvalResult raise EvalError
+pub fn[S : EntityStore] eval_expr(@ast.Expr, Request, S) -> @ast.PartialValue raise EvalError
 
-pub fn[S : EntityStore] eval_policy(@ast.Policy, Request, S) -> EvalResult raise EvalError
+pub fn[S : EntityStore] eval_policy(@ast.Policy, Request, S) -> @ast.PartialValue raise EvalError
 
 pub fn eval_unary(@ast.UnaryOp, @ast.Value) -> @ast.Value raise EvalError
 
@@ -56,11 +56,6 @@ pub(all) enum Dereference {
 pub(all) enum EntityUIDEntry {
   Concrete(@ast.EntityUID)
   Unknown(@ast.EntityType)
-} derive(Eq, @debug.Debug)
-
-pub(all) enum EvalResult {
-  Value(@ast.Value)
-  Residual(@ast.Expr)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct MapEntityStore {

@@ -121,14 +121,14 @@ pub fn[S : @evaluator.EntityStore] evaluate(
       }
     }
     match result {
-      @evaluator.EvalResult::Value(@ast.Value::Bool(true)) =>
+      @ast.PartialValue::Value(@ast.Value::Bool(true)) =>
         satisfied.push(DecisionRecord::{
           policy_id: policy.id,
           effect: policy.effect,
         })
-      @evaluator.EvalResult::Value(@ast.Value::Bool(false)) => continue
-      @evaluator.EvalResult::Value(_) => continue
-      @evaluator.EvalResult::Residual(re) =>
+      @ast.PartialValue::Value(@ast.Value::Bool(false)) => continue
+      @ast.PartialValue::Value(_) => continue
+      @ast.PartialValue::Residual(re) =>
         residuals.push(ResidualRecord::{
           policy_id: policy.id,
           effect: policy.effect,
@@ -241,14 +241,14 @@ pub fn[S : @evaluator.EntityStore] PartialAuthorizationAnswer::reauthorize(
       }
     }
     match result {
-      @evaluator.EvalResult::Value(@ast.Value::Bool(true)) =>
+      @ast.PartialValue::Value(@ast.Value::Bool(true)) =>
         new_satisfied.push(DecisionRecord::{
           policy_id: rec.policy_id,
           effect: rec.effect,
         })
-      @evaluator.EvalResult::Value(@ast.Value::Bool(false)) => continue
-      @evaluator.EvalResult::Value(_) => continue
-      @evaluator.EvalResult::Residual(re) =>
+      @ast.PartialValue::Value(@ast.Value::Bool(false)) => continue
+      @ast.PartialValue::Value(_) => continue
+      @ast.PartialValue::Residual(re) =>
         new_residuals.push(ResidualRecord::{
           policy_id: rec.policy_id,
           effect: rec.effect,

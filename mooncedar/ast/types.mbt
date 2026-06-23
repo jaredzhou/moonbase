@@ -88,18 +88,115 @@ pub(all) enum Value {
 } derive(Debug, Eq, ToJson, FromJson)
 
 // ---------------------------------------------------------------------------
+// PartialValue — unified partial evaluation value
+// ---------------------------------------------------------------------------
+
+///|
+/// Result of evaluating an expression — either a concrete value or a residual
+/// expression that could not be reduced (partial evaluation).
+///
+/// Also used as the value type in Entity attrs/tags, because entity attributes
+/// and tags can be unknown during partial evaluation (source #5 of Unknown).
+pub(all) enum PartialValue {
+  Value(Value)
+  Residual(Expr)
+} derive(Debug, Eq)
+
+// ---------------------------------------------------------------------------
 // Entity — application data for evaluation (attrs + tags + parents)
 // ---------------------------------------------------------------------------
 
 ///|
 /// An entity as provided by the application. Contains attributes (schema-defined),
 /// tags (free-form), and parent relationships for hierarchy traversal (`in` operator).
+/// Attributes and tags use PartialValue to support partial evaluation — values
+/// can be concrete (PartialValue::Value) or unknown (PartialValue::Residual).
 pub(all) struct Entity {
   uid : EntityUID
-  attrs : Map[String, Value]
-  tags : Map[String, Value]
+  attrs : Map[String, PartialValue]
+  tags : Map[String, PartialValue]
   parents : Array[EntityUID]
-} derive(Debug, Eq, ToJson, FromJson)
+} derive(Debug, Eq)
+
+///|
+/// Serialize an Entity to JSON. Only concrete PartialValue::Value entries are
+/// included; PartialValue::Residual entries are skipped (they can't be serialized).
+pub impl ToJson for Entity with fn to_json(self) -> Json {
+  let attrs_obj : Map[String, Json] = Map([])
+  for key, pv in self.attrs {
+    match pv {
+      PartialValue::Value(v) => attrs_obj.set(key, v.to_json())
+      PartialValue::Residual(_) => ()
+    }
+  }
+  let tags_obj : Map[String, Json] = Map([])
+  for key, pv in self.tags {
+    match pv {
+      PartialValue::Value(v) => tags_obj.set(key, v.to_json())
+      PartialValue::Residual(_) => ()
+    }
+  }
+  Json::object(Map([
+    ("uid", self.uid.to_json()),
+    ("attrs", Json::object(attrs_obj)),
+    ("tags", Json::object(tags_obj)),
+    ("parents", Json::array(self.parents.map(fn(p) { p.to_json() }))),
+  ]))
+}
+
+///|
+/// Deserialize an Entity from JSON. All attrs/tags values are parsed as concrete
+/// PartialValue::Value (JSON-stored entities always have concrete values).
+pub impl FromJson for Entity with fn from_json(
+  json : Json,
+  path : @json.JsonPath,
+) -> Entity raise @json.JsonDecodeError {
+  match json {
+    Json::Object(obj) => {
+      let uid = match obj.get("uid") {
+        Some(uid_json) => EntityUID::from_json(uid_json, path.add_key("uid"))
+        None => raise @json.JsonDecodeError((path, "missing 'uid' in entity"))
+      }
+      let attrs = match obj.get("attrs") {
+        Some(Json::Object(m)) => {
+          let attrs : Map[String, PartialValue] = Map([])
+          for key, val in m {
+            attrs.set(key, PartialValue::Value(Value::from_json(val, path.add_key("attrs").add_key(key))))
+          }
+          attrs
+        }
+        None => Map([])
+        Some(_) => raise @json.JsonDecodeError((path.add_key("attrs"), "expected object"))
+      }
+      let tags = match obj.get("tags") {
+        Some(Json::Object(m)) => {
+          let tags : Map[String, PartialValue] = Map([])
+          for key, val in m {
+            tags.set(key, PartialValue::Value(Value::from_json(val, path.add_key("tags").add_key(key))))
+          }
+          tags
+        }
+        None => Map([])
+        Some(_) => raise @json.JsonDecodeError((path.add_key("tags"), "expected object"))
+      }
+      let parents = match obj.get("parents") {
+        Some(Json::Array(parents_arr)) => {
+          let parents : Array[EntityUID] = []
+          for j = 0; j < parents_arr.length(); j = j + 1 {
+            parents.push(
+              EntityUID::from_json(parents_arr[j], path.add_key("parents").add_index(j)),
+            )
+          }
+          parents
+        }
+        Some(_) => raise @json.JsonDecodeError((path.add_key("parents"), "expected array"))
+        None => []
+      }
+      Entity::{ uid, attrs, tags, parents }
+    }
+    _ => raise @json.JsonDecodeError((path, "expected JSON object for entity"))
+  }
+}
 
 // (Request, Decision, Diagnostic* types moved to evaluator/request.mbt)
 

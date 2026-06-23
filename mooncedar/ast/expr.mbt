@@ -123,7 +123,7 @@ pub(all) enum Expr {
 
 ///|
 /// Convenience constructor for an untyped Unknown (CPE classic).
-pub fn unknown(name : String) -> Expr {
+pub fn expr_unknown(name : String) -> Expr {
   Unknown(name, None)
 }
 
@@ -134,79 +134,79 @@ pub fn unknown(name : String) -> Expr {
 // Leaf constructors (free functions)
 
 ///|
-pub fn val_bool(b : Bool) -> Expr {
+pub fn expr_bool(b : Bool) -> Expr {
   Lit(Bool(b))
 }
 
 ///|
-pub fn val_long(l : Int64) -> Expr {
+pub fn expr_long(l : Int64) -> Expr {
   Lit(Long(l))
 }
 
 ///|
-pub fn val_str(s : String) -> Expr {
+pub fn expr_str(s : String) -> Expr {
   Lit(String(s))
 }
 
 ///|
-pub fn val_euid(type_ : String, id : String) -> Expr {
+pub fn expr_euid(type_ : String, id : String) -> Expr {
   Lit(EntityUID(EntityUID::{ type_, id }))
 }
 
 ///|
-pub fn var_principal() -> Expr {
+pub fn expr_principal() -> Expr {
   Var(Principal)
 }
 
 ///|
-pub fn var_action() -> Expr {
+pub fn expr_action() -> Expr {
   Var(Action)
 }
 
 ///|
-pub fn var_resource() -> Expr {
+pub fn expr_resource() -> Expr {
   Var(Resource)
 }
 
 ///|
-pub fn var_context() -> Expr {
+pub fn expr_context() -> Expr {
   Var(Context)
 }
 
 // Non-chaining constructors (free functions)
 
 ///|
-pub fn if_(cond : Expr, t : Expr, e : Expr) -> Expr {
+pub fn expr_if(cond : Expr, t : Expr, e : Expr) -> Expr {
   If(cond, t, e)
 }
 
 ///|
-pub fn not_(e : Expr) -> Expr {
+pub fn expr_not(e : Expr) -> Expr {
   UnaryApp(Not, e)
 }
 
 ///|
-pub fn neg(e : Expr) -> Expr {
+pub fn expr_neg(e : Expr) -> Expr {
   UnaryApp(Neg, e)
 }
 
 ///|
-pub fn is_empty(e : Expr) -> Expr {
+pub fn expr_is_empty(e : Expr) -> Expr {
   UnaryApp(IsEmpty, e)
 }
 
 ///|
-pub fn set_(elements : Array[Expr]) -> Expr {
+pub fn expr_set(elements : Array[Expr]) -> Expr {
   Set(elements)
 }
 
 ///|
-pub fn record_(pairs : Array[(String, Expr)]) -> Expr {
+pub fn expr_record(pairs : Array[(String, Expr)]) -> Expr {
   Record(pairs)
 }
 
 ///|
-pub fn ext_call(name : Name, args : Array[Expr]) -> Expr {
+pub fn expr_ext_call(name : Name, args : Array[Expr]) -> Expr {
   ExtensionApp(name, args)
 }
 

@@ -10,19 +10,19 @@ fn[S : EntityStore] eval_single_condition(
   cond : @ast.Condition,
   req : Request,
   store : S,
-) -> EvalResult raise EvalError {
+) -> @ast.PartialValue raise EvalError {
   match eval_expr(cond.body, req, store) {
-    EvalResult::Value(@ast.Value::Bool(b)) =>
+    @ast.PartialValue::Value(@ast.Value::Bool(b)) =>
       match cond.kind {
-        @ast.ConditionKind::When => EvalResult::Value(@ast.Value::Bool(b))
-        @ast.ConditionKind::Unless => EvalResult::Value(@ast.Value::Bool(!b))
+        @ast.ConditionKind::When => @ast.PartialValue::Value(@ast.Value::Bool(b))
+        @ast.ConditionKind::Unless => @ast.PartialValue::Value(@ast.Value::Bool(!b))
       }
-    EvalResult::Value(_) => EvalResult::Value(@ast.Value::Bool(false))
-    EvalResult::Residual(re) =>
+    @ast.PartialValue::Value(_) => @ast.PartialValue::Value(@ast.Value::Bool(false))
+    @ast.PartialValue::Residual(re) =>
       match cond.kind {
-        @ast.ConditionKind::When => EvalResult::Residual(re)
+        @ast.ConditionKind::When => @ast.PartialValue::Residual(re)
         @ast.ConditionKind::Unless =>
-          EvalResult::Residual(@ast.Expr::UnaryApp(@ast.UnaryOp::Not, re))
+          @ast.PartialValue::Residual(@ast.Expr::UnaryApp(@ast.UnaryOp::Not, re))
       }
   }
 }
@@ -93,14 +93,14 @@ pub fn[S : EntityStore] eval_policy(
   p : @ast.Policy,
   req : Request,
   store : S,
-) -> EvalResult raise EvalError {
+) -> @ast.PartialValue raise EvalError {
   // Check scope constraints.
   // Unknown PARC slots generate residual conditions instead of concrete checks.
   let residuals : Array[@ast.Expr] = []
   match req.principal {
     EntityUIDEntry::Concrete(uid) =>
       if !scope_match(p.principal, uid, store) {
-        return EvalResult::Value(@ast.Value::Bool(false))
+        return @ast.PartialValue::Value(@ast.Value::Bool(false))
       }
     EntityUIDEntry::Unknown(ty) =>
       residuals.push(
@@ -113,7 +113,7 @@ pub fn[S : EntityStore] eval_policy(
   match req.action {
     EntityUIDEntry::Concrete(uid) =>
       if !scope_match(p.action, uid, store) {
-        return EvalResult::Value(@ast.Value::Bool(false))
+        return @ast.PartialValue::Value(@ast.Value::Bool(false))
       }
     EntityUIDEntry::Unknown(ty) =>
       residuals.push(
@@ -126,7 +126,7 @@ pub fn[S : EntityStore] eval_policy(
   match req.resource {
     EntityUIDEntry::Concrete(uid) =>
       if !scope_match(p.resource, uid, store) {
-        return EvalResult::Value(@ast.Value::Bool(false))
+        return @ast.PartialValue::Value(@ast.Value::Bool(false))
       }
     EntityUIDEntry::Unknown(ty) =>
       residuals.push(
@@ -141,11 +141,11 @@ pub fn[S : EntityStore] eval_policy(
   for i = 0; i < p.conditions.length(); i = i + 1 {
     let cond = p.conditions[i]
     match eval_single_condition(cond, req, store) {
-      EvalResult::Value(@ast.Value::Bool(true)) => continue
-      EvalResult::Value(@ast.Value::Bool(false)) =>
-        return EvalResult::Value(@ast.Value::Bool(false))
-      EvalResult::Value(_) => return EvalResult::Value(@ast.Value::Bool(false))
-      EvalResult::Residual(re) => {
+      @ast.PartialValue::Value(@ast.Value::Bool(true)) => continue
+      @ast.PartialValue::Value(@ast.Value::Bool(false)) =>
+        return @ast.PartialValue::Value(@ast.Value::Bool(false))
+      @ast.PartialValue::Value(_) => return @ast.PartialValue::Value(@ast.Value::Bool(false))
+      @ast.PartialValue::Residual(re) => {
         residuals.push(re)
         continue
       }
@@ -153,8 +153,8 @@ pub fn[S : EntityStore] eval_policy(
   }
 
   if residuals.length() == 0 {
-    EvalResult::Value(@ast.Value::Bool(true))
+    @ast.PartialValue::Value(@ast.Value::Bool(true))
   } else {
-    EvalResult::Residual(merge_residuals(residuals))
+    @ast.PartialValue::Residual(merge_residuals(residuals))
   }
 }
