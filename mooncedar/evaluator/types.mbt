@@ -93,3 +93,4 @@ pub(open) trait EntityStore {
   fn get_entity(Self, @ast.EntityUID) -> @ast.Entity?
 }
 
+

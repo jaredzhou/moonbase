@@ -92,3 +92,61 @@ test "from_json wrong shape raises error" {
   }
   @debug.assert_eq(true, raised)
 }
+
+// ---------------------------------------------------------------------------
+// RequestJSON roundtrip tests
+// ---------------------------------------------------------------------------
+
+///|
+test "request json roundtrip: concrete PARC" {
+  let req = @evaluator.Request::{
+    principal: @evaluator.concrete_uid("GitApp::User", "JaneDoe"),
+    action: @evaluator.concrete_uid("GitApp::Action", "addRepoAdmin"),
+    resource: @evaluator.concrete_uid("GitApp::Repo", "CodeRepo1"),
+    context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
+  }
+  let json = to_request_json(req).to_json()
+  inspect(
+    json.stringify(),
+    content="{\"principal\":\"GitApp::User::\\\"JaneDoe\\\"\",\"action\":\"GitApp::Action::\\\"addRepoAdmin\\\"\",\"resource\":\"GitApp::Repo::\\\"CodeRepo1\\\"\",\"context\":{}}",
+  )
+  let parsed : RequestJSON = @json.from_json(json)
+  let req2 = parsed.to_request()
+  @debug.assert_eq(req, req2)
+}
+
+///|
+test "request json: unknown principal" {
+  let req = @evaluator.Request::{
+    principal: @evaluator.unknown_uid("User"),
+    action: @evaluator.concrete_uid("Action", "view"),
+    resource: @evaluator.concrete_uid("Photo", "x"),
+    context: @evaluator.Context::Unknown,
+  }
+  let json = to_request_json(req).to_json()
+  inspect(
+    json.stringify(),
+    content="{\"principal\":\"User\",\"action\":\"Action::\\\"view\\\"\",\"resource\":\"Photo::\\\"x\\\"\",\"context\":{}}",
+  )
+  let parsed : RequestJSON = @json.from_json(json)
+  guard parsed.principal is Some(s) else { return }
+  @debug.assert_eq(s, "User")
+}
+
+///|
+test "request json: entity object format → roundtrip" {
+  let json = @json.parse(
+    "{\"principal\":{\"type\":\"User\",\"id\":\"alice\"},\"action\":{\"type\":\"Action\",\"id\":\"view\"},\"resource\":{\"type\":\"Photo\",\"id\":\"x\"},\"context\":{}}",
+  )
+  let dto : RequestJSON = @json.from_json(json)
+  guard dto.principal is Some(p) else { return }
+  @debug.assert_eq(p, "User::\"alice\"")
+  guard dto.action is Some(a) else { return }
+  @debug.assert_eq(a, "Action::\"view\"")
+  guard dto.resource is Some(r) else { return }
+  @debug.assert_eq(r, "Photo::\"x\"")
+  // Roundtrip: RequestJSON → Request → RequestJSON
+  let req = dto.to_request()
+  let dto2 = to_request_json(req)
+  @debug.assert_eq(dto, dto2)
+}
