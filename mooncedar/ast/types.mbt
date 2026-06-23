@@ -109,32 +109,23 @@ pub(all) enum PartialValue {
 ///|
 /// An entity as provided by the application. Contains attributes (schema-defined),
 /// tags (free-form), and parent relationships for hierarchy traversal (`in` operator).
-/// Attributes and tags use PartialValue to support partial evaluation — values
-/// can be concrete (PartialValue::Value) or unknown (PartialValue::Residual).
 pub(all) struct Entity {
   uid : EntityUID
-  attrs : Map[String, PartialValue]
-  tags : Map[String, PartialValue]
+  attrs : Map[String, Value]
+  tags : Map[String, Value]
   parents : Array[EntityUID]
 } derive(Debug, Eq)
 
 ///|
-/// Serialize an Entity to JSON. Only concrete PartialValue::Value entries are
-/// included; PartialValue::Residual entries are skipped (they can't be serialized).
+/// Serialize an Entity to JSON.
 pub impl ToJson for Entity with fn to_json(self) -> Json {
   let attrs_obj : Map[String, Json] = Map([])
-  for key, pv in self.attrs {
-    match pv {
-      PartialValue::Value(v) => attrs_obj.set(key, v.to_json())
-      PartialValue::Residual(_) => ()
-    }
+  for key, v in self.attrs {
+    attrs_obj.set(key, v.to_json())
   }
   let tags_obj : Map[String, Json] = Map([])
-  for key, pv in self.tags {
-    match pv {
-      PartialValue::Value(v) => tags_obj.set(key, v.to_json())
-      PartialValue::Residual(_) => ()
-    }
+  for key, v in self.tags {
+    tags_obj.set(key, v.to_json())
   }
   Json::object(Map([
     ("uid", self.uid.to_json()),
@@ -145,8 +136,7 @@ pub impl ToJson for Entity with fn to_json(self) -> Json {
 }
 
 ///|
-/// Deserialize an Entity from JSON. All attrs/tags values are parsed as concrete
-/// PartialValue::Value (JSON-stored entities always have concrete values).
+/// Deserialize an Entity from JSON.
 pub impl FromJson for Entity with fn from_json(
   json : Json,
   path : @json.JsonPath,
@@ -159,9 +149,9 @@ pub impl FromJson for Entity with fn from_json(
       }
       let attrs = match obj.get("attrs") {
         Some(Json::Object(m)) => {
-          let attrs : Map[String, PartialValue] = Map([])
+          let attrs : Map[String, Value] = Map([])
           for key, val in m {
-            attrs.set(key, PartialValue::Value(Value::from_json(val, path.add_key("attrs").add_key(key))))
+            attrs.set(key, Value::from_json(val, path.add_key("attrs").add_key(key)))
           }
           attrs
         }
@@ -170,9 +160,9 @@ pub impl FromJson for Entity with fn from_json(
       }
       let tags = match obj.get("tags") {
         Some(Json::Object(m)) => {
-          let tags : Map[String, PartialValue] = Map([])
+          let tags : Map[String, Value] = Map([])
           for key, val in m {
-            tags.set(key, PartialValue::Value(Value::from_json(val, path.add_key("tags").add_key(key))))
+            tags.set(key, Value::from_json(val, path.add_key("tags").add_key(key)))
           }
           tags
         }

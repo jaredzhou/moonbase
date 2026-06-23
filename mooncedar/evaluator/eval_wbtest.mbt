@@ -8,18 +8,10 @@
 ///|
 fn entity(
   uid : @ast.EntityUID,
-  raw_attrs : Map[String, @ast.Value],
-  raw_tags : Map[String, @ast.Value],
+  attrs : Map[String, @ast.Value],
+  tags : Map[String, @ast.Value],
   parents : Array[@ast.EntityUID],
 ) -> @ast.Entity {
-  let attrs : Map[String, @ast.PartialValue] = Map([])
-  for key, val in raw_attrs {
-    attrs.set(key, @ast.PartialValue::Value(val))
-  }
-  let tags : Map[String, @ast.PartialValue] = Map([])
-  for key, val in raw_tags {
-    tags.set(key, @ast.PartialValue::Value(val))
-  }
   @ast.Entity::{ uid, attrs, tags, parents }
 }
 

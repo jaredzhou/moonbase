@@ -88,8 +88,8 @@ pub(all) enum ConditionKind {
 
 pub(all) struct Entity {
   uid : EntityUID
-  attrs : Map[String, PartialValue]
-  tags : Map[String, PartialValue]
+  attrs : Map[String, Value]
+  tags : Map[String, Value]
   parents : Array[EntityUID]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

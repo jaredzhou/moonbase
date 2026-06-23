@@ -180,7 +180,7 @@ fn[S : EntityStore] get_attr_value(
       match store.get_entity(uid) {
         Some(entity) =>
           match entity.attrs.get(attr) {
-            Some(pv) => pv
+            Some(v) => @ast.PartialValue::Value(v)
             None =>
               raise EntityNotFound(
                 "attribute '\{attr}' not found on entity '\{uid.type_}::\"\{uid.id}\"",
@@ -459,7 +459,7 @@ pub fn[S : EntityStore] eval_expr(
                   match store.get_entity(uid) {
                     Some(entity) =>
                       match entity.tags.get(tag) {
-                        Some(pv) => pv
+                        Some(v) => @ast.PartialValue::Value(v)
                         None =>
                           raise EntityNotFound(
                             "tag '\{tag}' not found on entity '\{uid.type_}::\"\{uid.id}\"",

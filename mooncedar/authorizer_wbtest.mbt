@@ -3,18 +3,10 @@
 ///|
 fn entity(
   uid : @ast.EntityUID,
-  raw_attrs : Map[String, @ast.Value],
-  raw_tags : Map[String, @ast.Value],
+  attrs : Map[String, @ast.Value],
+  tags : Map[String, @ast.Value],
   parents : Array[@ast.EntityUID],
 ) -> @ast.Entity {
-  let attrs : Map[String, @ast.PartialValue] = Map([])
-  for key, val in raw_attrs {
-    attrs.set(key, @ast.PartialValue::Value(val))
-  }
-  let tags : Map[String, @ast.PartialValue] = Map([])
-  for key, val in raw_tags {
-    tags.set(key, @ast.PartialValue::Value(val))
-  }
   @ast.Entity::{ uid, attrs, tags, parents }
 }
 
@@ -634,61 +626,6 @@ test "reauthorize cat4: satisfied carries forward" {
   assert_true(answer2.residuals is [])
   guard answer2.satisfied is [s1, s2] else { return }
   assert_true(s1.policy_id == "sat" && s2.policy_id == "res")
-  assert_true(answer2.concretize().decision == Decision::Allow)
-}
-
-// ---------------------------------------------------------------------------
-// Category 5: Entity attr value unknown
-// ---------------------------------------------------------------------------
-
-///|
-test "reauthorize cat5: entity attr unknown resolved by mapping" {
-  let p = @ast.default()
-    .with_id("p1")
-    .permit()
-    .when_(
-      @ast.expr_principal().access("members").eq(
-        @ast.expr_euid("UserGroup", "1"),
-      ),
-    )
-  let req = @evaluator.Request::{
-    principal: @evaluator.concrete_uid("Project", "moonbase"),
-    action: @evaluator.concrete_uid("Action", "view"),
-    resource: @evaluator.concrete_uid("Photo", "x"),
-    context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
-  }
-  // Entity exists but "members" attr value is unknown
-  let ent = @ast.Entity::{
-    uid: uid("Project", "moonbase"),
-    attrs: Map([
-      ("members", @ast.PartialValue::Residual(
-        @ast.Expr::Unknown("partial_members", None),
-      )),
-    ]),
-    tags: Map([]),
-    parents: [],
-  }
-  let store = @evaluator.MapEntityStore::{
-    entities: Map([(uid("Project", "moonbase"), ent)]),
-  }
-
-  // principal.members resolves to unknown("partial_members") → residual
-  let answer1 = evaluate(req, [p].iter(), store)
-  guard answer1.residuals is [r1] else { return }
-  assert_true(
-    r1.expr is @ast.Expr::BinaryApp(@ast.BinaryOp::Eq, left, right) &&
-    left is @ast.Expr::Unknown("partial_members", None) &&
-    right is @ast.Expr::Lit(@ast.Literal::EntityUID(uuid)) &&
-    uuid == uid("UserGroup", "1")
-  )
-
-  // Reauthorize: mapping resolves "partial_members" → UserGroup::"1"
-  let mapping = Map([
-    ("partial_members", @ast.Value::EntityUID(uid("UserGroup", "1"))),
-  ])
-  let answer2 = answer1.reauthorize(req, store, mapping)
-  assert_true(answer2.residuals is [])
-  assert_true(answer2.satisfied is [s] && s.policy_id == "p1")
   assert_true(answer2.concretize().decision == Decision::Allow)
 }
 

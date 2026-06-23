@@ -161,13 +161,11 @@ fn cedar_entity_from_json(
       }
       let attrs = match obj.get("attrs") {
         Some(Json::Object(m)) => {
-          let attrs : Map[String, @ast.PartialValue] = Map([])
+          let attrs : Map[String, @ast.Value] = Map([])
           for key, val in m {
             attrs.set(
               key,
-              @ast.PartialValue::Value(
-                cedar_value_from_json(val, path.add_key("attrs").add_key(key)),
-              ),
+              cedar_value_from_json(val, path.add_key("attrs").add_key(key)),
             )
           }
           attrs
@@ -178,13 +176,11 @@ fn cedar_entity_from_json(
       }
       let tags = match obj.get("tags") {
         Some(Json::Object(m)) => {
-          let tags : Map[String, @ast.PartialValue] = Map([])
+          let tags : Map[String, @ast.Value] = Map([])
           for key, val in m {
             tags.set(
               key,
-              @ast.PartialValue::Value(
-                cedar_value_from_json(val, path.add_key("tags").add_key(key)),
-              ),
+              cedar_value_from_json(val, path.add_key("tags").add_key(key)),
             )
           }
           tags
