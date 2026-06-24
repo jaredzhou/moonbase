@@ -7,16 +7,16 @@ test "example: parse policy + entities from strings, authorize → Allow" {
   let entities_src =
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{"role":["String","admin"]},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
 
-  let policies = @parser.parse_policies(policy_src)
+  let policies = parse_policies(policy_src)
   let store : MapEntityStore = @json.from_json(
     @json.parse(entities_src),
   )
 
-  let req = @evaluator.Request::{
+  let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
     action: @evaluator.concrete_uid("Action", "view"),
     resource: @evaluator.concrete_uid("Photo", "VacationPhoto94.jpg"),
-    context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
+    context: Context::Concrete(Value::Record(Map([]))),
   }
 
   let result = is_authorized(req, policies.iter(), store)
@@ -35,16 +35,16 @@ test "example: resource not in hierarchy — Deny" {
     @json.parse(entities_src),
   )
 
-  let req = @evaluator.Request::{
+  let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
     action: @evaluator.concrete_uid("Action", "view"),
     resource: @evaluator.concrete_uid("Photo", "VacationPhoto94.jpg"),
-    context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
+    context: Context::Concrete(Value::Record(Map([]))),
   }
 
   let result = is_authorized(
     req,
-    @parser.parse_policies(policy_src).iter(),
+    parse_policies(policy_src).iter(),
     store,
   )
   @debug.assert_eq(Decision::Deny, result.decision)
@@ -54,7 +54,7 @@ test "example: resource not in hierarchy — Deny" {
 test "example: forbid overrides permit" {
   let src =
     #|permit (principal,action,resource);forbid(principal,action,resource);
-  let policies = @parser.parse_policies(src)
+  let policies = parse_policies(src)
   let store = new_map_store()
   let result = is_authorized(empty_req(), policies.iter(), store)
   @debug.assert_eq(Decision::Deny, result.decision)

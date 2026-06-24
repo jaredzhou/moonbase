@@ -259,19 +259,20 @@ fn parc_parse_euid(s : String) -> @ast.EntityUID? {
   if sep < 0 {
     return None
   }
-  let mut type_ = ""
-  for i = 0; i < sep; i = i + 1 {
-    type_ = type_ + s[i].to_string()
-  }
+  let type_ = s.substring(start=0, end=sep)
   let id_start = sep + 3
-  let mut id = ""
+  let mut id_len = 0
   for i = id_start; i < len; i = i + 1 {
     if s[i] == '"' {
-      return Some(@ast.EntityUID::{ type_, id })
+      id_len = i - id_start
+      break
     }
-    id = id + s[i].to_string()
   }
-  None
+  if id_len == 0 {
+    return None
+  }
+  let id = s.substring(start=id_start, end=id_start + id_len)
+  Some(@ast.EntityUID::{ type_, id })
 }
 
 ///|
