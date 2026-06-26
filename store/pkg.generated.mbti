@@ -1,0 +1,77 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/store"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn[T : StorageBackend] delete(T, String, String) -> Unit raise StorageError
+
+pub fn[T : StorageBackend] exists(T, String, String) -> Bool
+
+pub fn[T : StorageBackend] get(T, String, String) -> Bytes raise StorageError
+
+pub fn[T : StorageBackend] put(T, String, String, Bytes) -> Unit raise StorageError
+
+// Errors
+pub(all) suberror StorageError {
+  NotFound(String)
+  AlreadyExists(String)
+  NotEmpty(String)
+  Forbidden(String)
+  BackendError(String)
+  RepoError(String)
+  InvalidInput(String)
+} derive(@debug.Debug)
+pub fn StorageError::to_http_status(Self) -> Int
+
+// Types and methods
+pub(all) struct Bucket {
+  id : String
+  name : String
+  owner : String
+  owner_id : String
+  public : Bool
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
+  created_at : String
+  updated_at : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct MemoryBackend {
+  mut files : Map[String, Bytes]
+}
+pub fn MemoryBackend::new() -> Self
+pub impl StorageBackend for MemoryBackend
+
+pub(all) struct Object {
+  id : String?
+  name : String
+  bucket_id : String
+  owner : String
+  owner_id : String
+  version : String
+  metadata : StorageMetadata
+  user_metadata : Json
+  created_at : String
+  updated_at : String?
+  last_accessed_at : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StorageMetadata {
+  size : Int64
+  mimetype : String
+  cache_control : String?
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+pub(open) trait StorageBackend {
+  fn put(Self, String, String, Bytes) -> Unit raise StorageError
+  fn get(Self, String, String) -> Bytes raise StorageError
+  fn delete(Self, String, String) -> Unit raise StorageError
+  fn exists(Self, String, String) -> Bool
+}
+

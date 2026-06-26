@@ -2,7 +2,7 @@
 
 ///|
 /// Error type for storage operations.
-pub(all) enum StorageError {
+pub(all) suberror StorageError {
   NotFound(String)
   AlreadyExists(String)
   NotEmpty(String)
@@ -10,7 +10,7 @@ pub(all) enum StorageError {
   BackendError(String)
   RepoError(String)
   InvalidInput(String)
-} derive(Debug, Eq)
+} derive(Debug)
 
 ///|
 /// Map StorageError to an HTTP status code.
