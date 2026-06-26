@@ -14,9 +14,9 @@ test "MemoryBucketRepo insert and get" {
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   }
-  insert(repo, bucket)
-  let found = get(repo, "avatars")
-  @debug.assert_true(found.is_some())
+  repo.insert(bucket)
+  let found = repo.get("avatars")
+  @debug.assert_eq(true, found is Some(_))
   @debug.assert_eq(found.unwrap().name, "Avatars")
 }
 
@@ -33,9 +33,9 @@ test "MemoryBucketRepo list" {
     file_size_limit: None, allowed_mime_types: None,
     created_at: "", updated_at: "",
   }
-  insert(repo, b1)
-  insert(repo, b2)
-  let all = list(repo)
+  repo.insert(b1)
+  repo.insert(b2)
+  let all = repo.list()
   @debug.assert_eq(all.length(), 2)
 }
 
@@ -47,17 +47,17 @@ test "MemoryBucketRepo update and delete" {
     file_size_limit: None, allowed_mime_types: None,
     created_at: "", updated_at: "",
   }
-  insert(repo, bucket)
+  repo.insert(bucket)
   let updated = Bucket::{ ..bucket, public: true }
-  update(repo, "test", updated)
-  @debug.assert_true(get(repo, "test").unwrap().public)
+  repo.update("test", updated)
+  @debug.assert_eq(true, repo.get("test").unwrap().public)
 
-  delete(repo, "test")
-  @debug.assert_true(get(repo, "test").is_none())
+  repo.delete("test")
+  @debug.assert_eq(true, repo.get("test") is None)
 }
 
 ///|
 test "MemoryBucketRepo get non-existent" {
   let repo = MemoryBucketRepo::new()
-  @debug.assert_true(get(repo, "nope").is_none())
+  @debug.assert_eq(true, repo.get("nope") is None)
 }
