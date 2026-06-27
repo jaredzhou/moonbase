@@ -6,6 +6,7 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
   "moonbitlang/core/debug",
+  "moonbitlang/core/buffer",
   "tonyfettes/any",
 }
 

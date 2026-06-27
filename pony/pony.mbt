@@ -85,6 +85,7 @@ pub(all) struct Context {
   resp_headers : Map[String, String]
   queries : Values
   mut form_values : Values?
+  mut multipart_form : MultipartForm?
   exts : ExtStore
   mut path_params : Array[ParamKV]
   req_body : &@io.Reader
@@ -218,11 +219,56 @@ pub fn Context::query(self : Context, key : String) -> String? {
 
 ///|
 pub async fn Context::form(self : Context, key : String) -> String? {
+  // If multipart form was parsed, read regular fields from it.
+  if self.multipart_form is Some(mf) {
+    return mf.value(key)
+  }
+  // Fallback: application/x-www-form-urlencoded lazy parse.
   if self.form_values is None {
     let body_text = self.req_body.read_all().text()
     self.form_values = Some(parse_query(body_text))
   }
   self.form_values.unwrap().get(key)
+}
+
+///|
+pub async fn Context::parse_multipart_form(
+  self : Context,
+  max_memory~ : Int64 = default_max_memory,
+) -> Unit raise {
+  let content_type = self.header("content-type").unwrap_or("")
+  let data = self.req_body.read_all()
+  let body = data.binary()
+  let form = parse_multipart_body(body, content_type, max_memory)
+  self.multipart_form = Some(form)
+}
+
+///|
+pub fn Context::form_file(self : Context, key : String) -> UploadedFile? {
+  match self.multipart_form {
+    Some(mf) => mf.file(key)
+    None => None
+  }
+}
+
+///|
+pub fn Context::form_files(
+  self : Context,
+  key : String,
+) -> Array[UploadedFile] {
+  match self.multipart_form {
+    Some(mf) => mf.file_all(key)
+    None => []
+  }
+}
+
+///|
+pub fn Context::cleanup(self : Context) -> Unit {
+  match self.multipart_form {
+    Some(mf) => mf.cleanup()
+    None => ()
+  }
+  self.multipart_form = None
 }
 
 ///|
@@ -616,6 +662,7 @@ pub fn Router::build_ctx(
       None => Values::new()
     },
     form_values: None,
+    multipart_form: None,
     exts: ExtStore::new(),
     path_params: [],
     req_body,
@@ -643,6 +690,7 @@ pub async fn Router::handler(self : Router, ctx : Context) -> Unit {
       h(ctx)
     }
   }
+  ctx.cleanup()
 }
 
 ///|
