@@ -38,7 +38,7 @@ pub(all) struct Bucket {
   pub allowed_mime_types : Array[String]?
   pub created_at : String
   pub updated_at : String
-} derive(Debug, Eq)
+} derive(Debug, Eq, ToJson)
 
 ///|
 /// Typed system metadata for a stored object.
