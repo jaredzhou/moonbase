@@ -2,6 +2,8 @@
 package "jaredzhou/store"
 
 import {
+  "jaredzhou/mooncedar/ast",
+  "jaredzhou/mooncedar/evaluator",
   "moonbitlang/core/debug",
 }
 
@@ -12,7 +14,13 @@ pub fn[T : StorageBackend] exists(T, String, String) -> Bool
 
 pub fn[T : StorageBackend] get(T, String, String) -> Bytes raise StorageError
 
+pub fn[T : BucketRepo] insert(T, Bucket) -> Unit
+
+pub fn[T : BucketRepo] list(T) -> Array[Bucket]
+
 pub fn[T : StorageBackend] put(T, String, String, Bytes) -> Unit raise StorageError
+
+pub fn[T : BucketRepo] update(T, String, Bucket) -> Unit
 
 // Errors
 pub(all) suberror StorageError {
@@ -27,6 +35,13 @@ pub(all) suberror StorageError {
 pub fn StorageError::to_http_status(Self) -> Int
 
 // Types and methods
+pub(all) struct Authorizer {
+  entities : CompositeEntityStore
+  policies : Array[@ast.Policy]
+}
+pub fn Authorizer::new(CompositeEntityStore, Array[@ast.Policy]) -> Self
+pub fn Authorizer::try_authorize(Self, String, String, String, String, Map[@ast.EntityUID, @ast.Entity]?) -> Bool
+
 pub(all) struct Bucket {
   id : String
   name : String
@@ -39,11 +54,30 @@ pub(all) struct Bucket {
   updated_at : String
 } derive(Eq, @debug.Debug)
 
+pub(all) struct CompositeEntityStore {
+  memory : Map[@ast.EntityUID, @ast.Entity]
+  persisted : Map[@ast.EntityUID, @ast.Entity]
+}
+pub fn CompositeEntityStore::new(Map[@ast.EntityUID, @ast.Entity], Map[@ast.EntityUID, @ast.Entity]) -> Self
+pub impl @evaluator.EntityStore for CompositeEntityStore
+
 pub(all) struct MemoryBackend {
   mut files : Map[String, Bytes]
 }
 pub fn MemoryBackend::new() -> Self
 pub impl StorageBackend for MemoryBackend
+
+pub(all) struct MemoryBucketRepo {
+  mut buckets : Map[String, Bucket]
+}
+pub fn MemoryBucketRepo::new() -> Self
+pub impl BucketRepo for MemoryBucketRepo
+
+pub(all) struct MemoryObjectRepo {
+  mut objects : Map[String, Object]
+}
+pub fn MemoryObjectRepo::new() -> Self
+pub impl ObjectRepo for MemoryObjectRepo
 
 pub(all) struct Object {
   id : String?
@@ -59,6 +93,14 @@ pub(all) struct Object {
   last_accessed_at : String?
 } derive(Eq, @debug.Debug)
 
+pub(all) struct RequestEntityStore[B] {
+  mut overlay : Map[@ast.EntityUID, @ast.Entity]
+  backing : B
+}
+pub fn[B] RequestEntityStore::add_entity(Self[B], @ast.EntityUID, @ast.Entity) -> Unit
+pub fn[B] RequestEntityStore::new(B) -> Self[B]
+pub impl[B : @evaluator.EntityStore] @evaluator.EntityStore for RequestEntityStore[B]
+
 pub(all) struct StorageMetadata {
   size : Int64
   mimetype : String
@@ -68,6 +110,22 @@ pub(all) struct StorageMetadata {
 // Type aliases
 
 // Traits
+pub(open) trait BucketRepo {
+  fn get(Self, String) -> Bucket?
+  fn list(Self) -> Array[Bucket]
+  fn insert(Self, Bucket) -> Unit
+  fn update(Self, String, Bucket) -> Unit
+  fn delete(Self, String) -> Unit
+}
+
+pub(open) trait ObjectRepo {
+  fn get(Self, String, String) -> Object?
+  fn list(Self, String, String?, Int?, Int?) -> Array[Object]
+  fn insert(Self, Object) -> Unit
+  fn delete(Self, String, String) -> Unit
+  fn delete_batch(Self, String, Array[String]) -> Unit
+}
+
 pub(open) trait StorageBackend {
   fn put(Self, String, String, Bytes) -> Unit raise StorageError
   fn get(Self, String, String) -> Bytes raise StorageError
