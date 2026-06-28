@@ -2269,7 +2269,7 @@ fn extract_user(ctx : @pony.Context) -> String!@types.StorageError {
 
 ///|
 fn error_to_ctx(ctx : @pony.Context, e : @types.StorageError) -> Unit {
-  ctx.response_error(e.to_http_status(), match e {
+  ctx.reply_error(e.to_http_status(), match e {
     @types.NotFound(m) => m
     @types.AlreadyExists(m) => m
     @types.NotEmpty(m) => m
@@ -2288,7 +2288,7 @@ fn create_bucket(storage : @storage.Storage) -> @pony.Handler {
       e => { error_to_ctx(ctx, e); return }
     }
     let body : CreateBucketBody = ctx.json() catch {
-      _ => { ctx.response_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(400, "invalid JSON body"); return }
     }
     match @storage.create_bucket(storage, user, @storage.CreateBucketInput::{
       name: body.name,
@@ -2296,7 +2296,7 @@ fn create_bucket(storage : @storage.Storage) -> @pony.Handler {
       file_size_limit: body.file_size_limit,
       allowed_mime_types: body.allowed_mime_types,
     }) {
-      Ok(bucket) => ctx.response_ok(bucket)
+      Ok(bucket) => ctx.reply_ok(bucket)
       Err(e) => error_to_ctx(ctx, e)
     }
   })
@@ -2310,7 +2310,7 @@ fn list_buckets(storage : @storage.Storage) -> @pony.Handler {
       e => { error_to_ctx(ctx, e); return }
     }
     match @storage.list_buckets(storage, user) {
-      Ok(buckets) => ctx.response_ok(buckets)
+      Ok(buckets) => ctx.reply_ok(buckets)
       Err(e) => error_to_ctx(ctx, e)
     }
   })
@@ -2325,10 +2325,10 @@ fn get_bucket(storage : @storage.Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.response_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(400, "missing bucketId"); return }
     }
     match @storage.get_bucket(storage, user, id) {
-      Ok(bucket) => ctx.response_ok(bucket)
+      Ok(bucket) => ctx.reply_ok(bucket)
       Err(e) => error_to_ctx(ctx, e)
     }
   })
@@ -2343,17 +2343,17 @@ fn update_bucket(storage : @storage.Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.response_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(400, "missing bucketId"); return }
     }
     let body : UpdateBucketBody = ctx.json() catch {
-      _ => { ctx.response_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(400, "invalid JSON body"); return }
     }
     match @storage.update_bucket(storage, user, id, @storage.UpdateBucketInput::{
       public: body.public,
       file_size_limit: body.file_size_limit,
       allowed_mime_types: body.allowed_mime_types,
     }) {
-      Ok(bucket) => ctx.response_ok(bucket)
+      Ok(bucket) => ctx.reply_ok(bucket)
       Err(e) => error_to_ctx(ctx, e)
     }
   })
@@ -2368,7 +2368,7 @@ fn delete_bucket(storage : @storage.Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.response_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(400, "missing bucketId"); return }
     }
     match @storage.delete_bucket(storage, user, id) {
       Ok(_) => ctx.no_content()
@@ -2386,7 +2386,7 @@ fn empty_bucket(storage : @storage.Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.response_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(400, "missing bucketId"); return }
     }
     match @storage.empty_bucket(storage, user, id) {
       Ok(_) => ctx.no_content()
@@ -2622,20 +2622,20 @@ fn upload_object(storage : @storage.Storage) -> @pony.Handler {
     let user = extract_user_opt(ctx)
     let user = match user {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     let bucket_name = extract_bucket_name(ctx)
     let name = extract_path(ctx)
     if name == "" {
-      ctx.response_error(400, "missing object path")
+      ctx.reply_error(400, "missing object path")
       return
     }
     // Read request body as bytes
     let body = ctx.body()
     let data = body.to_bytes()
     match @storage.upload(storage, user, bucket_name, name, data, @json.Json::Object(Map([]))) {
-      Ok(obj) => ctx.response_ok(obj)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Ok(obj) => ctx.reply_ok(obj)
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         @types.AlreadyExists(m) => m
@@ -2655,7 +2655,7 @@ fn download_object(storage : @storage.Storage) -> @pony.Handler {
     let user = extract_user_opt(ctx)
     match @storage.download(storage, user, bucket_name, name) {
       Ok((_, data)) => ctx.write_bytes(200, data)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2672,11 +2672,11 @@ fn authenticated_download(storage : @storage.Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     match @storage.download(storage, Some(user), bucket_name, name) {
       Ok((_, data)) => ctx.write_bytes(200, data)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2693,7 +2693,7 @@ fn public_download(storage : @storage.Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     match @storage.download(storage, None, bucket_name, name) {
       Ok((_, data)) => ctx.write_bytes(200, data)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.NotFound(m) => m
         _ => "internal error"
       })
@@ -2709,16 +2709,16 @@ fn update_object(storage : @storage.Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     let body : UpdateObjectBody = ctx.json() catch {
-      _ => { ctx.response_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(400, "invalid JSON body"); return }
     }
     match @storage.update_object(storage, user, bucket_name, name, @storage.UpdateObjectInput::{
       user_metadata: body.user_metadata,
     }) {
-      Ok(obj) => ctx.response_ok(obj)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Ok(obj) => ctx.reply_ok(obj)
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2734,7 +2734,7 @@ fn list_objects(storage : @storage.Storage) -> @pony.Handler {
     let bucket_name = extract_bucket_name(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     let body : ListObjectsBody = ctx.json() catch {
       _ => ListObjectsBody::{
@@ -2742,8 +2742,8 @@ fn list_objects(storage : @storage.Storage) -> @pony.Handler {
       }
     }
     match @storage.list_objects(storage, user, bucket_name, body.prefix, body.limit, body.offset, body.sort_by) {
-      Ok(objs) => ctx.response_ok(objs)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Ok(objs) => ctx.reply_ok(objs)
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         _ => "internal error"
       })
@@ -2757,14 +2757,14 @@ fn move_object(storage : @storage.Storage) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     let body : MoveCopyBody = ctx.json() catch {
-      _ => { ctx.response_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(400, "invalid JSON body"); return }
     }
     match @storage.move_object(storage, user, body.bucket_id, body.source_key, body.destination_key) {
       Ok(_) => ctx.no_content()
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2779,14 +2779,14 @@ fn copy_object(storage : @storage.Storage) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     let body : MoveCopyBody = ctx.json() catch {
-      _ => { ctx.response_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(400, "invalid JSON body"); return }
     }
     match @storage.copy_object(storage, user, body.bucket_id, body.source_key, body.destination_key) {
       Ok(_) => ctx.no_content()
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2803,11 +2803,11 @@ fn delete_object(storage : @storage.Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     match @storage.delete_object(storage, user, bucket_name, name) {
       Ok(_) => ctx.no_content()
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2823,14 +2823,14 @@ fn delete_objects(storage : @storage.Storage) -> @pony.Handler {
     let bucket_name = extract_bucket_name(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     let body : DeleteBatchBody = ctx.json() catch {
-      _ => { ctx.response_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(400, "invalid JSON body"); return }
     }
     match @storage.delete_objects(storage, user, bucket_name, body.prefixes) {
       Ok(_) => ctx.no_content()
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         _ => "internal error"
       })
@@ -2846,11 +2846,11 @@ fn object_info_auth_download(storage : @storage.Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.response_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(401, "missing X-User header"); return }
     }
     match @storage.get_object_info(storage, Some(user), bucket_name, name) {
-      Ok(obj) => ctx.response_ok(obj)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Ok(obj) => ctx.reply_ok(obj)
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.Forbidden(m) => m
         @types.NotFound(m) => m
         _ => "internal error"
@@ -2866,8 +2866,8 @@ fn object_info_public_download(storage : @storage.Storage) -> @pony.Handler {
     let bucket_name = extract_bucket_name(ctx)
     let name = extract_path(ctx)
     match @storage.get_object_info(storage, None, bucket_name, name) {
-      Ok(obj) => ctx.response_ok(obj)
-      Err(e) => ctx.response_error(e.to_http_status(), match e {
+      Ok(obj) => ctx.reply_ok(obj)
+      Err(e) => ctx.reply_error(e.to_http_status(), match e {
         @types.NotFound(m) => m
         _ => "internal error"
       })
@@ -2876,7 +2876,7 @@ fn object_info_public_download(storage : @storage.Storage) -> @pony.Handler {
 }
 ```
 
-**Note:** The upload handler reads the request body as bytes. The exact API to read the raw body from pony's `Context` depends on the available methods. If `ctx.body()` is not available, alternatives include `ctx.read()` or accessing the raw `@http.Request` from the context. Check `pony/pkg.generated.mbti` for the available body-reading methods. If the body is streaming, accumulate it into a `Bytes` buffer. Also, `ctx.write_bytes(200, data)` is used for binary responses — verify this method exists in pony. If not, use `ctx.response_ok()` with a base64-encoded data response or check for alternative binary write methods.
+**Note:** The upload handler reads the request body as bytes. The exact API to read the raw body from pony's `Context` depends on the available methods. If `ctx.body()` is not available, alternatives include `ctx.read()` or accessing the raw `@http.Request` from the context. Check `pony/pkg.generated.mbti` for the available body-reading methods. If the body is streaming, accumulate it into a `Bytes` buffer. Also, `ctx.write_bytes(200, data)` is used for binary responses — verify this method exists in pony. If not, use `ctx.reply_ok()` with a base64-encoded data response or check for alternative binary write methods.
 
 - [ ] **Step 4: Run tests — iterate on compilation issues**
 
@@ -2884,7 +2884,7 @@ Run: `cd /home/jared/projects/moonbase && moon check`
 Check for compilation errors, especially around:
 - `ctx.body()` — may need a different method to read request body bytes
 - `ctx.write_bytes()` — verify pony supports binary response writing
-- `ctx.response_ok()` on types that need `ToJson` derive
+- `ctx.reply_ok()` on types that need `ToJson` derive
 - `derive(FromJson)` on request body structs
 
 Fix any compilation issues, then run `moon test --package jaredzhou/store --update` to capture the snapshot.
@@ -3263,8 +3263,8 @@ The object handler code assumes these pony APIs exist. Verify before implementat
 - `ctx.body()` — reading raw request body bytes (check `pony/pkg.generated.mbti` for alternative: `ctx.read_bytes()` or accessing the underlying request)
 - `ctx.write_bytes(status, data)` — writing binary responses (may need `ctx.set_header("Content-Type", "...")` before writing)
 - `ctx.no_content()` — 204 response
-- `ctx.response_ok(value)` — JSON serialization via `ToJson`
-- `ctx.response_error(code, msg)` — error response
+- `ctx.reply_ok(value)` — JSON serialization via `ToJson`
+- `ctx.reply_error(code, msg)` — error response
 - `ctx.json<T>()` — JSON deserialization for typed request bodies
 - `ctx.param(name)` — path parameter extraction
 - `ctx.wildcard()` — wildcard path extraction

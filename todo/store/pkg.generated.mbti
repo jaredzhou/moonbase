@@ -34,7 +34,7 @@ pub(all) struct ListData {
 
 pub(all) struct ServerState {
   mut lists : Array[ListData]
-  entities : @evaluator.MapEntityStore
+  entities : @mooncedar.MapEntityStore
   policies : Array[@ast.Policy]
 }
 

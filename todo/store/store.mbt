@@ -31,7 +31,7 @@ pub fn new_list(id : Int, name : String, owner : String) -> ListData {
 ///|
 pub(all) struct ServerState {
   pub mut lists : Array[ListData]
-  pub entities : @evaluator.MapEntityStore
+  pub entities : @mooncedar.MapEntityStore
   pub policies : Array[@ast.Policy]
 }
 
@@ -106,7 +106,7 @@ pub fn init_state(policies_src : String, entities_src : String) -> ServerState {
     _ => abort("parse_policies failed")
   }
   let store = (
-    @json.from_json(@json.parse(entities_src)) : @evaluator.MapEntityStore) catch {
+    @json.from_json(@json.parse(entities_src)) : @mooncedar.MapEntityStore) catch {
     _ => abort("from_json failed")
   }
   ServerState::{ lists: [], entities: store, policies }

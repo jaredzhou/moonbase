@@ -548,7 +548,7 @@ fn create_list(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
@@ -557,7 +557,7 @@ fn create_list(state : @store.ServerState) -> @pony.Handler {
     let name = match body["name"] {
       @json.Json::String(s) => s
       _ => {
-        ctx.response_error(400, "missing or invalid 'name' field")
+        ctx.reply_error(400, "missing or invalid 'name' field")
         return
       }
     }
@@ -573,7 +573,7 @@ fn create_list(state : @store.ServerState) -> @pony.Handler {
 /// GET /lists — list all lists owned by the current user
 fn get_lists(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     @auth.authorize_or_fail(user, "Action", "GetLists", "Application", "TinyTodo", state)!
     let mut items = []
     for l in state.lists {
@@ -581,7 +581,7 @@ fn get_lists(state : @store.ServerState) -> @pony.Handler {
         items.push({ "id": l.id, "name": l.name, "owner": l.owner, "tasks": l.tasks.length() })
       }
     }
-    ctx.response_ok(items)
+    ctx.reply_ok(items)
   })
 }
 
@@ -589,12 +589,12 @@ fn get_lists(state : @store.ServerState) -> @pony.Handler {
 /// GET /lists/:id — get a single list with tasks
 fn get_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let list = match state.lists.iter().find(fn(l) { l.id == id }) {
       Some(l) => l
-      None => { ctx.response_error(404, "list not found"); return }
+      None => { ctx.reply_error(404, "list not found"); return }
     }
     @auth.authorize_or_fail(user, "Action", "GetList", "List", id_str?, state)!
     let mut tasks = []
@@ -602,7 +602,7 @@ fn get_list(state : @store.ServerState) -> @pony.Handler {
       let state_str = match t.state { @store.Todo => "todo"; @store.Done => "done" }
       tasks.push({ "id": t.id, "name": t.name, "state": state_str })
     }
-    ctx.response_ok({ "id": list.id, "name": list.name, "owner": list.owner, "readers": list.readers, "editors": list.editors, "tasks": tasks })
+    ctx.reply_ok({ "id": list.id, "name": list.name, "owner": list.owner, "readers": list.readers, "editors": list.editors, "tasks": tasks })
   })
 }
 
@@ -610,12 +610,12 @@ fn get_list(state : @store.ServerState) -> @pony.Handler {
 /// DELETE /lists/:id — delete a list (owner only, per Cedar policy)
 fn delete_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let idx = match find_list_index(state, id) {
       Some(i) => i
-      None => { ctx.response_error(404, "list not found"); return }
+      None => { ctx.reply_error(404, "list not found"); return }
     }
     @auth.authorize_or_fail(user, "Action", "DeleteList", "List", id_str?, state)!
     state.lists.remove(idx) |> ignore
@@ -628,16 +628,16 @@ fn delete_list(state : @store.ServerState) -> @pony.Handler {
 /// POST /lists/:id/share — share a list with a user
 fn share_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let idx = match find_list_index(state, id) {
       Some(i) => i
-      None => { ctx.response_error(404, "list not found"); return }
+      None => { ctx.reply_error(404, "list not found"); return }
     }
     @auth.authorize_or_fail(user, "Action", "EditShare", "List", id_str?, state)!
     let body = ctx.json()!
-    let target = match body["target"] { @json.Json::String(s) => s; _ => { ctx.response_error(400, "missing target"); return } }
+    let target = match body["target"] { @json.Json::String(s) => s; _ => { ctx.reply_error(400, "missing target"); return } }
     let readonly = match body["readonly"] { @json.Json::Bool(b) => b; @json.Json::Null => true; _ => true }
     if readonly {
       if not(state.lists[idx].readers.contains(target)) {
@@ -657,16 +657,16 @@ fn share_list(state : @store.ServerState) -> @pony.Handler {
 /// DELETE /lists/:id/share — unshare a list from a user
 fn unshare_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let idx = match find_list_index(state, id) {
       Some(i) => i
-      None => { ctx.response_error(404, "list not found"); return }
+      None => { ctx.reply_error(404, "list not found"); return }
     }
     @auth.authorize_or_fail(user, "Action", "EditShare", "List", id_str?, state)!
     let body = ctx.json()!
-    let target = match body["target"] { @json.Json::String(s) => s; _ => { ctx.response_error(400, "missing target"); return } }
+    let target = match body["target"] { @json.Json::String(s) => s; _ => { ctx.reply_error(400, "missing target"); return } }
     state.lists[idx].readers = state.lists[idx].readers.filter(fn(u) { u != target })
     state.lists[idx].editors = state.lists[idx].editors.filter(fn(u) { u != target })
     @store.update_list_entity(state, state.lists[idx])
@@ -730,21 +730,21 @@ pub fn build_task_routes(
 /// POST /lists/:id/tasks — add a task to a list
 fn create_task(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let idx = match find_list_index(state, id) {
       Some(i) => i
-      None => { ctx.response_error(404, "not found"); return }
+      None => { ctx.reply_error(404, "not found"); return }
     }
     @auth.authorize_or_fail(user, "Action", "CreateTask", "List", id_str?, state)!
     let body = ctx.json()!
-    let task_name = match body["name"] { @json.Json::String(s) => s; _ => { ctx.response_error(400, "missing 'name'"); return } }
+    let task_name = match body["name"] { @json.Json::String(s) => s; _ => { ctx.reply_error(400, "missing 'name'"); return } }
     let task_id = state.lists[idx].tasks.length()
     let task = @store.TaskData::{ id: task_id, name: task_name, state: @store.Todo }
     state.lists[idx].tasks.push(task)
     @store.update_list_entity(state, state.lists[idx])
-    ctx.response_ok({ "id": task_id, "name": task_name, "state": "todo" })
+    ctx.reply_ok({ "id": task_id, "name": task_name, "state": "todo" })
   })
 }
 
@@ -752,17 +752,17 @@ fn create_task(state : @store.ServerState) -> @pony.Handler {
 /// PATCH /lists/:id/tasks/:pos — update a task's name or toggle its state
 fn update_task(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let pos_str = ctx.param("pos")
-    let pos = match pos_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing pos"); return } }
+    let pos = match pos_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing pos"); return } }
     let idx = match find_list_index(state, id) {
       Some(i) => i
-      None => { ctx.response_error(404, "not found"); return }
+      None => { ctx.reply_error(404, "not found"); return }
     }
     if pos < 0 || pos >= state.lists[idx].tasks.length() {
-      ctx.response_error(404, "task not found")
+      ctx.reply_error(404, "task not found")
       return
     }
     @auth.authorize_or_fail(user, "Action", "UpdateTask", "List", id_str?, state)!
@@ -785,17 +785,17 @@ fn update_task(state : @store.ServerState) -> @pony.Handler {
 /// DELETE /lists/:id/tasks/:pos — remove a task from a list
 fn delete_task(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.response_error(401, "missing X-User header"); return } }
+    let user = match ctx.header("X-User") { Some(u) => u; None => { ctx.reply_error(401, "missing X-User header"); return } }
     let id_str = ctx.param("id")
-    let id = match id_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing id"); return } }
+    let id = match id_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing id"); return } }
     let pos_str = ctx.param("pos")
-    let pos = match pos_str { Some(s) => s.to_int(); None => { ctx.response_error(400, "missing pos"); return } }
+    let pos = match pos_str { Some(s) => s.to_int(); None => { ctx.reply_error(400, "missing pos"); return } }
     let idx = match find_list_index(state, id) {
       Some(i) => i
-      None => { ctx.response_error(404, "not found"); return }
+      None => { ctx.reply_error(404, "not found"); return }
     }
     if pos < 0 || pos >= state.lists[idx].tasks.length() {
-      ctx.response_error(404, "task not found")
+      ctx.reply_error(404, "task not found")
       return
     }
     @auth.authorize_or_fail(user, "Action", "DeleteTask", "List", id_str?, state)!

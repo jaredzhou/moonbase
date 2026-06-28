@@ -207,7 +207,7 @@ fn upload_handler : Handler = async fn(ctx) {
     None => ctx.write_text(400, "avatar is required")
   }
 
-  ctx.response_ok({"user": username, "files": files.length()})
+  ctx.reply_ok({"user": username, "files": files.length()})
 }
 ```
 

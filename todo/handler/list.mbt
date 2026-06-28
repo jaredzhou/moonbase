@@ -76,26 +76,26 @@ fn create_list(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     if !@auth.try_authorize(
         user, "Action", "CreateList", "Application", "TinyTodo", state,
       ) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let req : CreateListReq = ctx.json() catch {
       _ => {
-        ctx.response_error(400, "invalid JSON body")
+        ctx.reply_error(400, "invalid JSON body")
         return
       }
     }
     let id = state.lists.length()
     let list = @store.new_list(id, req.name, user)
     @store.add_list(state, list)
-    ctx.response_ok(ListCreated::{ id, name: req.name })
+    ctx.reply_ok(ListCreated::{ id, name: req.name })
   })
 }
 
@@ -106,14 +106,14 @@ fn get_lists(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     if !@auth.try_authorize(
         user, "Action", "GetLists", "Application", "TinyTodo", state,
       ) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let items : Array[ListItem] = []
@@ -134,7 +134,7 @@ fn get_lists(state : @store.ServerState) -> @pony.Handler {
         })
       }
     }
-    ctx.response_ok(items)
+    ctx.reply_ok(items)
   })
 }
 
@@ -145,34 +145,34 @@ fn get_list(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     let list = state.lists[idx]
     if !@auth.try_authorize(user, "Action", "GetList", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let tasks : Array[TaskItem] = []
@@ -183,7 +183,7 @@ fn get_list(state : @store.ServerState) -> @pony.Handler {
       }
       tasks.push(TaskItem::{ id: t.id, name: t.name, state: state_str })
     }
-    ctx.response_ok(ListDetail::{
+    ctx.reply_ok(ListDetail::{
       id: list.id,
       name: list.name,
       owner: list.owner,
@@ -201,33 +201,33 @@ fn delete_list(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "DeleteList", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     state.lists.remove(idx) |> ignore
@@ -244,38 +244,38 @@ fn share_list(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "EditShare", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let req : ShareReq = ctx.json() catch {
       _ => {
-        ctx.response_error(400, "invalid JSON body")
+        ctx.reply_error(400, "invalid JSON body")
         return
       }
     }
@@ -302,38 +302,38 @@ fn unshare_list(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "EditShare", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let req : ShareReq = ctx.json() catch {
       _ => {
-        ctx.response_error(400, "invalid JSON body")
+        ctx.reply_error(400, "invalid JSON body")
         return
       }
     }

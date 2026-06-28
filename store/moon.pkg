@@ -9,6 +9,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/debug",
   "moonbitlang/async",
+  "moonbitlang/async/http",
   "moonbitlang/x/fs",
   "moonbitlang/x/time",
 }

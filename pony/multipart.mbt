@@ -242,67 +242,65 @@ async fn MultipartForm::cleanup(self : MultipartForm) -> Unit {
 
 /// Extract the boundary string from a `Content-Type` header value.
 ///
-/// ## Example
+/// ## Examples
 /// ```
 /// "multipart/form-data; boundary=----WebKit"  →  "----WebKit"
 /// "multipart/form-data; boundary=\"--abc\""   →  "--abc"
+/// "multipart/form-data; charset=utf-8; boundary=foo" → "foo"
 /// ```
+///
+/// ## How it works
+///
+/// 1. Do a case‑insensitive search for `"boundary="` in the header value
+///    (using a lowercased copy).  RFC 2046 says the parameter name is
+///    case‑insensitive.
+///
+/// 2. Extract the value portion **from the original string** so the
+///    boundary itself retains its original case.  RFC 2046 §5.1.1 says
+///    boundary values ARE case‑sensitive.
+///
+/// 3. Peel off optional surrounding double‑quotes and trailing `;`
+///    / whitespace via a functional `for` loop with `continue`/`break`.
 fn boundary_from(content_type : String) -> String raise {
   let lower = content_type.to_lower()
-
-  // Find "boundary=" (case-insensitive)
   let prefix = "boundary="
-  let mut idx : Int = -1
-  for i in 0..<=(lower.length() - prefix.length()) {
-    if lower[i:].has_prefix(prefix) {
-      idx = i
-      break
-    }
-  }
 
-  let boundary = match idx {
-    -1 => raise MultipartError::MissingBoundary
-    i => {
-      let rest : String = content_type[i + prefix.length():].to_owned()
-      if rest.has_prefix("\"") {
-        // Quoted: "----foo" → ----foo
-        let inner = rest[1:].to_owned()
-        match find_closing_quote(inner) {
-          Some(end) => inner[:end].to_owned()
-          None => inner
-        }
-      } else {
-        // Unquoted: take until ; or space
-        let end = find_terminator(rest)
-        rest[:end].to_owned()
-      }
-    }
-  }
-
-  guard boundary.length() > 0 else {
+  // Find "boundary=" position (case‑insensitive, via lowercased copy)
+  let bp_pos = search_substr(lower[:], prefix)
+  guard bp_pos >= 0 else {
     raise MultipartError::MissingBoundary
   }
-  boundary
-}
 
-/// Return the index of the first `"` in `s`, or `None`.
-fn find_closing_quote(s : String) -> Int? {
-  for i in 0..<s.length() {
-    if s[i] == '"' {
-      return Some(i)
+  // Take the value portion from the *original* string (preserve case)
+  let rest = content_type[bp_pos + prefix.length():]
+
+  // Functional loop: peel quote characters and trailing junk
+  for s = rest {
+    match s {
+      ['"', ..inner, '"'] => break inner.to_owned()
+      ['"', ..inner] => continue inner
+      [..inner, ';'] => break inner.trim().to_owned()
+      [..inner, ' '] => continue inner.trim()
+      [] => raise MultipartError::MissingBoundary
+      _ => break s.trim().to_owned()
     }
   }
-  None
 }
 
-/// Return the index of the first `;` or ` ` in `s`, or `s.length()` if none found.
-fn find_terminator(s : String) -> Int {
-  for i in 0..<s.length() {
-    if s[i] == ';' || s[i] == ' ' {
+/// Search for `needle` in `haystack` (case‑sensitive).  Returns the
+/// byte offset of the first match or -1.
+fn search_substr(haystack : StringView, needle : String) -> Int {
+  let h_len = haystack.length()
+  let n_len = needle.length()
+  guard n_len > 0 && n_len <= h_len else {
+    return -1
+  }
+  for i in 0..<=(h_len - n_len) {
+    if haystack[i:].has_prefix(needle) {
       return i
     }
   }
-  s.length()
+  -1
 }
 
 /// Return the index of the first `:` in `s`, or `-1` if none found.

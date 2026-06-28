@@ -34,12 +34,12 @@ fn main {
 
   // GET /api/status  => 200 {"status":"ok"}
   r.add(HttpMethod::Get, "/api/status", fn(ctx) {
-    ctx.response_ok({ "status": "ok" })
+    ctx.reply_ok({ "status": "ok" })
   })
 
   // POST /api/items  => 400 {"code":3,"message":"name is required"}
   r.add(HttpMethod::Post, "/api/items", fn(ctx) {
-    ctx.response_error(invalid_argument, "name is required")
+    ctx.reply_error(invalid_argument, "name is required")
   })
 
   // GET /static/css/app.css  => 200 "file: css/app.css"
@@ -93,8 +93,8 @@ let form = ctx.form("name")?       // form values (application/x-www-form-urlenc
 ctx.set_content_type("application/json")
 ctx.write_text(200, "Hello")
 ctx.write_json(200, {"key": "value"})
-ctx.response_ok({"status": "ok"})   // 200 JSON
-ctx.response_error(400, "bad input") // error JSON
+ctx.reply_ok({"status": "ok"})   // 200 JSON
+ctx.reply_error(400, "bad input") // error JSON
 ctx.redirect("/login")              // 302 redirect
 ctx.no_content()                    // 204
 ```

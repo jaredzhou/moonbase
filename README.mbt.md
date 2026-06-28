@@ -34,12 +34,12 @@ fn main {
 
   // GET /api/status  => 200 {"status":"ok","version":"0.1.0"}
   r.add(HttpMethod::Get, "/api/status", ctx => {
-    ctx.response_ok(({ "status": "ok", "version": "0.1.0" } : Json))
+    ctx.reply_ok(({ "status": "ok", "version": "0.1.0" } : Json))
   })
 
   // POST /api/items  => 400 {"code":3,"message":"name is required"}
   r.add(HttpMethod::Post, "/api/items", ctx => {
-    ctx.response_error(invalid_argument, "name is required")
+    ctx.reply_error(invalid_argument, "name is required")
   })
 
   // GET /static/css/app.css  => 200 "file: css/app.css"

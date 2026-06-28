@@ -44,38 +44,38 @@ fn create_task(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "CreateTask", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let req : CreateTaskReq = ctx.json() catch {
       _ => {
-        ctx.response_error(400, "invalid JSON body")
+        ctx.reply_error(400, "invalid JSON body")
         return
       }
     }
@@ -86,7 +86,7 @@ fn create_task(state : @store.ServerState) -> @pony.Handler {
       state: @store.Todo,
     })
     @store.update_list_entity(state, state.lists[idx])
-    ctx.response_ok(TaskItem::{ id: task_id, name: req.name, state: "todo" })
+    ctx.reply_ok(TaskItem::{ id: task_id, name: req.name, state: "todo" })
   })
 }
 
@@ -97,56 +97,56 @@ fn update_task(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let pos_str = match ctx.param("pos") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing pos")
+        ctx.reply_error(400, "missing pos")
         return
       }
     }
     let pos = match parse_int(pos_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid pos")
+        ctx.reply_error(400, "invalid pos")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     if pos < 0 || pos >= state.lists[idx].tasks.length() {
-      ctx.response_error(404, "task not found")
+      ctx.reply_error(404, "task not found")
       return
     }
     if !@auth.try_authorize(user, "Action", "UpdateTask", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     let req : UpdateTaskReq = ctx.json() catch {
       _ => {
-        ctx.response_error(400, "invalid JSON body")
+        ctx.reply_error(400, "invalid JSON body")
         return
       }
     }
@@ -164,7 +164,7 @@ fn update_task(state : @store.ServerState) -> @pony.Handler {
       None => ()
     }
     @store.update_list_entity(state, state.lists[idx])
-    ctx.no_content()
+    ctx.reply_ok(({}:Json))
   })
 }
 
@@ -175,55 +175,55 @@ fn delete_task(state : @store.ServerState) -> @pony.Handler {
     let user = match ctx.header("X-User") {
       Some(u) => u
       None => {
-        ctx.response_error(401, "missing X-User header")
+        ctx.reply_error(401, "missing X-User header")
         return
       }
     }
     let id_str = match ctx.param("id") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing id")
+        ctx.reply_error(400, "missing id")
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid id")
+        ctx.reply_error(400, "invalid id")
         return
       }
     }
     let pos_str = match ctx.param("pos") {
       Some(s) => s
       None => {
-        ctx.response_error(400, "missing pos")
+        ctx.reply_error(400, "missing pos")
         return
       }
     }
     let pos = match parse_int(pos_str) {
       Some(n) => n
       None => {
-        ctx.response_error(400, "invalid pos")
+        ctx.reply_error(400, "invalid pos")
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.response_error(404, "list not found")
+        ctx.reply_error(404, "list not found")
         return
       }
     }
     if pos < 0 || pos >= state.lists[idx].tasks.length() {
-      ctx.response_error(404, "task not found")
+      ctx.reply_error(404, "task not found")
       return
     }
     if !@auth.try_authorize(user, "Action", "DeleteTask", "List", id_str, state) {
-      ctx.response_error(403, "access denied")
+      ctx.reply_error(403, "access denied")
       return
     }
     state.lists[idx].tasks.remove(pos) |> ignore
     @store.update_list_entity(state, state.lists[idx])
-    ctx.no_content()
+    ctx.reply_ok(({}:Json))
   })
 }
