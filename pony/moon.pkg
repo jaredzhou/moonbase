@@ -9,6 +9,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/random",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
   "tonyfettes/any",
 }
 

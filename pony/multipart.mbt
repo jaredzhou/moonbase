@@ -283,77 +283,51 @@ fn boundary_from(content_type : String) -> String raise {
 
 // -- byte-level primitives ---------------------------------------------
 
-/// Read one line from `data` starting at `offset`.
+/// Advance one line from `data`.
 ///
-/// Uses the standard `BytesView::find` to locate `\r\n` or `\n`.
-/// Returns `Some((end, next))` or `None` when past the end.
-///
-/// * `end`  — offset of the last byte of content
-///            (exclusive; `data[offset:end]` is the line without the newline).
-/// * `next` — offset where the next line starts.
-///
-/// The line‑start is always the `offset` the caller passed in.
-fn read_line(
-  data : BytesView,
-  offset : Int,
-) -> (Int, Int)? {
-  guard offset < data.length() else {
-    return None
-  }
-  let rest = data[offset:]
-  match rest.find(b"\r\n") {
-    Some(crlf) => Some((offset + crlf, offset + crlf + 2))
-    None => match rest.find(b"\n") {
-      Some(lf) => Some((offset + lf, offset + lf + 1))
-      None => Some((data.length(), data.length()))
-    }
-  }
-}
-
-/// Decode a byte range as a Unicode string.
-/// Only safe when the bytes are ASCII-compatible (e.g. MIME headers).
-fn ascii_bytes_to_string(data : BytesView, start : Int, end : Int) -> String {
-  data[start:end].to_owned().to_unchecked_string()
+/// Returns `Some((line, rest))` where `line` is the content before the
+/// Decode bytes as a UTF-8 string.
+fn to_utf8_string(data : BytesView) -> String {
+  @utf8.decode_lossy(data.to_owned())
 }
 
 // -- part header parsing -----------------------------------------------
 
-/// Parse MIME part headers from a byte slice.
+/// Parse MIME part headers from `data`.
 ///
-/// Returns `(headers, body_offset)` where `body_offset` is the position
-/// immediately after the blank line that terminates the headers.
+/// Returns `(headers, rest)` where `rest` is the bytes immediately
+/// after the blank line that terminates the headers (i.e. the body).
 fn read_part_headers(
   data : BytesView,
-  offset : Int,
-) -> (Map[String, String], Int) raise {
+) -> (Map[String, String], BytesView) raise {
   let headers : Map[String, String] = {}
-  let mut pos = offset
 
-  while pos < data.length() {
-    let line_start = pos
-    let line_end = match read_line(data, pos) {
-      Some((end, next)) => { pos = next; end }
-      None => raise MultipartError::MalformedBody("part headers")
+  for rest = data {
+    match rest {
+      [..b"\r\n", ..rest] | [..b"\n", ..rest] => return (headers, rest)
+      _ => {
+        let (line_end, skip) = match rest.find(b"\r\n") {
+          Some(pos) => (pos, 2)
+          None => match rest.find(b"\n") {
+            Some(pos) => (pos, 1)
+            None => raise MultipartError::MalformedBody("part header: no CRLF")
+          }
+        }
+
+        let line_str = to_utf8_string(rest[:line_end])
+        guard line_str.find(":") is Some(colon) else {
+          raise MultipartError::MalformedBody("part header: \{line_str}")
+        }
+
+        let key = line_str[:colon].trim().to_owned()
+        let value = line_str[colon + 1:].trim().to_owned()
+        headers[key] = value
+        continue rest[line_end + skip:]
+      }
     }
-
-    // Empty line = end of headers
-    guard line_start != line_end else {
-      return (headers, pos)
-    }
-
-    let line_str = ascii_bytes_to_string(data, line_start, line_end)
-
-    // Split on first colon: "Key: Value"
-    guard line_str.find(":") is Some(colon) else {
-      raise MultipartError::MalformedBody("part header: \{line_str}")
-    }
-
-    let key = line_str[:colon].trim().to_owned()
-    let value = line_str[colon + 1:].trim().to_owned()
-    headers[key] = value
+  } nobreak {
+    raise MultipartError::MalformedBody("no blank line found")
   }
-
-  raise MultipartError::MalformedBody("no blank line found")
 }
 
 /// Split a `Content-Disposition` value into `(name, filename?)`.
@@ -393,11 +367,11 @@ fn unquote_mime_value(raw : String) -> String {
 // -- part decoding -----------------------------------------------------
 
 /// Decode one multipart part (headers + body) and add it to `form`.
-fn decode_part(
+fn next_part(
   part_data : BytesView,
   form : MultipartForm,
 ) -> Unit raise {
-  let (part_headers, body_offset) = read_part_headers(part_data, 0)
+  let (part_headers, body) = read_part_headers(part_data)
 
   let cd = match part_headers.get("Content-Disposition") {
     Some(v) => v
@@ -411,7 +385,6 @@ fn decode_part(
   }
 
   let content_type = part_headers.get("Content-Type")
-  let body = part_data[body_offset:]
 
   match filename {
     Some(fname) if fname.length() > 0 => {
@@ -432,7 +405,7 @@ fn decode_part(
     }
     _ => {
       // Regular form field (no filename)
-      let field_text = ascii_bytes_to_string(body, 0, body.length())
+      let field_text = to_utf8_string(body)
       form.values.0.get_or_init(name, () => []).push(field_text)
     }
   }
@@ -471,52 +444,63 @@ fn parse_multipart(
   content_type : String,
 ) -> MultipartForm raise {
   let boundary = boundary_from(content_type)
-  let boundary_marker = b"--" + boundary.to_bytes()
-  let view = body[:]
+  let delimiter = (b"--" + @utf8.encode(boundary))[:]
+  let final_delimiter = (b"--" + @utf8.encode(boundary) + b"--")[:]
   let form = MultipartForm::new()
 
-  // Skip to the first boundary
-  guard view.find(boundary_marker[:]) is Some(first) else {
-    raise MultipartError::MalformedBody("boundary not found")
+  // Skip preamble — seek to the first `--boundary`
+  let rest = match body[:].find(delimiter) {
+    Some(pos) => body[pos:]
+    None => raise MultipartError::MalformedBody("boundary not found")
   }
-  let mut pos = first + boundary_marker.length()
 
-  while pos < view.length() {
-    // Skip the line terminator following the boundary line
-    match view[pos] {
-      b'\r' if pos + 1 < view.length() && view[pos + 1] == b'\n' => pos = pos + 2
-      b'\n' => pos = pos + 1
-      _ => ()
-    }
-
-    // Final boundary? (trailing "--")
-    guard !(pos + 1 < view.length() && view[pos] == b'-' && view[pos + 1] == b'-') else {
-      break
-    }
-
-    // Locate the next boundary
-    guard view[pos:].find(boundary_marker[:]) is Some(next) else {
-      break
-    }
-    let next = pos + next
-
-    // Content ends before the trailing CRLF of the previous line
-    let content_end = match view[next - 1] {
-      b'\n' if next >= 2 && view[next - 2] == b'\r' => next - 2
-      b'\n' => next - 1
-      _ => next
-    }
-
-    let part_bytes = view[pos:content_end].to_owned()
-    decode_part(part_bytes[:], form)
-
-    pos = next + boundary_marker.length()
-
-    // Trailing "--" after boundary?
-    guard !(pos + 1 < view.length() && view[pos] == b'-' && view[pos + 1] == b'-') else {
-      break
+  for rest = rest {
+    let (delim, rest) = next_boundary(rest)
+    match delim {
+      d if d == final_delimiter => break
+      d if d == delimiter => {
+        let (part, rest) = cut_part(rest, delimiter)
+        next_part(part, form)
+        continue rest
+      }
+      _ => raise MultipartError::MalformedBody("missing boundary")
     }
   }
 
   form
+}
+
+/// Extract the boundary line from the front of `data` and skip its CRLF.
+fn next_boundary(data : BytesView) -> (BytesView, BytesView) {
+  let line_end = match data.find(b"\r\n") {
+    Some(pos) => pos
+    None => data.length()
+  }
+  let delim = data[:line_end]
+  let after = if data[line_end:].has_prefix(b"\r\n") {
+    data[line_end + 2:]
+  } else if data[line_end:].has_prefix(b"\n") {
+    data[line_end + 1:]
+  } else {
+    data[line_end:]
+  }
+  (delim, after)
+}
+
+/// Cut the part content from `data` up to the next `marker`.
+fn cut_part(data : BytesView, marker : BytesView) -> (BytesView, BytesView) raise {
+  match data.find(marker) {
+    Some(pos) => {
+      let content = data[:pos]
+      let part = if content.has_suffix(b"\r\n") {
+        content[:content.length() - 2]
+      } else if content.has_suffix(b"\n") {
+        content[:content.length() - 1]
+      } else {
+        content
+      }
+      (part, data[pos:])
+    }
+    None => raise MultipartError::MalformedBody("missing boundary")
+  }
 }

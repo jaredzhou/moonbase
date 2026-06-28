@@ -50,17 +50,6 @@ test "BytesView::find after start offset" {
   }
 }
 
-/// Spec: [RFC 2046 §5.1] Each part header line and the blank separator
-/// line must be terminated by CRLF (`\r\n`).
-test "read_line returns (end, next_pos) with CRLF" {
-  let data = b"hello\r\nworld"
-  let result = read_line(data[:], 0)
-  match result {
-    Some((5, 7)) => @debug.assert_eq(true, true) // end=5, next=7
-    _ => @debug.assert_eq("unexpected", "read_line result")
-  }
-}
-
 // ============================================================================
 // Spec: RFC 2183 §2, RFC 7578 §4.3 — Content-Disposition parameters
 // ============================================================================
