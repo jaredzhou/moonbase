@@ -1,5 +1,6 @@
 import {
   "jaredzhou/mooncedar",
   "moonbitlang/x/fs",
+  "moonbitlang/x/path",
   "moonbitlang/core/debug",
 }

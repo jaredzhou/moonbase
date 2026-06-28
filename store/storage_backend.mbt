@@ -113,3 +113,56 @@ pub impl StorageBackend for MemoryBackend with fn exists(
 ) -> Bool {
   self.files.get(key(bucket_id, name)) is Some(_)
 }
+
+// ---------------------------------------------------------------------------
+// LocalFSBackend — filesystem-backed StorageBackend
+// ---------------------------------------------------------------------------
+
+///|
+pub impl StorageBackend for @backend.LocalFSBackend with fn put(
+  self : @backend.LocalFSBackend,
+  bucket_id : String,
+  name : String,
+  data : Bytes,
+) -> Unit raise StorageError {
+  let path = @backend.full_path(self.base_path, bucket_id, name)
+  let dir = @backend.parent_dir(path)
+  @backend.create_dir_all(dir)
+  @fs.write_bytes_to_file(path, data) catch {
+    _ => raise BackendError("failed to write: \{path}")
+  }
+}
+
+///|
+pub impl StorageBackend for @backend.LocalFSBackend with fn get(
+  self : @backend.LocalFSBackend,
+  bucket_id : String,
+  name : String,
+) -> Bytes raise StorageError {
+  let path = @backend.full_path(self.base_path, bucket_id, name)
+  @fs.read_file_to_bytes(path) catch {
+    _ => raise NotFound("object not found: \{bucket_id}/\{name}")
+  }
+}
+
+///|
+pub impl StorageBackend for @backend.LocalFSBackend with fn delete(
+  self : @backend.LocalFSBackend,
+  bucket_id : String,
+  name : String,
+) -> Unit raise StorageError {
+  let path = @backend.full_path(self.base_path, bucket_id, name)
+  @fs.remove_file(path) catch {
+    _ => raise NotFound("object not found: \{bucket_id}/\{name}")
+  }
+}
+
+///|
+pub impl StorageBackend for @backend.LocalFSBackend with fn exists(
+  self : @backend.LocalFSBackend,
+  bucket_id : String,
+  name : String,
+) -> Bool {
+  let path = @backend.full_path(self.base_path, bucket_id, name)
+  @fs.path_exists(path)
+}

@@ -10,6 +10,7 @@ pub(all) suberror MultipartError {
   MissingName
   MalformedBody(String)
   FileTooLarge(String, Int64)
+  FileIOError(String)
 } derive(Debug)
 
 /// Metadata for a single uploaded file.
@@ -20,9 +21,10 @@ pub(all) struct FileHeader {
   header : Map[String, String]
 }
 
-/// Private storage (all in-memory in V1).
+/// Storage backend — memory or temp file on disk.
 enum UploadedFileData {
   InMemory(Bytes)
+  OnDisk(String) // path to temporary file
 }
 
 /// An uploaded file from a multipart/form-data request.
@@ -37,9 +39,11 @@ pub fn UploadedFile::header(self : UploadedFile) -> FileHeader {
 }
 
 /// Read the full file content as bytes.
-pub fn UploadedFile::bytes(self : UploadedFile) -> Bytes {
+/// Works for both in-memory and on-disk files.
+pub async fn UploadedFile::bytes(self : UploadedFile) -> Bytes {
   match self.data {
     InMemory(b) => b
+    OnDisk(path) => @fs.read_file(path).binary()
   }
 }
 
@@ -71,8 +75,40 @@ fn MultipartForm::file_all(self : MultipartForm, key : String) -> Array[Uploaded
   self.files.get(key).unwrap_or([])
 }
 
-fn MultipartForm::cleanup(self : MultipartForm) -> Unit {
-  ()
+/// Move files exceeding `max_memory` from memory to temporary disk files.
+/// Must be called from an async context (typically Context::parse_multipart_form).
+async fn MultipartForm::spill_to_disk(
+  self : MultipartForm,
+  max_memory : Int64,
+  temp_dir : String,
+) -> Unit {
+  for k, file_arr in self.files {
+    let new_files : Array[UploadedFile] = []
+    for i = 0; i < file_arr.length(); i = i + 1 {
+      let f = file_arr[i]
+      match f.data {
+        InMemory(b) if b.length().to_int64() > max_memory => {
+          let rand_hex = generate_random_hex(8)
+          let path = temp_dir + "/pony-multipart-\{rand_hex}"
+          @fs.write_file(path, b, create_mode=CreateNew) catch { _ => () }
+          new_files.push(UploadedFile::{ header: f.header, data: OnDisk(path) })
+        }
+        _ => new_files.push(f)
+      }
+    }
+    self.files[k] = new_files
+  }
+}
+
+async fn MultipartForm::cleanup(self : MultipartForm) -> Unit {
+  for _, file_arr in self.files {
+    for f in file_arr {
+      match f.data {
+        OnDisk(path) => @fs.remove(path) catch { _ => () }
+        InMemory(_) => ()
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -242,7 +278,6 @@ fn extract_header_param(raw : String) -> String {
 fn parse_part(
   part_data : BytesView,
   form : MultipartForm,
-  max_memory : Int64,
 ) -> Unit raise {
   let (part_headers, body_offset) = parse_part_headers(part_data, 0)
 
@@ -265,19 +300,20 @@ fn parse_part(
     Some(fname) if fname.length() > 0 => {
       let file_body = body.to_owned()
       let file_size = file_body.length().to_int64()
-      if file_size > max_memory {
-        raise MultipartError::FileTooLarge(fname, file_size)
-      }
       let file_header = FileHeader::{
         filename: fname,
         size: file_size,
         content_type,
         header: part_headers,
       }
+
+      // Always store in memory first; large files spilled to disk
+      // by MultipartForm::spill_to_disk() which runs in an async context.
       let file = UploadedFile::{
         header: file_header,
         data: InMemory(file_body),
       }
+
       form.files.get_or_init(name, () => []).push(file)
     }
     _ => {
@@ -288,6 +324,18 @@ fn parse_part(
   }
 }
 
+/// Generate a random hex string of n characters.
+fn generate_random_hex(n : Int) -> String {
+  let r = @random.Rand::new()
+  let hex_chars = "0123456789abcdef"
+  let buf = @buffer.Buffer::Buffer()
+  for _ in 0..<n {
+    let idx = r.int(limit=16)
+    buf.write_byte(hex_chars[idx].to_byte())
+  }
+  buf.to_bytes().to_unchecked_string()
+}
+
 // ---------------------------------------------------------------------------
 // Main parsing entry point
 // ---------------------------------------------------------------------------
@@ -295,7 +343,6 @@ fn parse_part(
 fn parse_multipart_body(
   body : Bytes,
   content_type : String,
-  max_memory : Int64,
 ) -> MultipartForm raise {
   let boundary = extract_boundary(content_type)
   let boundary_marker = b"--" + boundary.to_bytes()
@@ -335,7 +382,7 @@ fn parse_multipart_body(
     }
 
     let part_bytes = view[pos:content_end].to_owned()
-    parse_part(part_bytes[:], form, max_memory)
+    parse_part(part_bytes[:], form)
 
     pos = next + boundary_marker.length()
 
