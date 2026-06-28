@@ -266,105 +266,48 @@ fn boundary_from(content_type : String) -> String raise {
   let prefix = "boundary="
 
   // Find "boundary=" position (case‑insensitive, via lowercased copy)
-  let bp_pos = search_substr(lower[:], prefix)
-  guard bp_pos >= 0 else {
+  let bp_pos = lower.find(prefix)
+  guard bp_pos is Some(pos) else {
     raise MultipartError::MissingBoundary
   }
 
-  // Take the value portion from the *original* string (preserve case)
-  let rest = content_type[bp_pos + prefix.length():]
-
-  // Functional loop: peel quote characters and trailing junk
-  for s = rest {
-    match s {
-      ['"', ..inner, '"'] => break inner.to_owned()
-      ['"', ..inner] => continue inner
-      [..inner, ';'] => break inner.trim().to_owned()
-      [..inner, ' '] => continue inner.trim()
-      [] => raise MultipartError::MissingBoundary
-      _ => break s.trim().to_owned()
-    }
+  let rest = content_type[pos + prefix.length():]
+  // Quoted: value between quotes is the pure boundary.
+  // Unquoted: trim whitespace,  ';' if present.
+  match rest {
+    [] => raise MultipartError::MissingBoundary
+    ['"', ..inner, '"'] => inner.to_owned()
+    _ => rest.trim(chars = "; ").to_owned() 
   }
-}
-
-/// Search for `needle` in `haystack` (case‑sensitive).  Returns the
-/// byte offset of the first match or -1.
-fn search_substr(haystack : StringView, needle : String) -> Int {
-  let h_len = haystack.length()
-  let n_len = needle.length()
-  guard n_len > 0 && n_len <= h_len else {
-    return -1
-  }
-  for i in 0..<=(h_len - n_len) {
-    if haystack[i:].has_prefix(needle) {
-      return i
-    }
-  }
-  -1
-}
-
-/// Return the index of the first `:` in `s`, or `-1` if none found.
-fn find_colon(s : String) -> Int {
-  for i in 0..<s.length() {
-    if s[i] == ':' {
-      return i
-    }
-  }
-  -1
 }
 
 // -- byte-level primitives ---------------------------------------------
 
-/// Return the first byte-index at which `needle` appears in `haystack`,
-/// beginning the search at `start`. Returns `-1` when not found.
+/// Read one line from `data` starting at `offset`.
 ///
-/// Analogous to Go's `bytes.Index`.
-fn index_of_bytes(
-  haystack : BytesView,
-  needle : Bytes,
-  start : Int,
-) -> Int {
-  let h_len = haystack.length()
-  let n_len = needle.length()
-  guard n_len > 0 && n_len <= h_len else {
-    return -1
-  }
-  for i in start..<=(h_len - n_len) {
-    let mut ok = true
-    for j in 0..<n_len {
-      if haystack[i + j] != needle[j] {
-        ok = false
-        break
-      }
-    }
-    if ok {
-      return i
-    }
-  }
-  -1
-}
-
-/// Read one line delimited by `\r\n` or `\n`.
+/// Uses the standard `BytesView::find` to locate `\r\n` or `\n`.
+/// Returns `Some((end, next))` or `None` when past the end.
 ///
-/// Returns `Some((line_start, line_end, next_offset))`,
-/// or `None` when `offset` is past the end of `data`.
+/// * `end`  — offset of the last byte of content
+///            (exclusive; `data[offset:end]` is the line without the newline).
+/// * `next` — offset where the next line starts.
+///
+/// The line‑start is always the `offset` the caller passed in.
 fn read_line(
   data : BytesView,
   offset : Int,
-) -> (Int, Int, Int)? {
+) -> (Int, Int)? {
   guard offset < data.length() else {
     return None
   }
-  for i in offset..<data.length() {
-    if data[i] == b'\r' && i + 1 < data.length() && data[i + 1] == b'\n' {
-      return Some((offset, i, i + 2))
-    }
-    if data[i] == b'\n' {
-      return Some((offset, i, i + 1))
+  let rest = data[offset:]
+  match rest.find(b"\r\n") {
+    Some(crlf) => Some((offset + crlf, offset + crlf + 2))
+    None => match rest.find(b"\n") {
+      Some(lf) => Some((offset + lf, offset + lf + 1))
+      None => Some((data.length(), data.length()))
     }
   }
-  // No line terminator — the remainder is the last line
-  Some((offset, data.length(), data.length()))
 }
 
 /// Decode a byte range as a Unicode string.
@@ -387,12 +330,11 @@ fn read_part_headers(
   let mut pos = offset
 
   while pos < data.length() {
-    let line = match read_line(data, pos) {
-      Some(l) => l
+    let line_start = pos
+    let line_end = match read_line(data, pos) {
+      Some((end, next)) => { pos = next; end }
       None => raise MultipartError::MalformedBody("part headers")
     }
-    let (line_start, line_end, next_pos) = line
-    pos = next_pos
 
     // Empty line = end of headers
     guard line_start != line_end else {
@@ -402,8 +344,7 @@ fn read_part_headers(
     let line_str = ascii_bytes_to_string(data, line_start, line_end)
 
     // Split on first colon: "Key: Value"
-    let colon = find_colon(line_str)
-    guard colon >= 0 else {
+    guard line_str.find(":") is Some(colon) else {
       raise MultipartError::MalformedBody("part header: \{line_str}")
     }
 
@@ -535,11 +476,10 @@ fn parse_multipart(
   let form = MultipartForm::new()
 
   // Skip to the first boundary
-  let mut pos = index_of_bytes(view, boundary_marker, 0)
-  guard pos >= 0 else {
+  guard view.find(boundary_marker[:]) is Some(first) else {
     raise MultipartError::MalformedBody("boundary not found")
   }
-  pos = pos + boundary_marker.length()
+  let mut pos = first + boundary_marker.length()
 
   while pos < view.length() {
     // Skip the line terminator following the boundary line
@@ -555,10 +495,10 @@ fn parse_multipart(
     }
 
     // Locate the next boundary
-    let next = index_of_bytes(view, boundary_marker, pos)
-    guard next >= 0 else {
+    guard view[pos:].find(boundary_marker[:]) is Some(next) else {
       break
     }
+    let next = pos + next
 
     // Content ends before the trailing CRLF of the previous line
     let content_end = match view[next - 1] {

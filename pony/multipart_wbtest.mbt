@@ -33,27 +33,30 @@ test "boundary_from handles unquoted boundary" {
 
 /// Spec: [RFC 2046 §5.1] A part boundary marker `--boundary` must be
 /// locatable within the body bytes.
-test "index_of_bytes locates substring" {
+test "BytesView::find locates substring" {
   let data = b"abc---def---ghi"
-  let pos = index_of_bytes(data[:], b"---", 0)
-  @debug.assert_eq(pos, 3)
+  let pos = data[:].find(b"---")
+  @debug.assert_eq(pos, Some(3))
 }
 
-/// Spec: [RFC 2046 §5.1] The search respects a start offset so we can
-/// find subsequent boundary markers after the first.
-test "index_of_bytes finds second occurrence" {
+/// Spec: [RFC 2046 §5.1] A second boundary marker should be found after
+/// skipping past the first one.
+test "BytesView::find after start offset" {
   let data = b"abc---def---ghi"
-  let pos = index_of_bytes(data[:], b"---", 4)
-  @debug.assert_eq(pos, 9)
+  let pos = data[4:].find(b"---")
+  match pos {
+    Some(p) => @debug.assert_eq(p + 4, 9)
+    None => @debug.assert_eq("not found", "")
+  }
 }
 
 /// Spec: [RFC 2046 §5.1] Each part header line and the blank separator
 /// line must be terminated by CRLF (`\r\n`).
-test "read_line recognizes CRLF terminator" {
+test "read_line returns (end, next_pos) with CRLF" {
   let data = b"hello\r\nworld"
   let result = read_line(data[:], 0)
   match result {
-    Some((0, 5, 7)) => @debug.assert_eq(true, true)
+    Some((5, 7)) => @debug.assert_eq(true, true) // end=5, next=7
     _ => @debug.assert_eq("unexpected", "read_line result")
   }
 }
