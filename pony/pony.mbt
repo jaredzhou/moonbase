@@ -221,7 +221,7 @@ pub fn Context::query(self : Context, key : String) -> String? {
 pub async fn Context::form(self : Context, key : String) -> String? {
   // If multipart form was parsed, read regular fields from it.
   if self.multipart_form is Some(mf) {
-    return mf.value(key)
+    return mf.field_value(key)
   }
   // Fallback: application/x-www-form-urlencoded lazy parse.
   if self.form_values is None {
@@ -239,14 +239,16 @@ pub async fn Context::parse_multipart_form(
   let content_type = self.header("content-type").unwrap_or("")
   let data = self.req_body.read_all()
   let body = data.binary()
-  let form = parse_multipart_body(body, content_type, max_memory)
+  let form = parse_multipart(body, content_type)
+  let temp_dir = @fs.tmpdir(prefix="pony_")
+  form.spill_large_files_to_disk(max_memory, temp_dir)
   self.multipart_form = Some(form)
 }
 
 ///|
 pub fn Context::form_file(self : Context, key : String) -> UploadedFile? {
   match self.multipart_form {
-    Some(mf) => mf.file(key)
+    Some(mf) => mf.file_of(key)
     None => None
   }
 }
@@ -257,13 +259,13 @@ pub fn Context::form_files(
   key : String,
 ) -> Array[UploadedFile] {
   match self.multipart_form {
-    Some(mf) => mf.file_all(key)
+    Some(mf) => mf.files_of(key)
     None => []
   }
 }
 
 ///|
-pub fn Context::cleanup(self : Context) -> Unit {
+pub async fn Context::cleanup(self : Context) -> Unit {
   match self.multipart_form {
     Some(mf) => mf.cleanup()
     None => ()
@@ -293,24 +295,7 @@ pub fn Context::set_header(
 }
 
 ///|
-pub async fn Context::write_status(
-  self : Context,
-  http_status : Int,
-  end_response? : Bool = true,
-) -> Unit {
-  let http_status_msg = status_text(http_status)
-  self.resp_writer.send_response(
-    http_status,
-    http_status_msg,
-    extra_headers=self.resp_headers,
-  )
-  if end_response {
-    self.resp_writer.end_response()
-  }
-}
-
-///|
-async fn[T : ToJson] Context::response(
+async fn[T : ToJson] Context::reply(
   self : Context,
   result : Result[T, ApiError],
 ) -> Unit {
@@ -334,20 +319,20 @@ async fn[T : ToJson] Context::response(
 }
 
 ///|
-pub async fn[T : ToJson] Context::response_ok(
+pub async fn[T : ToJson] Context::reply_ok(
   self : Context,
   value : T,
 ) -> Unit {
-  self.response(Ok(value))
+  self.reply(Ok(value))
 }
 
 ///|
-pub async fn Context::response_error(
+pub async fn Context::reply_error(
   self : Context,
   code : Int,
   msg : String,
 ) -> Unit {
-  self.response((Err(ApiError::new(code, msg)) : Result[Unit, ApiError]))
+  self.reply((Err(ApiError::new(code, msg)) : Result[Unit, ApiError]))
 }
 
 ///|
@@ -399,9 +384,13 @@ pub fn Context::set_content_type(self : Context, ct : String) -> Unit {
 pub async fn Context::write_bytes(
   self : Context,
   http_status : Int,
+  msg? : String,
   body : Bytes,
 ) -> Unit {
-  let msg = status_text(http_status)
+  let msg = match msg {
+    Some(m) => m
+    None => status_text(http_status)
+  }
   self.resp_writer.send_response(
     http_status,
     msg,
@@ -423,9 +412,13 @@ pub async fn Context::redirect(
   self : Context,
   url : String,
   http_status? : Int = 302,
+  msg? : String,
 ) -> Unit {
   self.resp_headers.merge_in_place({ "Location": url })
-  let msg = status_text(http_status)
+  let msg = match msg {
+    Some(m) => m
+    None => status_text(http_status)
+  }
   self.resp_writer.send_response(
     http_status,
     msg,
