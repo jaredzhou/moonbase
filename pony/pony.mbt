@@ -235,7 +235,7 @@ pub async fn Context::form(self : Context, key : String) -> String? {
 pub async fn Context::parse_multipart_form(
   self : Context,
   max_memory~ : Int64 = default_max_memory,
-) -> Unit raise {
+) -> Unit {
   let content_type = self.header("content-type").unwrap_or("")
   let data = self.req_body.read_all()
   let body = data.binary()

@@ -432,3 +432,74 @@ test "ext_store" {
   assert_eq(req_id, "REQ-42")
   assert_eq(user_id, "USER-99")
 }
+
+/// Build a multipart body with explicit CRLF bytes (avoids encoding ambiguity).
+fn build_body(boundary : String, parts : Array[(String, String?, String)]) -> Bytes {
+  let buf = @buffer.Buffer::Buffer()
+  for part in parts {
+    let (name, filename, content) = part
+    buf.write_string_utf8("--\{boundary}\r\n")
+    buf.write_string_utf8("Content-Disposition: form-data; name=\"\{name}\"")
+    match filename {
+      Some(f) => {
+        buf.write_string_utf8("; filename=\"\{f}\"\r\nContent-Type: application/octet-stream\r\n\r\n")
+        buf.write_string_utf8(content)
+      }
+      None => {
+        buf.write_string_utf8("\r\n\r\n")
+        buf.write_string_utf8(content)
+      }
+    }
+    buf.write_string_utf8("\r\n")
+  }
+  buf.write_string_utf8("--\{boundary}--\r\n")
+  buf.to_bytes()
+}
+
+/// Integration: parse a multipart upload through the HTTP server.
+async test "test_multipart_upload" {
+  let r = Router::Router()
+  r.add(
+    HttpMethod::Post,
+    "/upload",
+    async fn(ctx) {
+      ctx.parse_multipart_form() catch {
+        _ => { ctx.write_text(400, "bad form"); return }
+      }
+      let username = ctx.form("username").unwrap_or("")
+      match ctx.form_file("avatar") {
+        Some(file) => {
+          let h = file.header()
+          ctx.write_text(200, "\{h.filename}/\{h.size}/\{username}")
+        }
+        None => ctx.write_text(200, "no-file/\{username}")
+      }
+    },
+    name="upload",
+  )
+
+  @async.with_task_group() <| group => {
+    let port = 19895
+    group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
+      start("127.0.0.1:\{port}", r)
+    }
+    let base = "http://127.0.0.1:\{port}"
+    @async.sleep(500)
+
+    let boundary = "----testboundary"
+    let body = build_body(
+      boundary,
+      [
+        ("username", None, "alice"),
+        ("avatar", Some("photo.png"), "binarydata"),
+      ],
+    )
+    let (resp, body) = @http.post(
+      base + "/upload",
+      body,
+      headers={ "Content-Type": "multipart/form-data; boundary=\{boundary}" },
+    )
+    assert_eq(resp.code, 200)
+    assert_eq(body.text(), "photo.png/10/alice")
+  }
+}

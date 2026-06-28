@@ -504,3 +504,183 @@ fn cut_part(data : BytesView, marker : BytesView) -> (BytesView, BytesView) rais
     None => raise MultipartError::MalformedBody("missing boundary")
   }
 }
+
+// ============================================================================
+// Streaming multipart reader
+// ============================================================================
+
+/// Chunk size for streaming reads (8 KiB).
+let stream_chunk_size : Int = 8192
+
+/// Streaming multipart reader — yields parts without buffering the
+/// entire body.  File data is streamed in chunks: small files stay
+/// in memory, large ones spill to temporary disk files.
+struct MultipartReader {
+  source : &@io.Reader
+  delimiter : Bytes          // "--boundary"
+  mut lookback : @buffer.Buffer
+  mut done : Bool
+}
+
+fn MultipartReader::new(source : &@io.Reader, boundary : String) -> MultipartReader {
+  let delim = b"--" + @utf8.encode(boundary)
+  {
+    source,
+    delimiter: delim,
+    lookback: @buffer.Buffer::Buffer(),
+    done: false,
+  }
+}
+
+/// Produce the next part from the stream.
+///
+/// Returns `Some((headers, UploadedFile))` or `None` when the final
+/// boundary is consumed.
+///
+/// * Form fields (no filename): body is `Memory(Bytes)` — decode with `to_utf8_string`.
+/// * Files: body is `Memory(Bytes)` or `Disk(path)` per `max_memory`.
+///
+/// The first call skips any preamble bytes before the initial `--boundary`.
+async fn MultipartReader::next_part(
+  self : MultipartReader,
+  max_memory : Int64,
+  temp_dir : String,
+) -> (Map[String, String], UploadedFile)? {
+  guard self.done is false else {
+    return None
+  }
+
+  // -- Read headers until blank line ------------------------------------
+  let headers : Map[String, String] = {}
+  while true {
+    let line = match self.source.read_until("\r\n") {
+      Some(s) => s
+      None => break
+    }
+    guard line.length() > 0 else {
+      break
+    }
+    guard line.find(":") is Some(colon) else { continue }
+    let key = line[:colon].trim().to_owned()
+    let value = line[colon + 1:].trim().to_owned()
+    headers[key] = value
+  }
+
+  let content_type = headers.get("Content-Type")
+
+  // -- Drain body streamingly --------------------------------------------
+  let accum = BodyAccum::new(max_memory, temp_dir)
+
+  while self.done is false {
+    let chunk = self.source.read_some(max_len=stream_chunk_size)
+    match chunk {
+      Some(data) => {
+        // Merge lookback + new data for boundary scan
+        let buf = if self.lookback.length() == 0 {
+          data
+        } else {
+          let lb = self.lookback.to_bytes()
+          self.lookback = @buffer.Buffer::Buffer()
+          let m = @buffer.Buffer::Buffer()
+          m.write_bytes(lb)
+          m.write_bytes(data)
+          m.to_bytes()
+        }
+        match buf[:].find(self.delimiter[:]) {
+          Some(pos) => {
+            let body_end = if pos >= 2 && buf[pos - 2] == b'\r' && buf[pos - 1] == b'\n' {
+              pos - 2
+            } else if pos >= 1 && buf[pos - 1] == b'\n' {
+              pos - 1
+            } else {
+              pos
+            }
+            if body_end > 0 {
+              accum.append(buf[0:body_end].to_owned())
+            }
+            let after = buf[pos + self.delimiter.length():]
+            if after.has_prefix(b"--") { self.done = true }
+            break
+          }
+          None => {
+            let keep = self.delimiter.length() + 2
+            if buf.length() > keep {
+              accum.append(buf[0:buf.length() - keep].to_owned())
+              self.lookback.write_bytes(buf[buf.length() - keep:])
+            } else {
+              self.lookback.write_bytes(buf)
+            }
+          }
+        }
+      }
+      None => break
+    }
+  }
+
+  // Flush any remaining lookback bytes
+  if self.lookback.length() > 0 {
+    accum.append(self.lookback.to_bytes())
+    self.lookback = @buffer.Buffer::Buffer()
+  }
+
+  let backend = accum.finish()
+  Some((headers, UploadedFile::{
+    header: FileHeader::{ filename: "", size: accum.total, content_type, header: headers },
+    backend,
+  }))
+}
+
+/// Match body data to memory or disk.  Spills when total exceeds
+/// `max_memory`.  Call `append()` for each chunk, then `finish()`.
+struct BodyAccum {
+  mut buf : @buffer.Buffer
+  mut total : Int64
+  mut disk_path : String
+  mut disk_file : @fs.File?
+  max_memory : Int64
+  temp_dir : String
+}
+
+fn BodyAccum::new(max_memory : Int64, temp_dir : String) -> BodyAccum {
+  {
+    buf: @buffer.Buffer::Buffer(),
+    total: 0,
+    disk_path: "",
+    disk_file: None,
+    max_memory,
+    temp_dir,
+  }
+}
+
+async fn BodyAccum::append(self : BodyAccum, data : Bytes) -> Unit {
+  let inc = data.length().to_int64()
+  self.total = self.total + inc
+
+  if self.disk_path.length() > 0 || self.total > self.max_memory {
+    if self.disk_path.length() == 0 {
+      let path = "\{self.temp_dir}/pony-multipart-\{random_hex(8)}"
+      self.disk_file = Some(@fs.create(path) catch { _ => return })
+      self.disk_file.unwrap().write(self.buf.to_bytes()[:]) |> ignore
+      self.buf = @buffer.Buffer::Buffer()
+      self.disk_path = path
+    }
+    match self.disk_file {
+      Some(f) => f.write(data[:]) |> ignore
+      _ => ()
+    }
+  } else {
+    self.buf.write_bytes(data)
+  }
+}
+
+fn BodyAccum::finish(self : BodyAccum) -> FileBackend {
+  if self.disk_path.length() > 0 {
+    match self.disk_file {
+      Some(f) => f.close()
+      _ => ()
+    }
+    Disk(self.disk_path)
+  } else {
+    Memory(self.buf.to_bytes())
+  }
+}
