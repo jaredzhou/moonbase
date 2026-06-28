@@ -80,7 +80,7 @@ fn create_bucket_handler(storage : Storage) -> @pony.Handler {
       e => { error_to_ctx(ctx, e); return }
     }
     let body : CreateBucketBody = ctx.json() catch {
-      _ => { ctx.reply_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(@pony.invalid_argument, "invalid JSON body"); return }
     }
     let bucket = storage.create_bucket(user, CreateBucketInput::{
       name: body.name,
@@ -117,7 +117,7 @@ fn get_bucket_handler(storage : Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.reply_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(@pony.invalid_argument, "missing bucketId"); return }
     }
     let bucket = storage.get_bucket(user, id) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -135,10 +135,10 @@ fn update_bucket_handler(storage : Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.reply_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(@pony.invalid_argument, "missing bucketId"); return }
     }
     let body : UpdateBucketBody = ctx.json() catch {
-      _ => { ctx.reply_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(@pony.invalid_argument, "invalid JSON body"); return }
     }
     let bucket = storage.update_bucket(user, id, UpdateBucketInput::{
       public: body.public,
@@ -160,7 +160,7 @@ fn delete_bucket_handler(storage : Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.reply_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(@pony.invalid_argument, "missing bucketId"); return }
     }
     let _ = storage.delete_bucket(user, id) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -178,7 +178,7 @@ fn empty_bucket_handler(storage : Storage) -> @pony.Handler {
     }
     let id = match ctx.param("bucketId") {
       Some(id) => id
-      None => { ctx.reply_error(400, "missing bucketId"); return }
+      None => { ctx.reply_error(@pony.invalid_argument, "missing bucketId"); return }
     }
     let _ = storage.empty_bucket(user, id) catch {
       e => { error_to_ctx(ctx, e); return }

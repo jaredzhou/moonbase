@@ -154,12 +154,12 @@ fn upload_object(storage : Storage) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let bucket_name = extract_bucket_name(ctx)
     let name = extract_path(ctx)
     if name == "" {
-      ctx.reply_error(400, "missing object path")
+      ctx.reply_error(@pony.invalid_argument, "missing object path")
       return
     }
     // Read request body as raw bytes
@@ -194,7 +194,7 @@ fn authenticated_download(storage : Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let (_, data) = storage.download(Some(user), bucket_name, name) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -224,10 +224,10 @@ fn update_object(storage : Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let body : UpdateObjectBody = ctx.json() catch {
-      _ => { ctx.reply_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(@pony.invalid_argument, "invalid JSON body"); return }
     }
     let obj = storage.update_object(user, bucket_name, name, UpdateObjectInput::{
       user_metadata: body.user_metadata,
@@ -245,7 +245,7 @@ fn list_objects(storage : Storage) -> @pony.Handler {
     let bucket_name = extract_bucket_name(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let body : ListObjectsBody = ctx.json() catch {
       _ => ListObjectsBody::{
@@ -265,10 +265,10 @@ fn move_object(storage : Storage) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let body : MoveCopyBody = ctx.json() catch {
-      _ => { ctx.reply_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(@pony.invalid_argument, "invalid JSON body"); return }
     }
     storage.move_object(user, body.bucket_id, body.source_key, body.destination_key) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -283,10 +283,10 @@ fn copy_object(storage : Storage) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let body : MoveCopyBody = ctx.json() catch {
-      _ => { ctx.reply_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(@pony.invalid_argument, "invalid JSON body"); return }
     }
     storage.copy_object(user, body.bucket_id, body.source_key, body.destination_key) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -303,7 +303,7 @@ fn delete_object(storage : Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     storage.delete_object(user, bucket_name, name) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -319,10 +319,10 @@ fn delete_objects(storage : Storage) -> @pony.Handler {
     let bucket_name = extract_bucket_name(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let body : DeleteBatchBody = ctx.json() catch {
-      _ => { ctx.reply_error(400, "invalid JSON body"); return }
+      _ => { ctx.reply_error(@pony.invalid_argument, "invalid JSON body"); return }
     }
     storage.delete_objects(user, bucket_name, body.prefixes) catch {
       e => { error_to_ctx(ctx, e); return }
@@ -339,7 +339,7 @@ fn object_info_auth(storage : Storage) -> @pony.Handler {
     let name = extract_path(ctx)
     let user = match extract_user_opt(ctx) {
       Some(u) => u
-      None => { ctx.reply_error(401, "missing X-User header"); return }
+      None => { ctx.reply_error(@pony.unauthenticated, "missing X-User header"); return }
     }
     let obj = storage.get_object_info(Some(user), bucket_name, name) catch {
       e => { error_to_ctx(ctx, e); return }

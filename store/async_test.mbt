@@ -7,7 +7,6 @@ async test "integration: list and get bucket via HTTP" {
   @async.with_task_group() <| group => {
     let port = 19880
     let storage = new_test_storage()
-    // Pre-populate a bucket directly in the storage
     let input = CreateBucketInput::{ name: "my-bucket", public: Some(false), file_size_limit: None, allowed_mime_types: None }
     let _bucket = storage.create_bucket("alice", input) catch { e => panic() }
     let r = @pony.Router::Router()
@@ -17,14 +16,12 @@ async test "integration: list and get bucket via HTTP" {
     }
     @async.sleep(500)
 
-    // List buckets
     let (resp, _) = @http.get(
       "http://127.0.0.1:\{port}/bucket/",
       headers={ "x-user": "alice" },
     )
     @debug.assert_eq(resp.code, 200)
 
-    // Get specific bucket
     let (resp2, _) = @http.get(
       "http://127.0.0.1:\{port}/bucket/my-bucket",
       headers={ "x-user": "alice" },
@@ -48,7 +45,6 @@ async test "integration: upload and download object via HTTP" {
     }
     @async.sleep(500)
 
-    // Upload
     let (resp2, _) = @http.post(
       "http://127.0.0.1:\{port}/object/pub/hello.txt",
       "hello world",
@@ -56,7 +52,6 @@ async test "integration: upload and download object via HTTP" {
     )
     @debug.assert_eq(resp2.code, 200)
 
-    // Public download
     let (resp3, _) = @http.get(
       "http://127.0.0.1:\{port}/object/public/pub/hello.txt",
     )
@@ -80,20 +75,26 @@ async test "integration: move and delete object via HTTP" {
     @async.sleep(500)
 
     // Upload
-    let (resp2, _) = @http.post(
+    let (resp2, body2) = @http.post(
       "http://127.0.0.1:\{port}/object/ops/old.txt",
       "test data",
       headers={ "x-user": "alice" },
     )
     @debug.assert_eq(resp2.code, 200)
 
-    // Move
-    let move_body = #|{"bucket_id":"ops","source_key":"old.txt","destination_key":"new.txt"}"
-    let (resp3, _) = @http.post(
-      "http://127.0.0.1:\{port}/object/move",
-      move_body,
-      headers={ "x-user": "alice", "content-type": "application/json" },
+    // Move with explicit Content-Length and read response body for debugging
+    let move_body = "{\"bucket_id\":\"ops\",\"source_key\":\"old.txt\",\"destination_key\":\"new.txt\"}"
+    let mclient = @http.Client("http://127.0.0.1:\{port}")
+    defer mclient.close()
+    let content_length = move_body.length().to_string()
+    mclient.request(
+      @http.RequestMethod::Post,
+      "/object/move",
+      extra_headers={ "x-user": "alice", "content-type": "application/json", "Content-Length": content_length },
     )
+    mclient.write(move_body)
+    let resp3 = mclient.end_request()
+    let body3 = mclient.read_all()
     @debug.assert_eq(resp3.code, 204)
 
     // Delete
@@ -105,6 +106,7 @@ async test "integration: move and delete object via HTTP" {
       extra_headers={ "x-user": "alice" },
     )
     let resp4 = dclient.end_request()
+    let _body4 = dclient.read_all()
     @debug.assert_eq(resp4.code, 204)
   }
 }
