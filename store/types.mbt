@@ -46,7 +46,7 @@ pub(all) struct StorageMetadata {
   pub size : Int64
   pub mimetype : String
   pub cache_control : String?
-} derive(Debug, Eq)
+} derive(Debug, Eq, ToJson)
 
 ///|
 /// A stored object (file) within a bucket.
@@ -62,4 +62,4 @@ pub(all) struct Object {
   pub created_at : String
   pub updated_at : String?
   pub last_accessed_at : String?
-} derive(Debug, Eq)
+} derive(Debug, Eq, ToJson)
