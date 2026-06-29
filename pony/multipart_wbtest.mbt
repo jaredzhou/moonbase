@@ -100,3 +100,153 @@ test "MultipartForm new is empty" {
   @debug.assert_eq(form.file_of("any") is None, true)
   @debug.assert_eq(form.files_of("any").length(), 0)
 }
+
+// ============================================================================
+// Part struct whitebox tests
+// ============================================================================
+
+/// Construct a Part with a given Content-Disposition header and verify
+/// form_name extracts the name and optional filename.
+test "Part form_name extracts name and filename" {
+  let headers = PartHeaders::new()
+  headers.set("Content-Disposition", "form-data; name=\"file1\"; filename=\"test.txt\"")
+  headers.set("Content-Type", "text/plain")
+  let reader = @io.MemoryReader() <| w => {}
+  let part = Part::{
+    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+  }
+  let (name, filename) = part.form_name()
+  @debug.assert_eq(name, "file1")
+  match filename {
+    Some(f) => @debug.assert_eq(f, "test.txt")
+    None => @debug.assert_eq("missing", "filename")
+  }
+}
+
+/// Verify Part::content_type returns the Content-Type header value.
+test "Part content_type" {
+  let headers = PartHeaders::new()
+  headers.set("Content-Type", "image/png")
+  let reader = @io.MemoryReader() <| w => {}
+  let part = Part::{
+    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+  }
+  @debug.assert_eq(part.content_type(), Some("image/png"))
+}
+
+/// Verify Part::content_type returns None when no Content-Type header.
+test "Part content_type none" {
+  let headers = PartHeaders::new()
+  let reader = @io.MemoryReader() <| w => {}
+  let part = Part::{
+    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+  }
+  @debug.assert_eq(part.content_type() is None, true)
+}
+
+/// Verify Part::headers returns the part's MIME headers.
+test "Part headers" {
+  let headers = PartHeaders::new()
+  headers.set("X-Custom", "value")
+  let reader = @io.MemoryReader() <| w => {}
+  let part = Part::{
+    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+  }
+  @debug.assert_eq(part.headers().get("x-custom"), Some("value"))
+}
+
+// ============================================================================
+// MultipartReader streaming whitebox tests
+// ============================================================================
+
+/// Build a complete multipart body with the given boundary and one text part.
+fn build_multipart_body(boundary : String, name : String, value : String) -> Bytes {
+  let buf = @buffer.Buffer::Buffer()
+  buf.write_string_utf8("--\{boundary}\r\n")
+  buf.write_string_utf8("Content-Disposition: form-data; name=\"\{name}\"\r\n")
+  buf.write_string_utf8("\r\n")
+  buf.write_string_utf8(value)
+  buf.write_string_utf8("\r\n--\{boundary}--\r\n")
+  buf.to_bytes()
+}
+
+/// Streaming: parse a single text field part through MultipartReader.
+async test "MultipartReader yields Part with text field" {
+  let boundary = "----boundary"
+  let body = build_multipart_body(boundary, "username", "alice")
+  let reader = @io.MemoryReader() <| w => { w.write(body) }
+  let mr = MultipartReader::new(reader, boundary)
+  match mr.next_part() {
+    Some(part) => {
+      let (name, filename) = part.form_name()
+      @debug.assert_eq(name, "username")
+      @debug.assert_eq(filename is None, true)
+      match part.read_chunk() {
+        Some(chunk) => @debug.assert_eq(to_utf8_string(chunk[:]), "alice")
+        None => @debug.assert_eq("no chunk", "expected chunk")
+      }
+      @debug.assert_eq(part.read_chunk() is None, true)
+    }
+    None => @debug.assert_eq("no part", "expected part")
+  }
+}
+
+/// Streaming: parse a file part with filename through MultipartReader.
+async test "MultipartReader yields Part with file field" {
+  let boundary = "----fileboundary"
+  let buf = @buffer.Buffer::Buffer()
+  buf.write_string_utf8("--\{boundary}\r\n")
+  buf.write_string_utf8("Content-Disposition: form-data; name=\"avatar\"; filename=\"photo.png\"\r\n")
+  buf.write_string_utf8("Content-Type: image/png\r\n")
+  buf.write_string_utf8("\r\n")
+  buf.write_bytes(b"\x00\x01\x02\x03")
+  buf.write_string_utf8("\r\n--\{boundary}--\r\n")
+  let body = buf.to_bytes()
+  let reader = @io.MemoryReader() <| w => { w.write(body) }
+  let mr = MultipartReader::new(reader, boundary)
+  match mr.next_part() {
+    Some(part) => {
+      let (name, filename) = part.form_name()
+      @debug.assert_eq(name, "avatar")
+      match filename {
+        Some(f) => @debug.assert_eq(f, "photo.png")
+        None => @debug.assert_eq("missing", "filename")
+      }
+      @debug.assert_eq(part.content_type(), Some("image/png"))
+      match part.read_chunk() {
+        Some(chunk) => @debug.assert_eq(chunk, b"\x00\x01\x02\x03")
+        None => @debug.assert_eq("no chunk", "expected chunk")
+      }
+      @debug.assert_eq(part.read_chunk() is None, true)
+    }
+    None => @debug.assert_eq("no part", "expected part")
+  }
+}
+
+/// Streaming: MultipartReader returns None after final boundary.
+async test "MultipartReader returns None after final boundary" {
+  let boundary = "----endboundary"
+  let body = build_multipart_body(boundary, "f", "v")
+  let reader = @io.MemoryReader() <| w => { w.write(body) }
+  let mr = MultipartReader::new(reader, boundary)
+  let part1 = mr.next_part()
+  @debug.assert_eq(part1 is Some(_), true)
+  let part1 = part1.unwrap()
+  // Drain the part so store_remaining gets boundary tail
+  part1.read_chunk() |> ignore
+  part1.read_chunk() |> ignore
+  mr.store_remaining(part1.take_remaining())
+  let part2 = mr.next_part()
+  @debug.assert_eq(part2 is None, true)
+}
+
+// ============================================================================
+// readutil test (existing)
+// ============================================================================
+
+async test "readutil test" {
+  let reader = @io.MemoryReader() <| w => {
+    w.write("\r\n")
+  }
+  @debug.assert_eq(reader.read_until("\r\n"), Some(""))
+}

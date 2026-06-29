@@ -119,10 +119,235 @@ pub(all) suberror MultipartError {
 } derive(Debug)
 
 // ---------------------------------------------------------------------------
+// IO traits
+// ---------------------------------------------------------------------------
+
+/// Close the resource. Safe to call multiple times.
+pub trait Closer {
+  close(Self) -> Unit
+}
+
+/// A writer that can be closed.
+pub trait WriterCloser : @io.Writer + Closer {}
+
+/// A reader that can be closed.
+pub trait ReaderCloser : @io.Reader + Closer {}
+
+/// Wraps an `@fs.File` as a `WriterCloser` for multipart uploads.
+pub(all) struct FileWriter(@fs.File)
+
+impl @io.Writer for FileWriter with fn write_once(
+  self : FileWriter,
+  data : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Int {
+  let FileWriter(f) = self
+  f.write_once(data, offset~, len~)
+}
+
+impl Closer for FileWriter with close(self : FileWriter) -> Unit {
+  let FileWriter(f) = self
+  f.close()
+}
+
+// ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-/// Metadata for a single uploaded file.
+/// Case-insensitive MIME part headers.
+///
+/// Keys are normalised to lower-case on insertion and lookup.
+pub(all) struct PartHeaders(Map[String, String])
+
+///|
+pub fn PartHeaders::new() -> PartHeaders {
+  PartHeaders({})
+}
+
+///|
+fn PartHeaders::set(self : PartHeaders, key : String, value : String) -> Unit {
+  let PartHeaders(m) = self
+  m[key.to_lower()] = value
+}
+
+/// Return the value for `key` (case-insensitive), or `None`.
+pub fn PartHeaders::get(self : PartHeaders, key : String) -> String? {
+  let PartHeaders(m) = self
+  m.get(key.to_lower())
+}
+
+/// Return true if `key` is present.
+pub fn PartHeaders::has(self : PartHeaders, key : String) -> Bool {
+  let k = key.to_lower()
+  let PartHeaders(m) = self
+  m.contains(k)
+}
+
+/// Return true if there are no entries.
+pub fn PartHeaders::is_empty(self : PartHeaders) -> Bool {
+  let PartHeaders(m) = self
+  m.size() == 0
+}
+
+// ============================================================================
+// Streaming Part
+// ============================================================================
+
+/// A single part in a multipart stream.
+///
+/// Owns a lookback buffer for boundary scanning. When the body reaches
+/// the next boundary delimiter, `read_chunk` returns `None` and the
+/// remaining bytes after the boundary are recoverable via
+/// `take_remaining()`.
+pub(all) struct Part {
+  source : &@io.Reader
+  delimiter : Bytes          // "--boundary"
+  headers : PartHeaders
+  mut buf : @buffer.Buffer   // unprocessed data (initial + new chunks)
+  mut body_eof : Bool        // true when boundary delimiter found
+}
+
+/// Return the part's MIME headers.
+pub fn Part::headers(self : Part) -> PartHeaders {
+  self.headers
+}
+
+/// Return the `Content-Type` of the part, if present.
+pub fn Part::content_type(self : Part) -> String? {
+  self.headers.get("Content-Type")
+}
+
+/// Extract `(name, filename?)` from the `Content-Disposition` header.
+pub fn Part::form_name(self : Part) -> (String, String?) {
+  let cd = self.headers.get("Content-Disposition").unwrap_or("")
+  split_content_disposition(cd)
+}
+
+/// Read the next body chunk (up to `max_len` bytes).
+///
+/// Returns `None` when the boundary delimiter has been reached or the
+/// source is exhausted.
+async fn Part::read_chunk(
+  self : Part,
+  max_len~ : Int = stream_chunk_size,
+) -> Bytes? {
+  guard self.body_eof is false else { return None }
+
+  // Scan for the boundary delimiter
+  let data = self.buf.to_bytes()
+  match data[:].find(self.delimiter[:]) {
+    Some(pos) => {
+      // Trim trailing CRLF before the boundary
+      let body_end = if pos >= 2 && data[pos - 2] == b'\r' && data[pos - 1] == b'\n' {
+        pos - 2
+      } else if pos >= 1 && data[pos - 1] == b'\n' {
+        pos - 1
+      } else {
+        pos
+      }
+
+      self.body_eof = true
+
+      // Keep bytes after boundary for take_remaining()
+      let after = pos + self.delimiter.length()
+      let remaining = @buffer.Buffer::Buffer()
+      if after < data.length() {
+        remaining.write_bytes(data[after:].to_owned())
+      }
+      self.buf = remaining
+
+      if body_end > 0 {
+        Some(data[0:body_end].to_owned())
+      } else {
+        Some(b"")
+      }
+    }
+    None => {
+      // Boundary not found — keep lookbehind zone, emit the rest
+      let keep = self.delimiter.length() + 2
+      if data.length() > keep {
+        let emit_end = data.length() - keep
+        let chunk = data[0:emit_end].to_owned()
+        let new_buf = @buffer.Buffer::Buffer()
+        new_buf.write_bytes(data[emit_end:].to_owned())
+        self.buf = new_buf
+        Some(chunk)
+      } else {
+        // Not enough data — read more from source
+        match self.source.read_some(max_len~) {
+          Some(chunk) => {
+            self.buf.write_bytes(chunk)
+            // Recurse via re-calling with the updated buffer
+            // We need to try again with the larger buffer
+            Part::read_chunk_retry(self, max_len~)
+          }
+          None => {
+            // Source exhausted — emit whatever remains
+            let chunk = self.buf.to_bytes()
+            self.body_eof = true
+            self.buf = @buffer.Buffer::Buffer()
+            if chunk.length() > 0 { Some(chunk) } else { None }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// Internal helper: retry boundary scan after reading more data.
+async fn Part::read_chunk_retry(
+  self : Part,
+  max_len~ : Int = stream_chunk_size,
+) -> Bytes? {
+  let data = self.buf.to_bytes()
+  match data[:].find(self.delimiter[:]) {
+    Some(pos) => {
+      let body_end = if pos >= 2 && data[pos - 2] == b'\r' && data[pos - 1] == b'\n' {
+        pos - 2
+      } else if pos >= 1 && data[pos - 1] == b'\n' {
+        pos - 1
+      } else {
+        pos
+      }
+      self.body_eof = true
+      let after = pos + self.delimiter.length()
+      let remaining = @buffer.Buffer::Buffer()
+      if after < data.length() {
+        remaining.write_bytes(data[after:].to_owned())
+      }
+      self.buf = remaining
+      if body_end > 0 {
+        Some(data[0:body_end].to_owned())
+      } else {
+        Some(b"")
+      }
+    }
+    None => {
+      let keep = self.delimiter.length() + 2
+      if data.length() > keep {
+        let emit_end = data.length() - keep
+        let chunk = data[0:emit_end].to_owned()
+        let new_buf = @buffer.Buffer::Buffer()
+        new_buf.write_bytes(data[emit_end:].to_owned())
+        self.buf = new_buf
+        Some(chunk)
+      } else {
+        None
+      }
+    }
+  }
+}
+
+/// Return leftover bytes after the boundary delimiter.
+///
+/// Callers should pass these to `MultipartReader` after consuming
+/// the part so the next boundary line and headers can be found.
+fn Part::take_remaining(self : Part) -> Bytes {
+  self.buf.to_bytes()
+}
+
+/// Metadata for a single uploaded file, plus its content.
 /// Fields mirror Go's `mime/multipart.FileHeader`.
 pub(all) struct FileHeader {
   /// Original filename from the `Content-Disposition` header.
@@ -131,38 +356,54 @@ pub(all) struct FileHeader {
   size : Int64
   /// MIME type from the part header, e.g. `"image/png"`.
   content_type : String?
-  /// Raw MIME part headers (canonical keys).
-  header : Map[String, String]
+  /// Raw MIME part headers.
+  header : PartHeaders
+  /// Where the file content lives.
+  mut backend : FileBackend
 }
 
 /// Where the uploaded file content lives.
 enum FileBackend {
   Memory(Bytes)
   Disk(String)  // path to temporary file
-}
-
-/// An uploaded file, as parsed from a multipart/form-data request.
-pub(all) struct UploadedFile {
-  header : FileHeader
-  backend : FileBackend
-}
-
-/// Return the file's metadata (filename, size, content type, headers).
-pub fn UploadedFile::header(self : UploadedFile) -> FileHeader {
-  self.header
+  External      // handled by a custom writer, no local copy
 }
 
 /// Read the entire file content as `Bytes`.
 ///
 /// * For files that fit in memory: returns immediately.
 /// * For files spilled to disk: reads from the temp file.
+/// * For External files: returns empty — file was streamed to a custom writer.
 ///
 /// Must be called from an `async` context.
-pub async fn UploadedFile::bytes(self : UploadedFile) -> Bytes {
+pub async fn FileHeader::bytes(self : FileHeader) -> Bytes {
   match self.backend {
     Memory(b) => b
     Disk(path) => @fs.read_file(path).binary()
+    External => b""
   }
+}
+
+/// Return the file path for on-disk files, or `None` for in-memory/External.
+pub fn FileHeader::path(self : FileHeader) -> String? {
+  match self.backend {
+    Disk(path) => Some(path)
+    _ => None
+  }
+}
+
+/// Open a reader for the file content.
+///
+/// * Memory: returns a reader backed by the in-memory bytes.
+/// * Disk: reads the temp file and returns a memory-backed reader.
+/// * External: returns an empty reader — file was streamed to a custom writer.
+pub async fn FileHeader::open(self : FileHeader) -> @io.MemoryReader {
+  let data = match self.backend {
+    Memory(b) => b
+    Disk(path) => @fs.read_file(path).binary()
+    External => b""
+  }
+  @io.MemoryReader() <| w => { w.write(data) }
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +414,7 @@ pub async fn UploadedFile::bytes(self : UploadedFile) -> Bytes {
 /// Holds both regular fields (via `Values`) and file uploads.
 struct MultipartForm {
   values : Values
-  files : Map[String, Array[UploadedFile]]
+  files : Map[String, Array[FileHeader]]
 }
 
 fn MultipartForm::new() -> MultipartForm {
@@ -184,14 +425,14 @@ fn MultipartForm::field_value(self : MultipartForm, key : String) -> String? {
   self.values.get(key)
 }
 
-fn MultipartForm::file_of(self : MultipartForm, key : String) -> UploadedFile? {
+fn MultipartForm::file_of(self : MultipartForm, key : String) -> FileHeader? {
   match self.files.get(key) {
     Some(arr) if arr.length() > 0 => Some(arr[0])
     _ => None
   }
 }
 
-fn MultipartForm::files_of(self : MultipartForm, key : String) -> Array[UploadedFile] {
+fn MultipartForm::files_of(self : MultipartForm, key : String) -> Array[FileHeader] {
   self.files.get(key).unwrap_or([])
 }
 
@@ -206,29 +447,28 @@ async fn MultipartForm::spill_large_files_to_disk(
   temp_dir : String,
 ) -> Unit {
   for field_name, file_arr in self.files{
-    let new_files = Array::new()
     for file in file_arr {
       match file.backend {
         Memory(b) if b.length().to_int64() > max_memory => {
           let path = "\{temp_dir}/pony-multipart-\{random_hex(8)}"
           @fs.write_file(path, b, create_mode=CreateNew) catch { _ => () }
-          new_files.push(UploadedFile::{ header: file.header, backend: Disk(path) })
+          file.backend = Disk(path)
         }
-        _ => new_files.push(file)
+        _ => ()
       }
     }
-    self.files[field_name] = new_files
   }
 }
 
 /// Remove every temporary disk file held by this form.
 /// Safe to call when no disk files exist (no-op).
+/// Does NOT remove External files (belong to the caller).
 async fn MultipartForm::cleanup(self : MultipartForm) -> Unit {
   for _, file_arr in self.files {
     for file in file_arr {
       match file.backend {
         Disk(path) => @fs.remove(path) catch { _ => () }
-        Memory(_) => ()
+        Memory(_) | External => ()
       }
     }
   }
@@ -299,8 +539,8 @@ fn to_utf8_string(data : BytesView) -> String {
 /// after the blank line that terminates the headers (i.e. the body).
 fn read_part_headers(
   data : BytesView,
-) -> (Map[String, String], BytesView) raise {
-  let headers : Map[String, String] = {}
+) -> (PartHeaders, BytesView) raise {
+  let headers = PartHeaders::new()
 
   for rest = data {
     match rest {
@@ -321,7 +561,7 @@ fn read_part_headers(
 
         let key = line_str[:colon].trim().to_owned()
         let value = line_str[colon + 1:].trim().to_owned()
-        headers[key] = value
+        headers.set(key, value)
         continue rest[line_end + skip:]
       }
     }
@@ -395,13 +635,14 @@ fn next_part(
         size: file_size,
         content_type,
         header: part_headers,
+        backend: Memory(file_body),
       }
 
       // Always buffer in memory first.
       // Large files are spilled to disk later via spill_large_files_to_disk().
       form.files
         .get_or_init(name, () => [])
-        .push(UploadedFile::{ header: file_header, backend: Memory(file_body) })
+        .push(file_header)
     }
     _ => {
       // Regular form field (no filename)
@@ -512,13 +753,17 @@ fn cut_part(data : BytesView, marker : BytesView) -> (BytesView, BytesView) rais
 /// Chunk size for streaming reads (8 KiB).
 let stream_chunk_size : Int = 8192
 
-/// Streaming multipart reader — yields parts without buffering the
-/// entire body.  File data is streamed in chunks: small files stay
-/// in memory, large ones spill to temporary disk files.
+/// Streaming multipart reader — yields `Part` values one at a time.
+///
+/// The caller passes leftover bytes from each Part back via
+/// `store_remaining` so the reader can find the next boundary line
+/// and part headers.
 struct MultipartReader {
   source : &@io.Reader
   delimiter : Bytes          // "--boundary"
-  mut lookback : @buffer.Buffer
+  final_delimiter : Bytes    // "--boundary--"
+  mut initial_buf : @buffer.Buffer  // carry-over bytes from previous part
+  mut preamble_skipped : Bool
   mut done : Bool
 }
 
@@ -527,112 +772,277 @@ fn MultipartReader::new(source : &@io.Reader, boundary : String) -> MultipartRea
   {
     source,
     delimiter: delim,
-    lookback: @buffer.Buffer::Buffer(),
+    final_delimiter: b"--" + @utf8.encode(boundary) + b"--",
+    initial_buf: @buffer.Buffer::Buffer(),
+    preamble_skipped: false,
     done: false,
   }
 }
 
-/// Produce the next part from the stream.
+/// Produce the next `Part` from the stream.
 ///
-/// Returns `Some((headers, UploadedFile))` or `None` when the final
-/// boundary is consumed.
+/// The first call skips any preamble bytes and reads the initial
+/// boundary line.  Subsequent calls consume the carry‑over bytes
+/// stashed via `store_remaining`.
 ///
-/// * Form fields (no filename): body is `Memory(Bytes)` — decode with `to_utf8_string`.
-/// * Files: body is `Memory(Bytes)` or `Disk(path)` per `max_memory`.
+/// Returns `None` when the final delimiter is consumed.
+async fn MultipartReader::next_part(self : MultipartReader) -> Part? raise {
+  guard self.done is false else { return None }
+
+  // Build a scan buffer from any carry-over bytes.
+  let mut scan_buf = @buffer.Buffer::Buffer()
+  if self.initial_buf.length() > 0 {
+    scan_buf.write_bytes(self.initial_buf.to_bytes())
+    self.initial_buf = @buffer.Buffer::Buffer()
+  }
+
+  // -- Preamble skip (first call only) --------------------------------
+  if self.preamble_skipped is false {
+    // Read until we find the first boundary delimiter, skip preamble.
+    while true {
+      let data = scan_buf.to_bytes()
+      match data[:].find(self.delimiter[:]) {
+        Some(pos) => {
+          // We have "--boundary" at pos. Strip preamble bytes.
+          let new_buf = @buffer.Buffer::Buffer()
+          new_buf.write_bytes(data[pos:].to_owned())
+          scan_buf = new_buf
+          break
+        }
+        None => {
+          // Shrink to lookbehind window so buffer does not grow unbounded.
+          let data = scan_buf.to_bytes()
+          let keep = self.delimiter.length()
+          if data.length() > keep {
+            let new_buf = @buffer.Buffer::Buffer()
+            new_buf.write_bytes(data[data.length() - keep:].to_owned())
+            scan_buf = new_buf
+          }
+          match self.source.read_some(max_len=stream_chunk_size) {
+            Some(chunk) => scan_buf.write_bytes(chunk)
+            None => return None
+          }
+        }
+      }
+    }
+    // Now scan_buf starts with 🠞 --boundary[suffix]\r\n...
+    // Skip the boundary line itself.
+    self.preamble_skipped = true
+    scan_buf = match self.skip_boundary_line(scan_buf) {
+      Some(buf) => buf
+      None => return None
+    }
+  } else {
+    // -- Subsequent calls: carry-over already has \r\nHeaders...  ----------
+    let data = scan_buf.to_bytes()
+    // Check for final delimiter tail.
+    if data[:].has_prefix(b"--\r\n") || data[:].has_prefix(b"--\n") {
+      self.done = true
+      return None
+    }
+    // Skip the CRLF left over from the previous boundary line.
+    if data[:].has_prefix(b"\r\n") {
+      let new_buf = @buffer.Buffer::Buffer()
+      if data.length() > 2 {
+        new_buf.write_bytes(data[2:].to_owned())
+      }
+      scan_buf = new_buf
+    } else if data[:].has_prefix(b"\n") {
+      let new_buf = @buffer.Buffer::Buffer()
+      if data.length() > 1 {
+        new_buf.write_bytes(data[1:].to_owned())
+      }
+      scan_buf = new_buf
+    } else {
+      raise MultipartError::MalformedBody("expected line ending after boundary")
+    }
+  }
+
+  // -- Read part headers ------------------------------------------------
+  let mut part_headers = PartHeaders::new()
+  let part_body_buf = @buffer.Buffer::Buffer()
+  while true {
+    let data = scan_buf.to_bytes()
+    // Check for blank line (end of headers).
+    let has_blank = data[:].find(b"\r\n\r\n") is Some(_) || data[:].find(b"\n\n") is Some(_)
+    if has_blank {
+      let (headers, rest) = read_part_headers(data[:])
+      part_headers = headers
+      if rest.length() > 0 {
+        part_body_buf.write_bytes(rest.to_owned())
+      }
+      break
+    }
+    match self.source.read_some(max_len=stream_chunk_size) {
+      Some(chunk) => scan_buf.write_bytes(chunk)
+      None => raise MultipartError::MalformedBody("incomplete headers")
+    }
+  }
+  Some(
+    Part::{
+      source: self.source,
+      delimiter: self.delimiter[:].to_owned(),
+      headers: part_headers,
+      buf: part_body_buf,
+      body_eof: false,
+    },
+  )
+}
+
+/// Read all parts into a `MultipartForm`.
 ///
-/// The first call skips any preamble bytes before the initial `--boundary`.
-async fn MultipartReader::next_part(
+/// Iterates through every part, streams file bodies into `BodyWriter`
+/// (spilling large files to disk), and collects form fields.
+///
+/// When a `writers` map is provided and a file part's field name matches
+/// a key, the part body is streamed directly to that writer instead of
+/// being buffered in memory or a temp file. The resulting `FileHeader`
+/// will have an `External` backend.
+async fn MultipartReader::read_form(
   self : MultipartReader,
   max_memory : Int64,
   temp_dir : String,
-) -> (Map[String, String], UploadedFile)? {
-  guard self.done is false else {
-    return None
-  }
-
-  // -- Read headers until blank line ------------------------------------
-  let headers : Map[String, String] = {}
+  writers~ : Map[String, FileWriter] = {},
+) -> MultipartForm raise {
+  let form = MultipartForm::new()
   while true {
-    let line = match self.source.read_until("\r\n") {
-      Some(s) => s
-      None => break
-    }
-    guard line.length() > 0 else {
-      break
-    }
-    guard line.find(":") is Some(colon) else { continue }
-    let key = line[:colon].trim().to_owned()
-    let value = line[colon + 1:].trim().to_owned()
-    headers[key] = value
-  }
-
-  let content_type = headers.get("Content-Type")
-
-  // -- Drain body streamingly --------------------------------------------
-  let accum = BodyAccum::new(max_memory, temp_dir)
-
-  while self.done is false {
-    let chunk = self.source.read_some(max_len=stream_chunk_size)
-    match chunk {
-      Some(data) => {
-        // Merge lookback + new data for boundary scan
-        let buf = if self.lookback.length() == 0 {
-          data
-        } else {
-          let lb = self.lookback.to_bytes()
-          self.lookback = @buffer.Buffer::Buffer()
-          let m = @buffer.Buffer::Buffer()
-          m.write_bytes(lb)
-          m.write_bytes(data)
-          m.to_bytes()
-        }
-        match buf[:].find(self.delimiter[:]) {
-          Some(pos) => {
-            let body_end = if pos >= 2 && buf[pos - 2] == b'\r' && buf[pos - 1] == b'\n' {
-              pos - 2
-            } else if pos >= 1 && buf[pos - 1] == b'\n' {
-              pos - 1
-            } else {
-              pos
+    match self.next_part() {
+      Some(part) => {
+        let (name, filename) = part.form_name()
+        guard name.length() > 0 else { continue }
+        match filename {
+          Some(fname) if fname.length() > 0 => {
+            let (file_header, backend) = match writers.get(name) {
+              Some(writer) => {
+                // Stream directly to the custom writer — no buffering.
+                let mut total : Int64 = 0
+                while true {
+                  match part.read_chunk() {
+                    Some(chunk) => {
+                      total = total + chunk.length().to_int64()
+                      writer.write(chunk)
+                    }
+                    None => break
+                  }
+                }
+                writer.close()
+                let fh = FileHeader::{
+                  filename: fname,
+                  size: total,
+                  content_type: part.content_type(),
+                  header: part.headers(),
+                  backend: External,
+                }
+                (fh, External)
+              }
+              None => {
+                // Default: buffer/spill via BodyWriter.
+                let bodyWriter = BodyWriter::new(max_memory, temp_dir)
+                while true {
+                  match part.read_chunk() {
+                    Some(chunk) => bodyWriter.write(chunk)
+                    None => break
+                  }
+                }
+                bodyWriter.close()
+                let backend = if bodyWriter.disk_path.length() > 0 {
+                  Disk(bodyWriter.disk_path)
+                } else {
+                  Memory(bodyWriter.buf.to_bytes())
+                }
+                let fh = FileHeader::{
+                  filename: fname,
+                  size: bodyWriter.total,
+                  content_type: part.content_type(),
+                  header: part.headers(),
+                  backend,
+                }
+                (fh, backend)
+              }
             }
-            if body_end > 0 {
-              accum.append(buf[0:body_end].to_owned())
-            }
-            let after = buf[pos + self.delimiter.length():]
-            if after.has_prefix(b"--") { self.done = true }
-            break
+            form.files
+              .get_or_init(name, () => [])
+              .push(file_header)
+            self.store_remaining(part.take_remaining())
           }
-          None => {
-            let keep = self.delimiter.length() + 2
-            if buf.length() > keep {
-              accum.append(buf[0:buf.length() - keep].to_owned())
-              self.lookback.write_bytes(buf[buf.length() - keep:])
-            } else {
-              self.lookback.write_bytes(buf)
+          _ => {
+            let field_text = match part.read_chunk() {
+              Some(chunk) => to_utf8_string(chunk[:])
+              None => ""
             }
+            form.values.0.get_or_init(name, () => []).push(field_text)
+            self.store_remaining(part.take_remaining())
           }
         }
       }
       None => break
     }
   }
+  form
+}
 
-  // Flush any remaining lookback bytes
-  if self.lookback.length() > 0 {
-    accum.append(self.lookback.to_bytes())
-    self.lookback = @buffer.Buffer::Buffer()
+/// Stash leftover bytes from a Part so the next `next_part` call
+/// can find the boundary line and headers.
+fn MultipartReader::store_remaining(
+  self : MultipartReader,
+  remaining : Bytes,
+) -> Unit {
+  if remaining.length() > 0 {
+    self.initial_buf.write_bytes(remaining)
   }
+}
 
-  let backend = accum.finish()
-  Some((headers, UploadedFile::{
-    header: FileHeader::{ filename: "", size: accum.total, content_type, header: headers },
-    backend,
-  }))
+/// Strip the boundary line from `scan_buf` and return the remaining
+/// bytes (the part headers / body).  Returns `None` when the final
+/// delimiter is encountered.
+async fn MultipartReader::skip_boundary_line(
+  self : MultipartReader,
+  scan_buf : @buffer.Buffer,
+) -> @buffer.Buffer? raise {
+  let delim_len = self.delimiter.length()
+  while true {
+    let data = scan_buf.to_bytes()
+    // Need enough bytes to identify the full boundary line.
+    // Minimum: "--boundary\r\n"  or  "--boundary--\r\n"
+    let need_len = self.final_delimiter.length() + 2
+    if data.length() >= need_len {
+      let after_delim = data[delim_len:]
+      if after_delim.has_prefix(b"--\r\n") || after_delim.has_prefix(b"--\n") {
+        self.done = true
+        return None
+      }
+      if after_delim.has_prefix(b"\r\n") {
+        let new_buf = @buffer.Buffer::Buffer()
+        let after = delim_len + 2
+        if after < data.length() {
+          new_buf.write_bytes(data[after:].to_owned())
+        }
+        return Some(new_buf)
+      } else if after_delim.has_prefix(b"\n") {
+        let new_buf = @buffer.Buffer::Buffer()
+        let after = delim_len + 1
+        if after < data.length() {
+          new_buf.write_bytes(data[after:].to_owned())
+        }
+        return Some(new_buf)
+      } else {
+        raise MultipartError::MalformedBody("unexpected boundary suffix")
+      }
+    }
+    // Not enough data — read more.
+    match self.source.read_some(max_len=stream_chunk_size) {
+      Some(chunk) => scan_buf.write_bytes(chunk)
+      None => raise MultipartError::MalformedBody("incomplete boundary line")
+    }
+  }
+  raise MultipartError::MalformedBody("incomplete boundary line")
 }
 
 /// Match body data to memory or disk.  Spills when total exceeds
-/// `max_memory`.  Call `append()` for each chunk, then `finish()`.
-struct BodyAccum {
+/// `max_memory`.  Stream chunks via `write()`, then call `close()`.
+/// Implements `WriterCloser` so it can be used both as default writer
+/// and as a custom writer target.
+struct BodyWriter {
   mut buf : @buffer.Buffer
   mut total : Int64
   mut disk_path : String
@@ -641,7 +1051,7 @@ struct BodyAccum {
   temp_dir : String
 }
 
-fn BodyAccum::new(max_memory : Int64, temp_dir : String) -> BodyAccum {
+fn BodyWriter::new(max_memory : Int64, temp_dir : String) -> BodyWriter {
   {
     buf: @buffer.Buffer::Buffer(),
     total: 0,
@@ -652,35 +1062,43 @@ fn BodyAccum::new(max_memory : Int64, temp_dir : String) -> BodyAccum {
   }
 }
 
-async fn BodyAccum::append(self : BodyAccum, data : Bytes) -> Unit {
-  let inc = data.length().to_int64()
+/// Implement `@io.Writer` via `write_once`. The default `write(&Data)`
+/// converts to bytes inside the @io package and calls back to us here.
+impl @io.Writer for BodyWriter with fn write_once(
+  self : BodyWriter,
+  data : Bytes,
+  offset~ : Int,
+  len~ : Int,
+) -> Int {
+  let chunk = data[offset:offset + len].to_owned()
+  let inc = chunk.length().to_int64()
   self.total = self.total + inc
 
   if self.disk_path.length() > 0 || self.total > self.max_memory {
     if self.disk_path.length() == 0 {
       let path = "\{self.temp_dir}/pony-multipart-\{random_hex(8)}"
-      self.disk_file = Some(@fs.create(path) catch { _ => return })
+      self.disk_file = Some(@fs.create(path) catch { _ => {
+        self.buf.write_bytes(chunk)
+        return len
+      }})
       self.disk_file.unwrap().write(self.buf.to_bytes()[:]) |> ignore
       self.buf = @buffer.Buffer::Buffer()
       self.disk_path = path
     }
     match self.disk_file {
-      Some(f) => f.write(data[:]) |> ignore
+      Some(f) => f.write(chunk[:]) |> ignore
       _ => ()
     }
   } else {
-    self.buf.write_bytes(data)
+    self.buf.write_bytes(chunk)
   }
+  len
 }
 
-fn BodyAccum::finish(self : BodyAccum) -> FileBackend {
-  if self.disk_path.length() > 0 {
-    match self.disk_file {
-      Some(f) => f.close()
-      _ => ()
-    }
-    Disk(self.disk_path)
-  } else {
-    Memory(self.buf.to_bytes())
+/// Close the underlying file handle, if any.
+impl Closer for BodyWriter with close(self : BodyWriter) -> Unit {
+  match self.disk_file {
+    Some(f) => f.close()
+    _ => ()
   }
 }

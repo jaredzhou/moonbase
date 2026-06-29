@@ -76,13 +76,60 @@ pub fn Values::get_all(self : Values, key : String) -> Array[String] {
 }
 
 ///|
+/// Case-insensitive HTTP headers with lowercased keys.
+pub(all) struct HttpHeaders(Map[String, String])
+
+///|
+pub fn HttpHeaders::new() -> HttpHeaders {
+  HttpHeaders({})
+}
+
+///|
+pub fn HttpHeaders::from_map(m : Map[String, String]) -> HttpHeaders {
+  HttpHeaders(m)
+}
+
+///|
+/// Return the value for `key` (case-insensitive lookup), or `None`.
+pub fn HttpHeaders::get(self : HttpHeaders, key : String) -> String? {
+  let HttpHeaders(m) = self
+  m.get(key.to_lower())
+}
+
+///|
+/// Set the value for `key`, lowercasing the key first.
+pub fn HttpHeaders::set(self : HttpHeaders, key : String, value : String) -> Unit {
+  let HttpHeaders(m) = self
+  m[key.to_lower()] = value
+}
+
+///|
+/// Return the underlying `Map[String, String]`.
+pub fn HttpHeaders::to_map(self : HttpHeaders) -> Map[String, String] {
+  let HttpHeaders(m) = self
+  m
+}
+
+///|
+/// Merge entries from `other` into `self`, lowercasing keys.
+pub fn HttpHeaders::merge_in_place(
+  self : HttpHeaders,
+  other : Map[String, String],
+) -> Unit {
+  let HttpHeaders(m) = self
+  for k, v in other {
+    m[k.to_lower()] = v
+  }
+}
+
+///|
 pub(all) struct Context {
   http_method : HttpMethod
   url_str : String
   url : @url.URL
   mut route_path : String
-  req_headers : Map[String, String]
-  resp_headers : Map[String, String]
+  req_headers : HttpHeaders
+  resp_headers : HttpHeaders
   queries : Values
   mut form_values : Values?
   mut multipart_form : MultipartForm?
@@ -235,18 +282,18 @@ pub async fn Context::form(self : Context, key : String) -> String? {
 pub async fn Context::parse_multipart_form(
   self : Context,
   max_memory~ : Int64 = default_max_memory,
+  writers~ : Map[String, FileWriter] = {},
 ) -> Unit {
   let content_type = self.header("content-type").unwrap_or("")
-  let data = self.req_body.read_all()
-  let body = data.binary()
-  let form = parse_multipart(body, content_type)
+  let boundary = boundary_from(content_type)
+  let mr = MultipartReader::new(self.req_body, boundary)
   let temp_dir = @fs.tmpdir(prefix="pony_")
-  form.spill_large_files_to_disk(max_memory, temp_dir)
+  let form = mr.read_form(max_memory, temp_dir, writers~)
   self.multipart_form = Some(form)
 }
 
 ///|
-pub fn Context::form_file(self : Context, key : String) -> UploadedFile? {
+pub fn Context::form_file(self : Context, key : String) -> FileHeader? {
   match self.multipart_form {
     Some(mf) => mf.file_of(key)
     None => None
@@ -257,7 +304,7 @@ pub fn Context::form_file(self : Context, key : String) -> UploadedFile? {
 pub fn Context::form_files(
   self : Context,
   key : String,
-) -> Array[UploadedFile] {
+) -> Array[FileHeader] {
   match self.multipart_form {
     Some(mf) => mf.files_of(key)
     None => []
@@ -282,7 +329,7 @@ pub async fn[T : FromJson] Context::json(self : Context) -> T {
 
 ///|
 pub fn Context::header(self : Context, key : String) -> String? {
-  self.req_headers.get(key.to_lower())
+  self.req_headers.get(key)
 }
 
 ///|
@@ -291,7 +338,7 @@ pub fn Context::set_header(
   key : String,
   value : String,
 ) -> Unit {
-  self.resp_headers[key.to_lower()] = value
+  self.resp_headers.set(key, value)
 }
 
 ///|
@@ -313,7 +360,7 @@ async fn[T : ToJson] Context::reply(
   let http_status_msg = status_text(http_status)
   self.resp_headers.merge_in_place({ "Content-Type": "application/json" })
   self.resp_writer
-  ..send_response(http_status, http_status_msg, extra_headers=self.resp_headers)
+  ..send_response(http_status, http_status_msg, extra_headers=self.resp_headers.to_map())
   ..write(body)
   .end_response()
 }
@@ -350,7 +397,7 @@ pub async fn Context::write_text(
   self.resp_writer.send_response(
     http_status,
     msg,
-    extra_headers=self.resp_headers,
+    extra_headers=self.resp_headers.to_map(),
   )
   self.resp_writer.write(text)
   self.resp_writer.end_response()
@@ -370,7 +417,7 @@ pub async fn[T : ToJson] Context::write_json(
   }
   self.resp_headers.merge_in_place({ "Content-Type": "application/json" })
   self.resp_writer
-  ..send_response(http_status, msg, extra_headers=self.resp_headers)
+  ..send_response(http_status, msg, extra_headers=self.resp_headers.to_map())
   ..write(body)
   .end_response()
 }
@@ -394,7 +441,7 @@ pub async fn Context::write_bytes(
   self.resp_writer.send_response(
     http_status,
     msg,
-    extra_headers=self.resp_headers,
+    extra_headers=self.resp_headers.to_map(),
   )
   self.resp_writer.write(body)
   self.resp_writer.end_response()
@@ -403,7 +450,7 @@ pub async fn Context::write_bytes(
 ///|
 pub async fn Context::no_content(self : Context) -> Unit {
   let msg = status_text(204)
-  self.resp_writer.send_response(204, msg, extra_headers=self.resp_headers)
+  self.resp_writer.send_response(204, msg, extra_headers=self.resp_headers.to_map())
   self.resp_writer.end_response()
 }
 
@@ -422,7 +469,7 @@ pub async fn Context::redirect(
   self.resp_writer.send_response(
     http_status,
     msg,
-    extra_headers=self.resp_headers,
+    extra_headers=self.resp_headers.to_map(),
   )
   self.resp_writer.end_response()
 }
@@ -648,8 +695,8 @@ pub fn Router::build_ctx(
     http_method: HttpMethod::from_std(req.meth),
     url_str: req.path,
     url,
-    req_headers: req.headers,
-    resp_headers: {},
+    req_headers: HttpHeaders::from_map(req.headers),
+    resp_headers: HttpHeaders::new(),
     queries: match url.query {
       Some(q) => parse_query(q)
       None => Values::new()
