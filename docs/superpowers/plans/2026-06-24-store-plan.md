@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a `jaredzhou/store` module providing Supabase-compatible REST API for bucket/object CRUD with Cedar authorization and pluggable backends.
+**Goal:** Build a `jaredzhou/moonstore` module providing Supabase-compatible REST API for bucket/object CRUD with Cedar authorization and pluggable backends.
 
 **Architecture:** Three-layer design — repo traits (BucketRepo, ObjectRepo) for metadata, StorageBackend trait for file I/O, and Storage service layer wrapping both with Cedar authorization. REST handlers are thin wrappers over Storage methods. Entity store uses CompositeEntityStore (in-memory → PG fallback) wrapped per-request by RequestEntityStore with a transient overlay.
 
@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Workspace member added to `moon.work` as `"./store"`
-- Package name: `jaredzhou/store` version `0.1.0`
+- Workspace member added to `moon.work` as `"./moonstore"`
+- Package name: `jaredzhou/moonstore` version `0.1.0`
 - Preferred target: `native`
 - Dependencies: `jaredzhou/pony@0.1.1`, `jaredzhou/mooncedar@0.1.1`, `moonbitlang/async@0.19.4`, `moonbitlang/x@0.4.45`
 - REST API matches Supabase Storage URL structure: `/bucket` and `/object` as top-level prefixes
@@ -38,7 +38,7 @@
 - [ ] **Step 1: Create `store/moon.mod`**
 
 ```toml
-name = "jaredzhou/store"
+name = "jaredzhou/moonstore"
 
 version = "0.1.0"
 
@@ -67,8 +67,8 @@ import {
   "jaredzhou/mooncedar/evaluator",
   "jaredzhou/mooncedar/ast",
   "jaredzhou/mooncedar/parser",
-  "jaredzhou/store/handler",
-  "jaredzhou/store/backend",
+  "jaredzhou/moonstore/handler",
+  "jaredzhou/moonstore/backend",
   "moonbitlang/core/json",
   "moonbitlang/core/debug",
   "moonbitlang/async",
@@ -99,7 +99,7 @@ import {
 }
 ```
 
-- [ ] **Step 5: Add `"./store"` to `moon.work` members list**
+- [ ] **Step 5: Add `"./moonstore"` to `moon.work` members list**
 
 ```
 members = [
@@ -107,7 +107,7 @@ members = [
   "./libs",
   "./mooncedar",
   "./todo",
-  "./store",
+  "./moonstore",
 ]
 ```
 
@@ -275,7 +275,7 @@ test "MemoryBackend get non-existent" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — `@storage_backend` module not found
 
 - [ ] **Step 3: Write `store/storage_backend.mbt`**
@@ -400,7 +400,7 @@ pub impl StorageBackend for MemoryBackend with fn exists(
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: 3 tests pass (MemoryBackend put/get, delete/exists, get non-existent)
 
 - [ ] **Step 5: Commit**
@@ -489,7 +489,7 @@ test "MemoryBucketRepo get non-existent" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/bucket_repo.mbt`**
@@ -594,7 +594,7 @@ pub impl BucketRepo for MemoryBucketRepo with fn delete(
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: 7 tests pass (4 from Task 3 + 4 new)
 
 - [ ] **Step 5: Commit**
@@ -698,7 +698,7 @@ test "MemoryObjectRepo get non-existent" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/object_repo.mbt`**
@@ -845,7 +845,7 @@ pub impl ObjectRepo for MemoryObjectRepo with fn delete_batch(
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: 11 tests pass (7 from prior + 4 new)
 
 - [ ] **Step 5: Commit**
@@ -989,7 +989,7 @@ test "RequestEntityStore falls through to backing" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/entity_store.mbt`**
@@ -1073,7 +1073,7 @@ pub impl @evaluator.EntityStore for RequestEntityStore with fn get_entity(
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: 15 tests pass (11 prior + 4 new entity store tests)
 
 - [ ] **Step 5: Commit**
@@ -1177,7 +1177,7 @@ test "Authorizer try_authorize uses overlay entities" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/authorizer.mbt`**
@@ -1357,7 +1357,7 @@ test "object_to_entity produces correct Cedar entity" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/entity_conv.mbt`**
@@ -1419,7 +1419,7 @@ pub fn object_to_entity(obj : @types.Object) -> (@ast.EntityUID, @ast.Entity) {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: 20 tests pass (18 prior + 2 new entity conv tests)
 
 - [ ] **Step 5: Commit**
@@ -1697,7 +1697,7 @@ test "get object info" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/storage.mbt`**
@@ -2155,7 +2155,7 @@ fn mimetype_from_data(data : Bytes) -> String {
 
 - [ ] **Step 4: Run tests — iterate on compilation issues**
 
-Run `moon check` first, fix any compilation issues (trait conversions, syntax), then `moon test --package jaredzhou/store`.
+Run `moon check` first, fix any compilation issues (trait conversions, syntax), then `moon test --package jaredzhou/moonstore`.
 
 Note: The test `private bucket download requires auth` uses a permissive Cedar policy (`permit(principal,action,resource)`) so the test checks bucket-level bypass, not the private policy. For actual policy enforcement, adjust the policy in `new_test_storage()` to be more restrictive.
 
@@ -2204,7 +2204,7 @@ test "bucket handler routes registered" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/handler/bucket.mbt`**
@@ -2400,8 +2400,8 @@ fn empty_bucket(storage : @storage.Storage) -> @pony.Handler {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
-Expected: If snapshot mismatches, run `moon test --package jaredzhou/store --update` to update the snapshot. All tests pass including bucket handler route registration.
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
+Expected: If snapshot mismatches, run `moon test --package jaredzhou/moonstore --update` to update the snapshot. All tests pass including bucket handler route registration.
 
 - [ ] **Step 5: Commit**
 
@@ -2461,7 +2461,7 @@ test "object handler routes registered" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — module not found
 
 - [ ] **Step 3: Write `store/handler/object.mbt`**
@@ -2887,7 +2887,7 @@ Check for compilation errors, especially around:
 - `ctx.reply_ok()` on types that need `ToJson` derive
 - `derive(FromJson)` on request body structs
 
-Fix any compilation issues, then run `moon test --package jaredzhou/store --update` to capture the snapshot.
+Fix any compilation issues, then run `moon test --package jaredzhou/moonstore --update` to capture the snapshot.
 
 - [ ] **Step 5: Commit**
 
@@ -3033,7 +3033,7 @@ async test "integration: move and delete object" {
 
 - [ ] **Step 2: Run integration tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Integration tests pass or reveal issues with pony's HTTP client/server interaction. If tests fail due to request body handling or response serialization, iterate on the handler code.
 
 Common issues to watch for:
@@ -3104,7 +3104,7 @@ test "LocalFS backend nested path" {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: Compile error — `@backend.local_fs` module not found
 
 - [ ] **Step 3: Write `store/backend/local_fs.mbt`**
@@ -3198,7 +3198,7 @@ fn parent_dir(path : String) -> String {
 
 - [ ] **Step 4: Run LocalFS tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: 3 LocalFS tests pass
 
 - [ ] **Step 5: Commit**
@@ -3238,7 +3238,7 @@ pub fn Storage::new(
 
 - [ ] **Step 2: Run all tests**
 
-Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/store`
+Run: `cd /home/jared/projects/moonbase && moon test --package jaredzhou/moonstore`
 Expected: All tests pass
 
 - [ ] **Step 3: Run workspace-wide tests**

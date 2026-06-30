@@ -1,5 +1,5 @@
 // LocalFS backend — stores files on the local filesystem.
-// The StorageBackend trait impl is registered in the parent `store` package.
+// The StorageBackend trait impl is registered in the parent `moonstore` package.
 
 ///|
 pub(all) struct LocalFSBackend {

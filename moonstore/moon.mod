@@ -1,4 +1,4 @@
-name = "jaredzhou/store"
+name = "jaredzhou/moonstore"
 
 version = "0.1.0"
 

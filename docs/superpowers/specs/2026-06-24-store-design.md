@@ -26,7 +26,7 @@
 
 ```
 store/
-  moon.mod               # jaredzhou/store
+  moon.mod               # jaredzhou/moonstore
   moon.pkg               # root re-exports, public API
   types.mbt              # Bucket, Object, StorageMetadata, StorageError
   storage_backend.mbt    # StorageBackend trait
@@ -53,7 +53,7 @@ store/
 ### Dependencies (`moon.mod`)
 
 ```toml
-name = "jaredzhou/store"
+name = "jaredzhou/moonstore"
 version = "0.1.0"
 preferred_target = "native"
 import {
