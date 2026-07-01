@@ -3,7 +3,7 @@
 ///|
 test "MemoryBucketRepo insert and get" {
   let repo = MemoryBucketRepo::new()
-  let bucket = Bucket::{
+  let bucket = @moonstore.Bucket::{
     id: "avatars",
     name: "Avatars",
     owner: "alice",
@@ -23,15 +23,27 @@ test "MemoryBucketRepo insert and get" {
 ///|
 test "MemoryBucketRepo list" {
   let repo = MemoryBucketRepo::new()
-  let b1 = Bucket::{
-    id: "a", name: "A", owner: "u", owner_id: "u-1", public: false,
-    file_size_limit: None, allowed_mime_types: None,
-    created_at: "", updated_at: "",
+  let b1 = @moonstore.Bucket::{
+    id: "a",
+    name: "A",
+    owner: "u",
+    owner_id: "u-1",
+    public: false,
+    file_size_limit: None,
+    allowed_mime_types: None,
+    created_at: "",
+    updated_at: "",
   }
-  let b2 = Bucket::{
-    id: "b", name: "B", owner: "u", owner_id: "u-1", public: false,
-    file_size_limit: None, allowed_mime_types: None,
-    created_at: "", updated_at: "",
+  let b2 = @moonstore.Bucket::{
+    id: "b",
+    name: "B",
+    owner: "u",
+    owner_id: "u-1",
+    public: false,
+    file_size_limit: None,
+    allowed_mime_types: None,
+    created_at: "",
+    updated_at: "",
   }
   repo.insert(b1)
   repo.insert(b2)
@@ -42,13 +54,19 @@ test "MemoryBucketRepo list" {
 ///|
 test "MemoryBucketRepo update and delete" {
   let repo = MemoryBucketRepo::new()
-  let bucket = Bucket::{
-    id: "test", name: "Test", owner: "u", owner_id: "u-1", public: false,
-    file_size_limit: None, allowed_mime_types: None,
-    created_at: "", updated_at: "",
+  let bucket = @moonstore.Bucket::{
+    id: "test",
+    name: "Test",
+    owner: "u",
+    owner_id: "u-1",
+    public: false,
+    file_size_limit: None,
+    allowed_mime_types: None,
+    created_at: "",
+    updated_at: "",
   }
   repo.insert(bucket)
-  let updated = Bucket::{ ..bucket, public: true }
+  let updated = @moonstore.Bucket::{ ..bucket, public: true }
   repo.update("test", updated)
   @debug.assert_eq(true, repo.get("test").unwrap().public)
 

@@ -36,7 +36,9 @@ test "object_to_entity produces correct Cedar entity" {
     owner_id: "user-1",
     version: "1",
     metadata: StorageMetadata::{
-      size: 2048, mimetype: "image/png", cache_control: None,
+      size: 2048,
+      mimetype: "image/png",
+      cache_control: None,
     },
     user_metadata: Json::object(Map([])),
     created_at: "2024-01-01T00:00:00Z",

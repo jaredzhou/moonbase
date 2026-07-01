@@ -44,10 +44,11 @@ test "CompositeEntityStore prefers memory over persisted" {
   let found = composite.get_entity(euid)
   assert_true(found is Some(_))
   match found {
-    Some(e) => match e.attrs.get("public") {
-      Some(@ast.Value::Bool(b)) => assert_true(b)
-      _ => abort("unexpected attr")
-    }
+    Some(e) =>
+      match e.attrs.get("public") {
+        Some(@ast.Value::Bool(b)) => assert_true(b)
+        _ => abort("unexpected attr")
+      }
     _ => abort("unexpected")
   }
 }
@@ -78,10 +79,11 @@ test "RequestEntityStore overlay takes priority" {
 
   let found = req_store.get_entity(euid)
   match found {
-    Some(e) => match e.attrs.get("name") {
-      Some(@ast.Value::String(s)) => @debug.assert_eq(s, "from-overlay")
-      _ => abort("unexpected attr")
-    }
+    Some(e) =>
+      match e.attrs.get("name") {
+        Some(@ast.Value::String(s)) => @debug.assert_eq(s, "from-overlay")
+        _ => abort("unexpected attr")
+      }
     _ => abort("unexpected")
   }
 }

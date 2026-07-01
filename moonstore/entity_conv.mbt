@@ -46,9 +46,6 @@ pub fn object_to_entity(obj : Object) -> (@ast.EntityUID, @ast.Entity) {
     ("mimetype", @ast.Value::String(obj.metadata.mimetype)),
     ("folder", @ast.Value::String(folder)),
   ])
-  let parents = [@ast.EntityUID::{
-    type_: "Bucket",
-    id: obj.bucket_id,
-  }]
+  let parents = [@ast.EntityUID::{ type_: "Bucket", id: obj.bucket_id }]
   (euid, @ast.Entity::{ uid: euid, attrs, tags: Map([]), parents })
 }

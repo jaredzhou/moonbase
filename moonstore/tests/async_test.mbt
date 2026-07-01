@@ -6,26 +6,29 @@
 async test "integration: list and get bucket via HTTP" {
   @async.with_task_group() <| group => {
     let port = 19880
-    let storage = new_test_storage()
-    let input = CreateBucketInput::{ name: "my-bucket", public: Some(false), file_size_limit: None, allowed_mime_types: None }
+    let storage = @repo.new_storage()
+    let input = @moonstore.CreateBucketInput::{
+      name: "my-bucket",
+      public: Some(false),
+      file_size_limit: None,
+      allowed_mime_types: None,
+    }
     let _bucket = storage.create_bucket("alice", input) catch { e => panic() }
     let r = @pony.Router::Router()
-    let _ = build_bucket_routes(r, storage)
+    let _ = @api.build_bucket_routes(r, storage)
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
       @pony.start("127.0.0.1:\{port}", r)
     }
     @async.sleep(500)
 
-    let (resp, _) = @http.get(
-      "http://127.0.0.1:\{port}/bucket/",
-      headers={ "x-user": "alice" },
-    )
+    let (resp, _) = @http.get("http://127.0.0.1:\{port}/bucket/", headers={
+      "x-user": "alice",
+    })
     @debug.assert_eq(resp.code, 200)
 
-    let (resp2, _) = @http.get(
-      "http://127.0.0.1:\{port}/bucket/my-bucket",
-      headers={ "x-user": "alice" },
-    )
+    let (resp2, _) = @http.get("http://127.0.0.1:\{port}/bucket/my-bucket", headers={
+      "x-user": "alice",
+    })
     @debug.assert_eq(resp2.code, 200)
   }
 }
@@ -34,12 +37,19 @@ async test "integration: list and get bucket via HTTP" {
 async test "integration: upload and download object via HTTP" {
   @async.with_task_group() <| group => {
     let port = 19881
-    let storage = new_test_storage()
-    let bucket_input = CreateBucketInput::{ name: "pub", public: Some(true), file_size_limit: None, allowed_mime_types: None }
-    let _bucket = storage.create_bucket("alice", bucket_input) catch { e => panic() }
+    let storage = @repo.new_storage()
+    let bucket_input = @moonstore.CreateBucketInput::{
+      name: "pub",
+      public: Some(true),
+      file_size_limit: None,
+      allowed_mime_types: None,
+    }
+    let _bucket = storage.create_bucket("alice", bucket_input) catch {
+      e => panic()
+    }
     let r = @pony.Router::Router()
-    let _ = build_bucket_routes(r, storage)
-    let _ = build_object_routes(r, storage)
+    let _ = @api.build_bucket_routes(r, storage)
+    let _ = @api.build_object_routes(r, storage)
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
       @pony.start("127.0.0.1:\{port}", r)
     }
@@ -63,12 +73,19 @@ async test "integration: upload and download object via HTTP" {
 async test "integration: move and delete object via HTTP" {
   @async.with_task_group() <| group => {
     let port = 19882
-    let storage = new_test_storage()
-    let bucket_input = CreateBucketInput::{ name: "ops", public: Some(false), file_size_limit: None, allowed_mime_types: None }
-    let _bucket = storage.create_bucket("alice", bucket_input) catch { e => panic() }
+    let storage = @repo.new_storage()
+    let bucket_input = @moonstore.CreateBucketInput::{
+      name: "ops",
+      public: Some(false),
+      file_size_limit: None,
+      allowed_mime_types: None,
+    }
+    let _bucket = storage.create_bucket("alice", bucket_input) catch {
+      e => panic()
+    }
     let r = @pony.Router::Router()
-    let _ = build_bucket_routes(r, storage)
-    let _ = build_object_routes(r, storage)
+    let _ = @api.build_bucket_routes(r, storage)
+    let _ = @api.build_object_routes(r, storage)
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
       @pony.start("127.0.0.1:\{port}", r)
     }
@@ -87,11 +104,11 @@ async test "integration: move and delete object via HTTP" {
     let mclient = @http.Client("http://127.0.0.1:\{port}")
     defer mclient.close()
     let content_length = move_body.length().to_string()
-    mclient.request(
-      @http.RequestMethod::Post,
-      "/object/move",
-      extra_headers={ "x-user": "alice", "content-type": "application/json", "Content-Length": content_length },
-    )
+    mclient.request(@http.RequestMethod::Post, "/object/move", extra_headers={
+      "x-user": "alice",
+      "content-type": "application/json",
+      "Content-Length": content_length,
+    })
     mclient.write(move_body)
     let resp3 = mclient.end_request()
     let body3 = mclient.read_all()
@@ -100,11 +117,9 @@ async test "integration: move and delete object via HTTP" {
     // Delete
     let dclient = @http.Client("http://127.0.0.1:\{port}")
     defer dclient.close()
-    dclient.request(
-      @http.RequestMethod::Delete,
-      "/object/ops/new.txt",
-      extra_headers={ "x-user": "alice" },
-    )
+    dclient.request(@http.RequestMethod::Delete, "/object/ops/new.txt", extra_headers={
+      "x-user": "alice",
+    })
     let resp4 = dclient.end_request()
     let _body4 = dclient.read_all()
     @debug.assert_eq(resp4.code, 204)

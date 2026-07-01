@@ -3,15 +3,17 @@
 ///|
 test "MemoryObjectRepo insert and get" {
   let repo = MemoryObjectRepo::new()
-  let obj = Object::{
+  let obj = @moonstore.Object::{
     id: Some("uuid-1"),
     name: "public/avatar.png",
     bucket_id: "avatars",
     owner: "alice",
     owner_id: "user-1",
     version: "1",
-    metadata: StorageMetadata::{
-      size: 1024, mimetype: "image/png", cache_control: None,
+    metadata: @moonstore.StorageMetadata::{
+      size: 1024,
+      mimetype: "image/png",
+      cache_control: None,
     },
     user_metadata: Json::object(Map([])),
     created_at: "2024-01-01T00:00:00Z",
@@ -27,15 +29,23 @@ test "MemoryObjectRepo insert and get" {
 ///|
 test "MemoryObjectRepo list with prefix" {
   let repo = MemoryObjectRepo::new()
-  let mk_obj = fn(name : String) -> Object {
-    Object::{
+  let mk_obj = fn(name : String) -> @moonstore.Object {
+    @moonstore.Object::{
       id: Some("id-" + name),
       name,
       bucket_id: "avatars",
-      owner: "u", owner_id: "u-1", version: "1",
-      metadata: StorageMetadata::{ size: 0, mimetype: "", cache_control: None },
+      owner: "u",
+      owner_id: "u-1",
+      version: "1",
+      metadata: @moonstore.StorageMetadata::{
+        size: 0,
+        mimetype: "",
+        cache_control: None,
+      },
       user_metadata: Json::object(Map([])),
-      created_at: "", updated_at: None, last_accessed_at: None,
+      created_at: "",
+      updated_at: None,
+      last_accessed_at: None,
     }
   }
   repo.insert(mk_obj("public/a.png"))
@@ -48,15 +58,23 @@ test "MemoryObjectRepo list with prefix" {
 ///|
 test "MemoryObjectRepo delete and delete_batch" {
   let repo = MemoryObjectRepo::new()
-  let mk_obj = fn(name : String) -> Object {
-    Object::{
+  let mk_obj = fn(name : String) -> @moonstore.Object {
+    @moonstore.Object::{
       id: Some("id-" + name),
       name,
       bucket_id: "avatars",
-      owner: "u", owner_id: "u-1", version: "1",
-      metadata: StorageMetadata::{ size: 0, mimetype: "", cache_control: None },
+      owner: "u",
+      owner_id: "u-1",
+      version: "1",
+      metadata: @moonstore.StorageMetadata::{
+        size: 0,
+        mimetype: "",
+        cache_control: None,
+      },
       user_metadata: Json::object(Map([])),
-      created_at: "", updated_at: None, last_accessed_at: None,
+      created_at: "",
+      updated_at: None,
+      last_accessed_at: None,
     }
   }
   repo.insert(mk_obj("a.txt"))

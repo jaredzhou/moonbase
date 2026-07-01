@@ -2,11 +2,19 @@
 
 ///|
 test "object handler routes registered" {
-  let storage = new_test_storage()
+  let entities = @moonstore.CompositeEntityStore::new(Map([]), Map([]))
+  let authorizer = @moonstore.Authorizer::new(entities, [])
+  let storage = @moonstore.Storage::new(
+    @backend.MemoryBackend::new(),
+    @repo.MemoryBucketRepo::new(),
+    @repo.MemoryObjectRepo::new(),
+    authorizer,
+  )
   let r = @pony.Router::Router()
   let _ = build_object_routes(r, storage)
-  inspect(r, content=
-    (
+  inspect(
+    r,
+    content=(
       #|Static()
       #|    └── Static(/object/)
       #|        ├── Static(authenticated/)
@@ -33,7 +41,6 @@ test "object handler routes registered" {
       #|            └── Static(/)
       #|                w── * Post(/object/{bucketName}/*) Get(/object/{bucketName}/*) Put(/object/{bucketName}/*) Delete(/object/{bucketName}/*)
       #|
-
-)
+    ),
   )
 }

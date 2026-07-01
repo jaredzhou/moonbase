@@ -68,10 +68,9 @@ pub fn[B] RequestEntityStore::add_entity(
 
 ///|
 /// Check overlay first, fall back to backing store.
-pub impl[B : @evaluator.EntityStore] @evaluator.EntityStore for RequestEntityStore[B] with fn get_entity(
-  self : RequestEntityStore[B],
-  uid : @ast.EntityUID,
-) -> @ast.Entity? {
+pub impl[B : @evaluator.EntityStore] @evaluator.EntityStore for RequestEntityStore[
+  B,
+] with fn get_entity(self : RequestEntityStore[B], uid : @ast.EntityUID) -> @ast.Entity? {
   match self.overlay.get(uid) {
     Some(e) => Some(e)
     None => self.backing.get_entity(uid)

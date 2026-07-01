@@ -40,7 +40,11 @@ pub fn Authorizer::try_authorize(
       for euid, entity in ol {
         req_store.add_entity(euid, entity)
       }
-      let result = @mooncedar.is_authorized(req, self.policies.iter(), req_store)
+      let result = @mooncedar.is_authorized(
+        req,
+        self.policies.iter(),
+        req_store,
+      )
       result.decision == @mooncedar.Decision::Allow
     }
     None => {

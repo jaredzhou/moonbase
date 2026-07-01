@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/moonstore/repo"
+
+import {
+  "jaredzhou/moonstore",
+}
+
+// Values
+pub fn new_storage() -> @moonstore.Storage
+
+// Errors
+
+// Types and methods
+pub(all) struct MemoryBucketRepo {
+  mut buckets : Map[String, @moonstore.Bucket]
+}
+pub fn MemoryBucketRepo::new() -> Self
+pub impl @moonstore.BucketRepo for MemoryBucketRepo
+
+pub(all) struct MemoryObjectRepo {
+  mut objects : Map[String, @moonstore.Object]
+}
+pub fn MemoryObjectRepo::new() -> Self
+pub impl @moonstore.ObjectRepo for MemoryObjectRepo
+
+// Type aliases
+
+// Traits
+

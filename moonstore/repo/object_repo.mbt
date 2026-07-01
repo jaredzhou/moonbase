@@ -1,23 +1,9 @@
-// ObjectRepo trait + MemoryObjectRepo implementation.
-
-///|
-/// Pluggable object metadata storage.
-pub(open) trait ObjectRepo {
-  get(Self, bucket_id : String, name : String) -> Object?
-  list(Self, bucket_id : String, prefix : String?, limit : Int?, offset : Int?) -> Array[Object]
-  insert(Self, obj : Object) -> Unit
-  delete(Self, bucket_id : String, name : String) -> Unit
-  delete_batch(Self, bucket_id : String, names : Array[String]) -> Unit
-}
-
-// ---------------------------------------------------------------------------
-// MemoryObjectRepo
-// ---------------------------------------------------------------------------
+// MemoryObjectRepo — in-memory ObjectRepo implementation.
 
 ///|
 /// In-memory object metadata store for testing. Key is "bucket_id/name".
 pub(all) struct MemoryObjectRepo {
-  pub mut objects : Map[String, Object]
+  pub mut objects : Map[String, @moonstore.Object]
 }
 
 ///|
@@ -31,23 +17,23 @@ fn obj_key(bucket_id : String, name : String) -> String {
 }
 
 ///|
-pub impl ObjectRepo for MemoryObjectRepo with fn get(
+pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn get(
   self : MemoryObjectRepo,
   bucket_id : String,
   name : String,
-) -> Object? {
+) -> @moonstore.Object? {
   self.objects.get(obj_key(bucket_id, name))
 }
 
 ///|
-pub impl ObjectRepo for MemoryObjectRepo with fn list(
+pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn list(
   self : MemoryObjectRepo,
   bucket_id : String,
   prefix : String?,
   limit : Int?,
   offset : Int?,
-) -> Array[Object] {
-  let result : Array[Object] = []
+) -> Array[@moonstore.Object] {
+  let result : Array[@moonstore.Object] = []
   let mut skipped = 0
   for _, obj in self.objects {
     if obj.bucket_id != bucket_id {
@@ -74,15 +60,15 @@ pub impl ObjectRepo for MemoryObjectRepo with fn list(
 }
 
 ///|
-pub impl ObjectRepo for MemoryObjectRepo with fn insert(
+pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn insert(
   self : MemoryObjectRepo,
-  obj : Object,
+  obj : @moonstore.Object,
 ) -> Unit {
   self.objects.set(obj_key(obj.bucket_id, obj.name), obj)
 }
 
 ///|
-pub impl ObjectRepo for MemoryObjectRepo with fn delete(
+pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn delete(
   self : MemoryObjectRepo,
   bucket_id : String,
   name : String,
@@ -91,7 +77,7 @@ pub impl ObjectRepo for MemoryObjectRepo with fn delete(
 }
 
 ///|
-pub impl ObjectRepo for MemoryObjectRepo with fn delete_batch(
+pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn delete_batch(
   self : MemoryObjectRepo,
   bucket_id : String,
   names : Array[String],

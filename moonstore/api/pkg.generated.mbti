@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/moonstore/api"
+
+import {
+  "jaredzhou/moonstore",
+  "jaredzhou/pony",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn build_bucket_routes(@pony.Router, @moonstore.Storage) -> Unit raise @pony.RouterError
+
+pub fn build_object_routes(@pony.Router, @moonstore.Storage) -> Unit raise @pony.RouterError
+
+// Errors
+
+// Types and methods
+type CreateBucketBody derive(@json.FromJson)
+
+type DeleteBatchBody derive(@json.FromJson)
+
+type ListObjectsBody derive(@json.FromJson)
+
+type MoveCopyBody derive(@json.FromJson)
+
+type UpdateBucketBody derive(@json.FromJson)
+
+type UpdateObjectBody derive(@json.FromJson)
+
+// Type aliases
+
+// Traits
+

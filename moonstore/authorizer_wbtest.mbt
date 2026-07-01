@@ -55,12 +55,20 @@ test "Authorizer try_authorize uses overlay entities" {
 
   assert_true(
     authorizer.try_authorize(
-      "alice", "ReadBucket", "Bucket", "avatars", Some(overlay),
+      "alice",
+      "ReadBucket",
+      "Bucket",
+      "avatars",
+      Some(overlay),
     ),
   )
   assert_false(
     authorizer.try_authorize(
-      "bob", "ReadBucket", "Bucket", "avatars", Some(overlay),
+      "bob",
+      "ReadBucket",
+      "Bucket",
+      "avatars",
+      Some(overlay),
     ),
   )
 }

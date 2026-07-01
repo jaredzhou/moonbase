@@ -26,33 +26,36 @@ pub(all) struct UpdateObjectInput {
 
 ///|
 /// Core storage state -- holds repos, backend, and authorizer.
+/// Uses trait references (&StorageBackend, &BucketRepo, &ObjectRepo) for pluggable implementations.
 pub(all) struct Storage {
-  pub backend : MemoryBackend
-  pub bucket_repo : MemoryBucketRepo
-  pub object_repo : MemoryObjectRepo
+  pub backend : &@backend.StorageBackend
+  pub bucket_repo : &BucketRepo
+  pub object_repo : &ObjectRepo
   pub authorizer : Authorizer
 }
 
 ///|
-/// Create a Storage for testing with in-memory repos and backend.
-pub fn new_test_storage() -> Storage {
-  let entities = CompositeEntityStore::new(Map([]), Map([]))
-  let policies = @parser.parse_policies(
-    "permit(principal,action,resource);",
-  ) catch {
-    _ => @parser.parse_policies("") catch { _ => panic() }
-  }
-  Storage::{
-    backend: MemoryBackend::new(),
-    bucket_repo: MemoryBucketRepo::new(),
-    object_repo: MemoryObjectRepo::new(),
-    authorizer: Authorizer::new(entities, policies),
-  }
+/// Create a new Storage with the given backend, repos, and authorizer.
+pub fn Storage::new(
+  backend : &@backend.StorageBackend,
+  bucket_repo : &BucketRepo,
+  object_repo : &ObjectRepo,
+  authorizer : Authorizer,
+) -> Storage {
+  Storage::{ backend, bucket_repo, object_repo, authorizer }
 }
 
 ///|
 fn now_iso() -> String {
-  let pdt = @time.date_time(2024, 1, 1, hour=0, minute=0, second=0, zone=@time.utc_zone) catch {
+  let pdt = @time.date_time(
+    2024,
+    1,
+    1,
+    hour=0,
+    minute=0,
+    second=0,
+    zone=@time.utc_zone,
+  ) catch {
     _ => panic()
   }
   pdt.to_string()
@@ -75,11 +78,12 @@ fn Storage::check_and_authorize(
 ) -> Unit raise StorageError {
   match user {
     None => raise Forbidden("authentication required")
-    Some(u) => {
-      if !self.authorizer.try_authorize(u, action, resource_type, resource_id, overlay) {
+    Some(u) =>
+      if !self.authorizer.try_authorize(
+          u, action, resource_type, resource_id, overlay,
+        ) {
         raise Forbidden("access denied")
       }
-    }
   }
 }
 
@@ -101,7 +105,13 @@ pub fn Storage::create_bucket(
   user : String,
   input : CreateBucketInput,
 ) -> Bucket raise StorageError {
-  self.check_and_authorize(Some(user), "CreateBucket", "Application", "Storage", None)
+  self.check_and_authorize(
+    Some(user),
+    "CreateBucket",
+    "Application",
+    "Storage",
+    None,
+  )
   let id = input.name
   if self.bucket_repo.get(id) is Some(_) {
     raise AlreadyExists("bucket '\{id}' already exists")
@@ -123,13 +133,26 @@ pub fn Storage::create_bucket(
 }
 
 ///|
-pub fn Storage::list_buckets(self : Storage, user : String) -> Array[Bucket] raise StorageError {
-  self.check_and_authorize(Some(user), "ListBuckets", "Application", "Storage", None)
+pub fn Storage::list_buckets(
+  self : Storage,
+  user : String,
+) -> Array[Bucket] raise StorageError {
+  self.check_and_authorize(
+    Some(user),
+    "ListBuckets",
+    "Application",
+    "Storage",
+    None,
+  )
   self.bucket_repo.list()
 }
 
 ///|
-pub fn Storage::get_bucket(self : Storage, user : String, id : String) -> Bucket raise StorageError {
+pub fn Storage::get_bucket(
+  self : Storage,
+  user : String,
+  id : String,
+) -> Bucket raise StorageError {
   self.check_and_authorize(Some(user), "GetBucket", "Bucket", id, None)
   match self.bucket_repo.get(id) {
     Some(b) => b
@@ -150,12 +173,17 @@ pub fn Storage::update_bucket(
       let updated_now = now_iso()
       let updated = Bucket::{
         ..b,
-        public: match input.public { Some(p) => p; None => b.public },
+        public: match input.public {
+          Some(p) => p
+          None => b.public
+        },
         file_size_limit: match input.file_size_limit {
-          Some(_) => input.file_size_limit; None => b.file_size_limit
+          Some(_) => input.file_size_limit
+          None => b.file_size_limit
         },
         allowed_mime_types: match input.allowed_mime_types {
-          Some(_) => input.allowed_mime_types; None => b.allowed_mime_types
+          Some(_) => input.allowed_mime_types
+          None => b.allowed_mime_types
         },
         updated_at: updated_now,
       }
@@ -167,7 +195,11 @@ pub fn Storage::update_bucket(
 }
 
 ///|
-pub fn Storage::delete_bucket(self : Storage, user : String, id : String) -> Unit raise StorageError {
+pub fn Storage::delete_bucket(
+  self : Storage,
+  user : String,
+  id : String,
+) -> Unit raise StorageError {
   self.check_and_authorize(Some(user), "DeleteBucket", "Bucket", id, None)
   let objects = self.object_repo.list(id, None, Some(1), None)
   if objects.length() > 0 {
@@ -177,11 +209,17 @@ pub fn Storage::delete_bucket(self : Storage, user : String, id : String) -> Uni
 }
 
 ///|
-pub fn Storage::empty_bucket(self : Storage, user : String, id : String) -> Unit raise StorageError {
+pub fn Storage::empty_bucket(
+  self : Storage,
+  user : String,
+  id : String,
+) -> Unit raise StorageError {
   self.check_and_authorize(Some(user), "EmptyBucket", "Bucket", id, None)
   let objects = self.object_repo.list(id, None, None, None)
   for obj in objects {
-    self.backend.delete(id, obj.name) catch { _ => continue }
+    self.backend.deleteObject(id, obj.name) catch {
+      _ => continue
+    }
     self.object_repo.delete(id, obj.name)
   }
 }
@@ -199,22 +237,30 @@ pub fn Storage::upload(
   data : Bytes,
   user_metadata : Json,
 ) -> Object raise StorageError {
-  self.check_and_authorize(Some(user), "UploadObject", "Bucket", bucket_id, None)
+  self.check_and_authorize(
+    Some(user),
+    "UploadObject",
+    "Bucket",
+    bucket_id,
+    None,
+  )
   match self.bucket_repo.get(bucket_id) {
     None => raise NotFound("bucket not found: \{bucket_id}")
     Some(b) => {
       match b.allowed_mime_types {
         Some(types) => {
-          if !types.contains(mimetype_from_data(data)) {
+          let mime = mimetype_from_data(data)
+          if !types.contains(mime) {
             raise InvalidInput("mime type not allowed")
           }
         }
         None => ()
       }
       match b.file_size_limit {
-        Some(limit) => if data.length().to_int64() > limit {
-          raise InvalidInput("file exceeds size limit")
-        }
+        Some(limit) =>
+          if data.length().to_int64() > limit {
+            raise InvalidInput("file exceeds size limit")
+          }
         None => ()
       }
     }
@@ -222,7 +268,10 @@ pub fn Storage::upload(
   if self.object_repo.get(bucket_id, name) is Some(_) {
     raise AlreadyExists("object '\{name}' already exists in '\{bucket_id}'")
   }
-  self.backend.put(bucket_id, name, data)
+  let mime = mimetype_from_data(data)
+  let _ = self.backend.uploadObject(bucket_id, name, data, mime, "no-cache") catch {
+    e => raise from_backend_error(e)
+  }
   let id = new_uuid()
   let now = now_iso()
   let obj = Object::{
@@ -234,7 +283,7 @@ pub fn Storage::upload(
     version: "1",
     metadata: StorageMetadata::{
       size: data.length().to_int64(),
-      mimetype: mimetype_from_data(data),
+      mimetype: mime,
       cache_control: None,
     },
     user_metadata,
@@ -257,16 +306,25 @@ pub fn Storage::download(
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       if self.is_public(bucket_id) {
-        let data = self.backend.get(bucket_id, name)
-        return (obj, data)
+        let result = self.backend.getObject(bucket_id, name, None) catch {
+          e => raise from_backend_error(e)
+        }
+        return (obj, result.body)
       }
       self.check_and_authorize(
-        user, "DownloadObject", "Object",
-        match obj.id { Some(id) => id; None => bucket_id + "/" + name },
+        user,
+        "DownloadObject",
+        "Object",
+        match obj.id {
+          Some(id) => id
+          None => bucket_id + "/" + name
+        },
         None,
       )
-      let data = self.backend.get(bucket_id, name)
-      (obj, data)
+      let result = self.backend.getObject(bucket_id, name, None) catch {
+        e => raise from_backend_error(e)
+      }
+      (obj, result.body)
     }
   }
 }
@@ -283,8 +341,13 @@ pub fn Storage::get_object_info(
     Some(obj) => {
       if !self.is_public(bucket_id) {
         self.check_and_authorize(
-          user, "GetObjectInfo", "Object",
-          match obj.id { Some(id) => id; None => bucket_id + "/" + name },
+          user,
+          "GetObjectInfo",
+          "Object",
+          match obj.id {
+            Some(id) => id
+            None => bucket_id + "/" + name
+          },
           None,
         )
       }
@@ -305,14 +368,20 @@ pub fn Storage::update_object(
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       self.check_and_authorize(
-        Some(user), "UpdateObject", "Object",
-        match obj.id { Some(id) => id; None => bucket_id + "/" + name },
+        Some(user),
+        "UpdateObject",
+        "Object",
+        match obj.id {
+          Some(id) => id
+          None => bucket_id + "/" + name
+        },
         None,
       )
       let updated = Object::{
         ..obj,
         user_metadata: match input.user_metadata {
-          Some(m) => m; None => obj.user_metadata
+          Some(m) => m
+          None => obj.user_metadata
         },
         updated_at: Some(now_iso()),
       }
@@ -348,13 +417,26 @@ pub fn Storage::move_object(
     None => raise NotFound("source not found: \{bucket_id}/\{from}")
     Some(obj) => {
       self.check_and_authorize(
-        Some(user), "MoveObject", "Object",
-        match obj.id { Some(id) => id; None => bucket_id + "/" + from },
+        Some(user),
+        "MoveObject",
+        "Object",
+        match obj.id {
+          Some(id) => id
+          None => bucket_id + "/" + from
+        },
         None,
       )
-      let data = self.backend.get(bucket_id, from)
-      self.backend.put(bucket_id, to, data)
-      self.backend.delete(bucket_id, from)
+      let result = self.backend.getObject(bucket_id, from, None) catch {
+        e => raise from_backend_error(e)
+      }
+      let data = result.body
+      let mime = result.metadata.mimetype
+      let _ = self.backend.uploadObject(bucket_id, to, data, mime, "no-cache") catch {
+        e => raise from_backend_error(e)
+      }
+      self.backend.deleteObject(bucket_id, from) catch {
+        e => raise from_backend_error(e)
+      }
       self.object_repo.delete(bucket_id, from)
       let moved = Object::{ ..obj, name: to }
       self.object_repo.insert(moved)
@@ -374,12 +456,18 @@ pub fn Storage::copy_object(
     None => raise NotFound("source not found: \{bucket_id}/\{from}")
     Some(obj) => {
       self.check_and_authorize(
-        Some(user), "CopyObject", "Object",
-        match obj.id { Some(id) => id; None => bucket_id + "/" + from },
+        Some(user),
+        "CopyObject",
+        "Object",
+        match obj.id {
+          Some(id) => id
+          None => bucket_id + "/" + from
+        },
         None,
       )
-      let data = self.backend.get(bucket_id, from)
-      self.backend.put(bucket_id, to, data)
+      let _ = self.backend.copyObject(bucket_id, from, to) catch {
+        e => raise from_backend_error(e)
+      }
       let copy = Object::{
         ..obj,
         id: Some(new_uuid()),
@@ -402,11 +490,18 @@ pub fn Storage::delete_object(
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       self.check_and_authorize(
-        Some(user), "DeleteObject", "Object",
-        match obj.id { Some(id) => id; None => bucket_id + "/" + name },
+        Some(user),
+        "DeleteObject",
+        "Object",
+        match obj.id {
+          Some(id) => id
+          None => bucket_id + "/" + name
+        },
         None,
       )
-      self.backend.delete(bucket_id, name)
+      self.backend.deleteObject(bucket_id, name) catch {
+        e => raise from_backend_error(e)
+      }
       self.object_repo.delete(bucket_id, name)
     }
   }
@@ -419,9 +514,17 @@ pub fn Storage::delete_objects(
   bucket_id : String,
   prefixes : Array[String],
 ) -> Unit raise StorageError {
-  self.check_and_authorize(Some(user), "DeleteObject", "Bucket", bucket_id, None)
+  self.check_and_authorize(
+    Some(user),
+    "DeleteObject",
+    "Bucket",
+    bucket_id,
+    None,
+  )
   for name in prefixes {
-    self.backend.delete(bucket_id, name) catch { _ => continue }
+    self.backend.deleteObject(bucket_id, name) catch {
+      _ => continue
+    }
   }
   self.object_repo.delete_batch(bucket_id, prefixes)
 }
@@ -431,10 +534,25 @@ pub fn Storage::delete_objects(
 // ---------------------------------------------------------------------------
 
 ///|
+/// Convert a BackendError to a StorageError.
+fn from_backend_error(e : @backend.BackendError) -> StorageError {
+  match e {
+    @backend.NotFound(m) => NotFound(m)
+    @backend.WriteError(m) => BackendError(m)
+    @backend.ReadError(m) => BackendError(m)
+    @backend.KeyTooLong(m) => InvalidInput(m)
+    @backend.InvalidKey(m) => InvalidInput(m)
+  }
+}
+
+///|
 /// Basic mime type detection from magic bytes.
 fn mimetype_from_data(data : Bytes) -> String {
   if data.length() >= 4 {
-    if data[0] == b'\x89' && data[1] == b'P' && data[2] == b'N' && data[3] == b'G' {
+    if data[0] == b'\x89' &&
+      data[1] == b'P' &&
+      data[2] == b'N' &&
+      data[3] == b'G' {
       return "image/png"
     }
   }

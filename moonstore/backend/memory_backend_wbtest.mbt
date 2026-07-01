@@ -1,26 +1,30 @@
 // Whitebox tests for StorageBackend + MemoryBackend.
 
 ///|
-test "MemoryBackend put and get" {
+test "MemoryBackend upload and get" {
   let backend = MemoryBackend::new()
-  put(backend, "avatars", "test.txt", b"hello world") catch {
+  let _ = backend.uploadObject(
+    "avatars", "test.txt", b"hello world", "text/plain", "no-cache",
+  ) catch {
     _ => abort("unexpected error")
   }
   @debug.assert_eq(true, exists(backend, "avatars", "test.txt"))
-  let data = get(backend, "avatars", "test.txt") catch {
+  let result = backend.getObject("avatars", "test.txt", None) catch {
     _ => abort("unexpected error")
   }
-  @debug.assert_eq(data, b"hello world")
+  @debug.assert_eq(result.body, b"hello world")
 }
 
 ///|
 test "MemoryBackend delete and exists" {
   let backend = MemoryBackend::new()
-  put(backend, "avatars", "temp.txt", b"data") catch {
+  let _ = backend.uploadObject(
+    "avatars", "temp.txt", b"data", "text/plain", "no-cache",
+  ) catch {
     _ => abort("unexpected error")
   }
   @debug.assert_eq(true, exists(backend, "avatars", "temp.txt"))
-  delete(backend, "avatars", "temp.txt") catch {
+  backend.deleteObject("avatars", "temp.txt") catch {
     _ => abort("unexpected error")
   }
   @debug.assert_eq(false, exists(backend, "avatars", "temp.txt"))
@@ -30,7 +34,7 @@ test "MemoryBackend delete and exists" {
 test "MemoryBackend get non-existent" {
   let backend = MemoryBackend::new()
   let got_error = try {
-    let _ = get(backend, "avatars", "nope.txt")
+    let _ = backend.getObject("avatars", "nope.txt", None)
     false
   } catch {
     NotFound(_) => true

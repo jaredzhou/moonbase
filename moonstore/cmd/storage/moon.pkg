@@ -1,0 +1,13 @@
+import {
+  "jaredzhou/moonstore",
+  "jaredzhou/moonstore/repo",
+  "jaredzhou/moonstore/backend",
+  "jaredzhou/moonstore/api",
+  "jaredzhou/pony",
+  "jaredzhou/mooncedar",
+  "moonbitlang/async",
+}
+
+options(
+  "is-main": true,
+)

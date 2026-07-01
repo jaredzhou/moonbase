@@ -1,0 +1,112 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/moonstore/backend"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn create_dir_all(String) -> Unit
+
+pub fn[T : StorageBackend] exists(T, String, String) -> Bool
+
+pub fn full_path(String, String, String) -> String
+
+pub fn new(String) -> LocalFSBackend
+
+pub fn parent_dir(String) -> String
+
+// Errors
+pub(all) suberror BackendError {
+  NotFound(String)
+  WriteError(String)
+  ReadError(String)
+  KeyTooLong(String)
+  InvalidKey(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CacheHeaders {
+  ifModifiedSince : String?
+  ifNoneMatch : String?
+  range : String?
+}
+
+pub(all) struct CompleteUploadResult {
+  e_tag : String?
+  location : String
+  bucket : String
+  version : String
+}
+
+pub(all) struct CopyObjectResult {
+  eTag : String
+}
+
+type FileMeta
+
+pub(all) struct GetObjectResult {
+  metadata : ObjectMetadata
+  body : Bytes
+}
+
+pub(all) struct ListObjectsResult {
+  keys : Array[ObjectKey]
+  nextToken : String?
+}
+
+pub(all) struct LocalFSBackend {
+  base_path : String
+}
+pub impl StorageBackend for LocalFSBackend
+
+pub(all) struct MemoryBackend {
+  mut files : Map[String, Bytes]
+  mut metadata : Map[String, FileMeta]
+  mut multiparts : Map[String, MultiPartState]
+}
+pub fn MemoryBackend::new() -> Self
+pub impl StorageBackend for MemoryBackend
+
+type MultiPartState
+
+pub(all) struct ObjectKey {
+  name : String
+  size : Int64
+}
+
+pub(all) struct ObjectMetadata {
+  cacheControl : String
+  contentLength : Int64
+  size : Int64
+  mimetype : String
+  eTag : String
+}
+
+pub(all) struct UploadPart {
+  e_tag : String?
+  part_number : Int
+}
+
+pub(all) struct UploadPartResult {
+  e_tag : String?
+}
+
+// Type aliases
+
+// Traits
+pub(open) trait StorageBackend {
+  fn headObject(Self, String, String) -> ObjectMetadata raise BackendError
+  fn getObject(Self, String, String, CacheHeaders?) -> GetObjectResult raise BackendError
+  fn uploadObject(Self, String, String, Bytes, String, String) -> ObjectMetadata raise BackendError
+  fn deleteObject(Self, String, String) -> Unit raise BackendError
+  fn deleteObjects(Self, String, Array[String]) -> Unit raise BackendError
+  fn copyObject(Self, String, String, String) -> CopyObjectResult raise BackendError
+  fn listObjects(Self, String, String?, Int?, String?) -> ListObjectsResult raise BackendError
+  fn createMultiPartUpload(Self, String, String, String, String) -> String raise BackendError
+  fn uploadPart(Self, String, String, String, Int, Bytes) -> UploadPartResult raise BackendError
+  fn completeMultipartUpload(Self, String, String, String, Array[UploadPart]) -> CompleteUploadResult raise BackendError
+  fn abortMultipartUpload(Self, String, String, String) -> Unit raise BackendError
+  fn close(Self) -> Unit
+}
+

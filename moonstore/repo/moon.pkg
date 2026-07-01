@@ -1,8 +1,8 @@
 import {
-  "jaredzhou/pony",
+  "jaredzhou/moonstore",
+  "jaredzhou/moonstore/backend",
   "jaredzhou/mooncedar",
-  "jaredzhou/mooncedar/evaluator",
-  "jaredzhou/mooncedar/ast",
+  "jaredzhou/mooncedar/parser",
   "moonbitlang/core/json",
   "moonbitlang/core/debug",
 }
