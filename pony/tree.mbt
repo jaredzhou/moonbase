@@ -118,7 +118,7 @@ fn Node::insert(
   pattern : String,
   name? : String = "",
   handler : Handler,
-) -> Unit raise {
+) -> Unit raise RouterError {
   let path_params : Array[String] = []
   for node = self, remain = pattern[:] {
     if remain == "" {
@@ -126,7 +126,11 @@ fn Node::insert(
       break
     } else if remain is ['{', .. remaining] {
       guard remaining.find("}") is Some(end_idx) else {
-        raise RouterError::InvalidPattern(pattern)
+        raise RouterError::InvalidPattern(
+          http_method=http_method.to_string(),
+          path=pattern,
+          reason="unclosed path parameter",
+        )
       }
       let param_name = remaining[:end_idx].to_owned()
       path_params.push(param_name)
@@ -161,7 +165,9 @@ fn Node::insert(
     } else if remain is ['*', .. remaining] {
       guard remaining == "" else {
         raise RouterError::InvalidPattern(
-          "* should be at the end of the pattern:" + pattern,
+          http_method=http_method.to_string(),
+          path=pattern,
+          reason="* should be at the end of the pattern",
         )
       }
       path_params.push("*")

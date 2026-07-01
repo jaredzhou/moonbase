@@ -1,7 +1,15 @@
 ///|
 pub suberror RouterError {
-  InvalidPattern(String)
+  InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
 } derive(Debug, ToJson)
+
+///|
+pub impl Show for RouterError with fn to_string(self) {
+  match self {
+    InvalidPattern(http_method~, path~, reason~) =>
+      "InvalidRoute(\{http_method} \{path}): \{reason}"
+  }
+}
 
 ///|
 pub(all) enum HttpMethod {
@@ -98,7 +106,11 @@ pub fn HttpHeaders::get(self : HttpHeaders, key : String) -> String? {
 
 ///|
 /// Set the value for `key`, lowercasing the key first.
-pub fn HttpHeaders::set(self : HttpHeaders, key : String, value : String) -> Unit {
+pub fn HttpHeaders::set(
+  self : HttpHeaders,
+  key : String,
+  value : String,
+) -> Unit {
   let HttpHeaders(m) = self
   m[key.to_lower()] = value
 }
@@ -281,8 +293,8 @@ pub async fn Context::form(self : Context, key : String) -> String? {
 ///|
 pub async fn Context::parse_multipart_form(
   self : Context,
-  max_memory~ : Int64 = default_max_memory,
-  writers~ : Map[String, FileWriter] = {},
+  max_memory? : Int64 = default_max_memory,
+  writers? : Map[String, FileWriter] = {},
 ) -> Unit {
   let content_type = self.header("content-type").unwrap_or("")
   let boundary = boundary_from(content_type)
@@ -301,10 +313,7 @@ pub fn Context::form_file(self : Context, key : String) -> FileHeader? {
 }
 
 ///|
-pub fn Context::form_files(
-  self : Context,
-  key : String,
-) -> Array[FileHeader] {
+pub fn Context::form_files(self : Context, key : String) -> Array[FileHeader] {
   match self.multipart_form {
     Some(mf) => mf.files_of(key)
     None => []
@@ -360,16 +369,17 @@ async fn[T : ToJson] Context::reply(
   let http_status_msg = status_text(http_status)
   self.resp_headers.merge_in_place({ "Content-Type": "application/json" })
   self.resp_writer
-  ..send_response(http_status, http_status_msg, extra_headers=self.resp_headers.to_map())
+  ..send_response(
+    http_status,
+    http_status_msg,
+    extra_headers=self.resp_headers.to_map(),
+  )
   ..write(body)
   .end_response()
 }
 
 ///|
-pub async fn[T : ToJson] Context::reply_ok(
-  self : Context,
-  value : T,
-) -> Unit {
+pub async fn[T : ToJson] Context::reply_ok(self : Context, value : T) -> Unit {
   self.reply(Ok(value))
 }
 
@@ -450,7 +460,11 @@ pub async fn Context::write_bytes(
 ///|
 pub async fn Context::no_content(self : Context) -> Unit {
   let msg = status_text(204)
-  self.resp_writer.send_response(204, msg, extra_headers=self.resp_headers.to_map())
+  self.resp_writer.send_response(
+    204,
+    msg,
+    extra_headers=self.resp_headers.to_map(),
+  )
   self.resp_writer.end_response()
 }
 
@@ -586,9 +600,13 @@ pub fn Router::add(
   name? : String = "",
   mws? : Array[Middleware] = [],
   handler : Handler,
-) -> Unit raise {
+) -> Unit raise RouterError {
   guard pattern.has_prefix("/") else {
-    raise RouterError::InvalidPattern(pattern)
+    raise RouterError::InvalidPattern(
+      http_method=meth.to_string(),
+      path=pattern,
+      reason="pattern must start with /",
+    )
   }
   self.tree.insert(meth, pattern, name~, chain(mws, handler))
 }
@@ -600,7 +618,7 @@ pub fn Router::any(
   name? : String = "",
   mws? : Array[Middleware] = [],
   handler : Handler,
-) -> Unit raise {
+) -> Unit raise RouterError {
   self.add(HttpMethod::Any, pattern, name~, mws~, handler)
 }
 
@@ -612,7 +630,7 @@ pub fn Router::mount(
   self : Router,
   prefix : String,
   sub : Router,
-) -> Unit raise {
+) -> Unit raise RouterError {
   let handler : Handler = ctx => {
     ctx.route_path = ctx.route_path[prefix.length():].to_owned()
     sub.handler(ctx)
