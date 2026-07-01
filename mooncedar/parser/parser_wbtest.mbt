@@ -258,7 +258,10 @@ test "parse when condition string" {
     parse_one_policy(
       "permit(principal, action, resource) when { \"test string\" };",
     ),
-    @ast.default().with_id("policy").permit().when_(@ast.expr_str("test string")),
+    @ast.default()
+    .with_id("policy")
+    .permit()
+    .when_(@ast.expr_str("test string")),
   )
 }
 
@@ -363,7 +366,11 @@ test "parse when condition if then else" {
     .with_id("policy")
     .permit()
     .when_(
-      @ast.expr_if(@ast.expr_bool(false), @ast.expr_principal(), @ast.expr_principal()),
+      @ast.expr_if(
+        @ast.expr_bool(false),
+        @ast.expr_principal(),
+        @ast.expr_principal(),
+      ),
     ),
   )
 }
@@ -453,7 +460,10 @@ test "parse when condition is in" {
     .with_id("policy")
     .permit()
     .when_(
-      @ast.expr_principal().is_in(@ast.entity_type("X"), @ast.expr_euid("X", "z")),
+      @ast.expr_principal().is_in(
+        @ast.entity_type("X"),
+        @ast.expr_euid("X", "z"),
+      ),
     ),
   )
 }
@@ -670,7 +680,9 @@ test "parse multiple: three with conditions" {
     .with_id("policy2")
     .forbid()
     .when_(
-      @ast.expr_ext_call(@ast.Name::{ ns: [], name: "isIpv4" }, [@ast.expr_resource()]),
+      @ast.expr_ext_call(@ast.Name::{ ns: [], name: "isIpv4" }, [
+        @ast.expr_resource(),
+      ]),
     ),
   )
 }

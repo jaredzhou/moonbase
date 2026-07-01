@@ -127,12 +127,14 @@ pub impl ToJson for Entity with fn to_json(self) -> Json {
   for key, v in self.tags {
     tags_obj.set(key, v.to_json())
   }
-  Json::object(Map([
-    ("uid", self.uid.to_json()),
-    ("attrs", Json::object(attrs_obj)),
-    ("tags", Json::object(tags_obj)),
-    ("parents", Json::array(self.parents.map(fn(p) { p.to_json() }))),
-  ]))
+  Json::object(
+    Map([
+      ("uid", self.uid.to_json()),
+      ("attrs", Json::object(attrs_obj)),
+      ("tags", Json::object(tags_obj)),
+      ("parents", Json::array(self.parents.map(fn(p) { p.to_json() }))),
+    ]),
+  )
 }
 
 ///|
@@ -151,35 +153,51 @@ pub impl FromJson for Entity with fn from_json(
         Some(Json::Object(m)) => {
           let attrs : Map[String, Value] = Map([])
           for key, val in m {
-            attrs.set(key, Value::from_json(val, path.add_key("attrs").add_key(key)))
+            attrs.set(
+              key,
+              Value::from_json(val, path.add_key("attrs").add_key(key)),
+            )
           }
           attrs
         }
         None => Map([])
-        Some(_) => raise @json.JsonDecodeError((path.add_key("attrs"), "expected object"))
+        Some(_) =>
+          raise @json.JsonDecodeError(
+            (path.add_key("attrs"), "expected object"),
+          )
       }
       let tags = match obj.get("tags") {
         Some(Json::Object(m)) => {
           let tags : Map[String, Value] = Map([])
           for key, val in m {
-            tags.set(key, Value::from_json(val, path.add_key("tags").add_key(key)))
+            tags.set(
+              key,
+              Value::from_json(val, path.add_key("tags").add_key(key)),
+            )
           }
           tags
         }
         None => Map([])
-        Some(_) => raise @json.JsonDecodeError((path.add_key("tags"), "expected object"))
+        Some(_) =>
+          raise @json.JsonDecodeError((path.add_key("tags"), "expected object"))
       }
       let parents = match obj.get("parents") {
         Some(Json::Array(parents_arr)) => {
           let parents : Array[EntityUID] = []
           for j = 0; j < parents_arr.length(); j = j + 1 {
             parents.push(
-              EntityUID::from_json(parents_arr[j], path.add_key("parents").add_index(j)),
+              EntityUID::from_json(
+                parents_arr[j],
+                path.add_key("parents").add_index(j),
+              ),
             )
           }
           parents
         }
-        Some(_) => raise @json.JsonDecodeError((path.add_key("parents"), "expected array"))
+        Some(_) =>
+          raise @json.JsonDecodeError(
+            (path.add_key("parents"), "expected array"),
+          )
         None => []
       }
       Entity::{ uid, attrs, tags, parents }

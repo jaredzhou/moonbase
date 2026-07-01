@@ -8,9 +8,7 @@ test "example: parse policy + entities from strings, authorize → Allow" {
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{"role":["String","admin"]},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
 
   let policies = parse_policies(policy_src)
-  let store : MapEntityStore = @json.from_json(
-    @json.parse(entities_src),
-  )
+  let store : MapEntityStore = @json.from_json(@json.parse(entities_src))
 
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
@@ -31,9 +29,7 @@ test "example: resource not in hierarchy — Deny" {
   let entities_src =
     #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[]},{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"other_album"}]}]
 
-  let store : MapEntityStore = @json.from_json(
-    @json.parse(entities_src),
-  )
+  let store : MapEntityStore = @json.from_json(@json.parse(entities_src))
 
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
@@ -42,11 +38,7 @@ test "example: resource not in hierarchy — Deny" {
     context: Context::Concrete(Value::Record(Map([]))),
   }
 
-  let result = is_authorized(
-    req,
-    parse_policies(policy_src).iter(),
-    store,
-  )
+  let result = is_authorized(req, parse_policies(policy_src).iter(), store)
   @debug.assert_eq(Decision::Deny, result.decision)
 }
 

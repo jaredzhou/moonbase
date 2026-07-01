@@ -18,18 +18,9 @@ fn empty_store() -> MapEntityStore {
 ///|
 fn empty_req() -> Request {
   Request::{
-    principal: EntityUIDEntry::Concrete(EntityUID::{
-      type_: "",
-      id: "",
-    }),
-    action: EntityUIDEntry::Concrete(EntityUID::{
-      type_: "",
-      id: "",
-    }),
-    resource: EntityUIDEntry::Concrete(EntityUID::{
-      type_: "",
-      id: "",
-    }),
+    principal: EntityUIDEntry::Concrete(EntityUID::{ type_: "", id: "" }),
+    action: EntityUIDEntry::Concrete(EntityUID::{ type_: "", id: "" }),
+    resource: EntityUIDEntry::Concrete(EntityUID::{ type_: "", id: "" }),
     context: Context::Concrete(Value::Record(Map([]))),
   }
 }
@@ -134,10 +125,9 @@ test "is_authorized: condition error captured" {
     conditions: [
       Condition::{
         kind: @ast.ConditionKind::When,
-        body: Expr::ExtensionApp(
-          @ast.Name::{ ns: ["ip"], name: "parse" },
-          [Expr::Lit(@ast.Literal::String("x"))],
-        ),
+        body: Expr::ExtensionApp(@ast.Name::{ ns: ["ip"], name: "parse" }, [
+          Expr::Lit(@ast.Literal::String("x")),
+        ]),
       },
     ],
   }
@@ -168,26 +158,31 @@ test "is_authorized: equivalent to evaluate + concretize" {
 
 ///|
 test "evaluate: no residuals in concrete policies" {
-  let p = default_policy().with_id("p1").permit().when_(Expr::Lit(@ast.Literal::Bool(true)))
+  let p = default_policy()
+    .with_id("p1")
+    .permit()
+    .when_(Expr::Lit(@ast.Literal::Bool(true)))
   let answer = evaluate(empty_req(), [p].iter(), empty_store())
   assert_true(answer.satisfied is [satisfied] && satisfied.policy_id == "p1")
 }
-
 
 ///|
 test "evaluate: residual policy captured" {
   let p = default_policy().with_id("p1").permit().when_(expr_unknown("x"))
   let answer = evaluate(empty_req(), [p].iter(), empty_store())
-  assert_true(answer.residuals is [residual] && residual.expr is Expr::Unknown("x", _) )
+  assert_true(
+    answer.residuals is [residual] && residual.expr is Expr::Unknown("x", _),
+  )
 }
 
 ///|
 test "evaluate: unknown PARC captured as residual" {
-  let p = default_policy().with_id("p1").permit()
-      .principal_eq("User", "alice")
-      .action_eq("Action", "v")
-      .resource_eq("Photo", "x")
-
+  let p = default_policy()
+    .with_id("p1")
+    .permit()
+    .principal_eq("User", "alice")
+    .action_eq("Action", "v")
+    .resource_eq("Photo", "x")
 
   let req = Request::{
     principal: @evaluator.unknown_uid("User"),
@@ -196,12 +191,12 @@ test "evaluate: unknown PARC captured as residual" {
     context: Context::Concrete(Value::Record(Map([]))),
   }
   let answer = evaluate(req, [p].iter(), empty_store())
-  guard answer.residuals is [residual] else {
-    return
-  }
-  assert_true(residual.expr is Expr::BinaryApp(Eq, left, right) &&
+  guard answer.residuals is [residual] else { return }
+  assert_true(
+    residual.expr is Expr::BinaryApp(Eq, left, right) &&
     left is Expr::Unknown("principal", Some(Type::Entity(EntityType("User")))) &&
-    right is Expr::Lit(@ast.Literal::EntityUID(uuid)) && uuid == uid("User", "alice")
+    right is Expr::Lit(@ast.Literal::EntityUID(uuid)) &&
+    uuid == uid("User", "alice"),
   )
 }
 
@@ -219,10 +214,7 @@ test "concretize: residual policies produce Deny" {
     action: ScopeConstraint::All,
     resource: ScopeConstraint::All,
     conditions: [
-      Condition::{
-        kind: @ast.ConditionKind::When,
-        body: expr_unknown("x"),
-      },
+      Condition::{ kind: @ast.ConditionKind::When, body: expr_unknown("x") },
     ],
   }
   let result = is_authorized(empty_req(), [p].iter(), empty_store())
@@ -249,7 +241,9 @@ test "concretize: residual policies produce Deny" {
 ///|
 test "reauthorize cat1: unknown principal resolved by mapping" {
   let policies = parse_policies(
-    #|permit(principal == User::"alice", action, resource);
+    (
+      #|permit(principal == User::"alice", action, resource);
+    ),
   )
   let req = Request::{
     principal: @evaluator.unknown_uid("User"),
@@ -266,7 +260,7 @@ test "reauthorize cat1: unknown principal resolved by mapping" {
     r1.expr is Expr::BinaryApp(@ast.BinaryOp::Eq, left, right) &&
     left is Expr::Unknown("principal", Some(Type::Entity(EntityType("User")))) &&
     right is Expr::Lit(@ast.Literal::EntityUID(uuid)) &&
-    uuid == uid("User", "alice")
+    uuid == uid("User", "alice"),
   )
 
   // Reauthorize: mapping replaces "principal" unknown
@@ -280,7 +274,9 @@ test "reauthorize cat1: unknown principal resolved by mapping" {
 ///|
 test "reauthorize cat1: unknown principal not resolved" {
   let policies = parse_policies(
-    #|permit(principal == User::"alice", action, resource);
+    (
+      #|permit(principal == User::"alice", action, resource);
+    ),
   )
   let req = Request::{
     principal: @evaluator.unknown_uid("User"),
@@ -295,7 +291,7 @@ test "reauthorize cat1: unknown principal not resolved" {
     r1.expr is Expr::BinaryApp(@ast.BinaryOp::Eq, left, right) &&
     left is Expr::Unknown("principal", Some(Type::Entity(EntityType("User")))) &&
     right is Expr::Lit(@ast.Literal::EntityUID(uuid)) &&
-    uuid == uid("User", "alice")
+    uuid == uid("User", "alice"),
   )
 
   // Reauthorize with empty mapping → principal stays unknown
@@ -305,7 +301,7 @@ test "reauthorize cat1: unknown principal not resolved" {
     r2.expr is Expr::BinaryApp(@ast.BinaryOp::Eq, left2, right2) &&
     left2 is Expr::Unknown("principal", Some(Type::Entity(EntityType("User")))) &&
     right2 is Expr::Lit(@ast.Literal::EntityUID(uuid2)) &&
-    uuid2 == uid("User", "alice")
+    uuid2 == uid("User", "alice"),
   )
   assert_true(answer2.satisfied is [])
   assert_true(answer2.concretize().decision == Decision::Deny)
@@ -364,10 +360,7 @@ test "reauthorize cat2: full context unknown — field mapping cannot resolve" {
   let answer1 = evaluate(req, [p].iter(), empty_store())
   guard answer1.residuals is [r1] else { return }
   assert_true(
-    r1.expr is Expr::GetAttr(
-      Expr::Unknown("context", None),
-      "is_admin",
-    )
+    r1.expr is Expr::GetAttr(Expr::Unknown("context", None), "is_admin"),
   )
 
   // 字段级 mapping → 命中不了
@@ -375,10 +368,7 @@ test "reauthorize cat2: full context unknown — field mapping cannot resolve" {
   let answer2 = answer1.reauthorize(req, empty_store(), mapping)
   guard answer2.residuals is [r2] else { return }
   assert_true(
-    r2.expr is Expr::GetAttr(
-      Expr::Unknown("context", None),
-      "is_admin",
-    )
+    r2.expr is Expr::GetAttr(Expr::Unknown("context", None), "is_admin"),
   )
   assert_true(answer2.satisfied is [])
 }
@@ -401,17 +391,12 @@ test "reauthorize cat2: full context unknown — resolved by context-level mappi
   let answer1 = evaluate(req, [p].iter(), empty_store())
   guard answer1.residuals is [r1] else { return }
   assert_true(
-    r1.expr is Expr::GetAttr(
-      Expr::Unknown("context", None),
-      "is_admin",
-    )
+    r1.expr is Expr::GetAttr(Expr::Unknown("context", None), "is_admin"),
   )
 
   // 替换整个 Unknown("context") 节点 → Record({"is_admin": true})
   let mapping = Map([
-    ("context", Value::Record(
-      Map([("is_admin", Value::Bool(true))]),
-    )),
+    ("context", Value::Record(Map([("is_admin", Value::Bool(true))]))),
   ])
   let answer2 = answer1.reauthorize(req, empty_store(), mapping)
   assert_true(answer2.residuals is [])
@@ -450,10 +435,7 @@ test "reauthorize cat2: nonexistent context key → error" {
 
 ///|
 test "reauthorize cat3: unknown resolved by mapping" {
-  let p = default_policy()
-    .with_id("p1")
-    .permit()
-    .when_(expr_unknown("flag"))
+  let p = default_policy().with_id("p1").permit().when_(expr_unknown("flag"))
 
   let answer1 = evaluate(empty_req(), [p].iter(), empty_store())
   guard answer1.residuals is [r1] else { return }
@@ -469,10 +451,7 @@ test "reauthorize cat3: unknown resolved by mapping" {
 
 ///|
 test "reauthorize cat3: unknown not in mapping stays residual" {
-  let p = default_policy()
-    .with_id("p1")
-    .permit()
-    .when_(expr_unknown("flag"))
+  let p = default_policy().with_id("p1").permit().when_(expr_unknown("flag"))
 
   let answer1 = evaluate(empty_req(), [p].iter(), empty_store())
   guard answer1.residuals is [r1] else { return }
@@ -495,7 +474,7 @@ test "reauthorize cat4: in resolves with added entity" {
   let policies = parse_policies(
     (
       #|permit(principal, action, resource) when { User::"alice" in Team::"admins" };
-    )
+    ),
   )
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
@@ -512,13 +491,17 @@ test "reauthorize cat4: in resolves with added entity" {
     child is Expr::Lit(@ast.Literal::EntityUID(cu)) &&
     cu == uid("User", "alice") &&
     parent is Expr::Lit(@ast.Literal::EntityUID(pu)) &&
-    pu == uid("Team", "admins")
+    pu == uid("Team", "admins"),
   )
 
   // Reauthorize: store now has User::"alice" as child of Team::"admins"
-  let store2 : MapEntityStore = @json.from_json(@json.parse(
-    #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
-  ))
+  let store2 : MapEntityStore = @json.from_json(
+    @json.parse(
+      (
+        #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
+      ),
+    ),
+  )
   let answer2 = answer1.reauthorize(req, store2, Map([]))
   assert_true(answer2.residuals is [])
   assert_true(answer2.satisfied is [s] && s.policy_id == "policy")
@@ -528,7 +511,9 @@ test "reauthorize cat4: in resolves with added entity" {
 ///|
 test "reauthorize cat4: still residual if entity still missing" {
   let policies = parse_policies(
-    #|permit(principal, action, resource) when { User::"alice" in Team::"admins" };
+    (
+      #|permit(principal, action, resource) when { User::"alice" in Team::"admins" };
+    ),
   )
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
@@ -544,7 +529,7 @@ test "reauthorize cat4: still residual if entity still missing" {
     child is Expr::Lit(@ast.Literal::EntityUID(cu)) &&
     cu == uid("User", "alice") &&
     parent is Expr::Lit(@ast.Literal::EntityUID(pu)) &&
-    pu == uid("Team", "admins")
+    pu == uid("Team", "admins"),
   )
 
   // Reauthorize with empty store → entity still missing → residual persists
@@ -555,7 +540,7 @@ test "reauthorize cat4: still residual if entity still missing" {
     child2 is Expr::Lit(@ast.Literal::EntityUID(cu2)) &&
     cu2 == uid("User", "alice") &&
     parent2 is Expr::Lit(@ast.Literal::EntityUID(pu2)) &&
-    pu2 == uid("Team", "admins")
+    pu2 == uid("Team", "admins"),
   )
   assert_true(answer2.satisfied is [])
   assert_true(answer2.concretize().decision == Decision::Deny)
@@ -564,7 +549,9 @@ test "reauthorize cat4: still residual if entity still missing" {
 ///|
 test "reauthorize cat4: forbid resolves to deny" {
   let policies = parse_policies(
-    #|forbid(principal, action, resource) when { User::"alice" in Team::"admins" };
+    (
+      #|forbid(principal, action, resource) when { User::"alice" in Team::"admins" };
+    ),
   )
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
@@ -580,13 +567,17 @@ test "reauthorize cat4: forbid resolves to deny" {
     child is Expr::Lit(@ast.Literal::EntityUID(cu)) &&
     cu == uid("User", "alice") &&
     parent is Expr::Lit(@ast.Literal::EntityUID(pu)) &&
-    pu == uid("Team", "admins")
+    pu == uid("Team", "admins"),
   )
 
   // Reauthorize: entity resolved → forbidden action → AuthorizeDeny
-  let store2 : MapEntityStore = @json.from_json(@json.parse(
-    #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
-  ))
+  let store2 : MapEntityStore = @json.from_json(
+    @json.parse(
+      (
+        #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
+      ),
+    ),
+  )
   let answer2 = answer1.reauthorize(req, store2, Map([]))
   assert_true(answer2.residuals is [])
   assert_true(answer2.satisfied is [s] && s.policy_id == "policy")
@@ -596,9 +587,10 @@ test "reauthorize cat4: forbid resolves to deny" {
 ///|
 test "reauthorize cat4: satisfied carries forward" {
   let p_sat = default_policy().with_id("sat").permit()
-  let p_res = default_policy().with_id("res").permit().when_(
-    expr_euid("User", "alice").in_(expr_euid("Team", "admins")),
-  )
+  let p_res = default_policy()
+    .with_id("res")
+    .permit()
+    .when_(expr_euid("User", "alice").in_(expr_euid("Team", "admins")))
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
     action: @evaluator.concrete_uid("Action", "view"),
@@ -615,13 +607,17 @@ test "reauthorize cat4: satisfied carries forward" {
     child is Expr::Lit(@ast.Literal::EntityUID(cu)) &&
     cu == uid("User", "alice") &&
     parent is Expr::Lit(@ast.Literal::EntityUID(pu)) &&
-    pu == uid("Team", "admins")
+    pu == uid("Team", "admins"),
   )
 
   // Reauthorize: residual resolves → two satisfied
-  let store2 : MapEntityStore = @json.from_json(@json.parse(
-    #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
-  ))
+  let store2 : MapEntityStore = @json.from_json(
+    @json.parse(
+      (
+        #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
+      ),
+    ),
+  )
   let answer2 = answer1.reauthorize(req, store2, Map([]))
   assert_true(answer2.residuals is [])
   guard answer2.satisfied is [s1, s2] else { return }
@@ -636,9 +632,10 @@ test "reauthorize cat4: satisfied carries forward" {
 ///|
 test "reauthorize combined: mapping + entity expansion" {
   let p1 = default_policy().with_id("p1").permit().when_(expr_unknown("x"))
-  let p2 = default_policy().with_id("p2").permit().when_(
-    expr_euid("User", "alice").in_(expr_euid("Team", "admins")),
-  )
+  let p2 = default_policy()
+    .with_id("p2")
+    .permit()
+    .when_(expr_euid("User", "alice").in_(expr_euid("Team", "admins")))
   let req = Request::{
     principal: @evaluator.concrete_uid("User", "alice"),
     action: @evaluator.concrete_uid("Action", "view"),
@@ -657,13 +654,17 @@ test "reauthorize combined: mapping + entity expansion" {
     child is Expr::Lit(@ast.Literal::EntityUID(cu)) &&
     cu == uid("User", "alice") &&
     parent is Expr::Lit(@ast.Literal::EntityUID(pu)) &&
-    pu == uid("Team", "admins")
+    pu == uid("Team", "admins"),
   )
 
   // Reauthorize: mapping resolves unknown("x") + entity store resolves in
-  let store2 : MapEntityStore = @json.from_json(@json.parse(
-    #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
-  ))
+  let store2 : MapEntityStore = @json.from_json(
+    @json.parse(
+      (
+        #|[{"uid":{"type":"User","id":"alice"},"attrs":{},"tags":{},"parents":[{"type":"Team","id":"admins"}]}]
+      ),
+    ),
+  )
   let mapping = Map([("x", Value::Bool(true))])
   let answer2 = answer1.reauthorize(req, store2, mapping)
   assert_true(answer2.residuals is [])

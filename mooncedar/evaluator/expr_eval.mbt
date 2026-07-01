@@ -51,7 +51,8 @@ fn var_to_result(vk : @ast.VarKind, req : Request) -> @ast.PartialValue {
     @ast.VarKind::Context =>
       match req.context {
         Context::Concrete(v) => @ast.PartialValue::Value(v)
-        Context::Unknown => @ast.PartialValue::Residual(@ast.Expr::Unknown("context", None))
+        Context::Unknown =>
+          @ast.PartialValue::Residual(@ast.Expr::Unknown("context", None))
         Context::Partial(expr) =>
           match expr {
             @ast.Expr::Record(pairs) => {
@@ -94,7 +95,9 @@ fn[S : EntityStore] eval_in_op(
   match (uid_val, target) {
     (@ast.Value::EntityUID(uid), @ast.Value::EntityUID(parent)) =>
       if entity_exists(uid, store) {
-        @ast.PartialValue::Value(@ast.Value::Bool(is_descendant(uid, parent, store)))
+        @ast.PartialValue::Value(
+          @ast.Value::Bool(is_descendant(uid, parent, store)),
+        )
       } else {
         @ast.PartialValue::Residual(
           @ast.Expr::BinaryApp(
@@ -334,7 +337,8 @@ pub fn[S : EntityStore] eval_expr(
           eval_expr(then_e, req, store)
         @ast.PartialValue::Value(@ast.Value::Bool(false)) =>
           eval_expr(else_e, req, store)
-        @ast.PartialValue::Value(_) => raise TypeMismatch("If condition must be Bool")
+        @ast.PartialValue::Value(_) =>
+          raise TypeMismatch("If condition must be Bool")
         @ast.PartialValue::Residual(re) =>
           @ast.PartialValue::Residual(@ast.Expr::If(re, then_e, else_e))
       }
@@ -361,7 +365,8 @@ pub fn[S : EntityStore] eval_expr(
                 @ast.Expr::And(@ast.Expr::Lit(@ast.Literal::Bool(true)), re),
               )
           }
-        @ast.PartialValue::Value(_) => raise TypeMismatch("And requires Bool operands")
+        @ast.PartialValue::Value(_) =>
+          raise TypeMismatch("And requires Bool operands")
         @ast.PartialValue::Residual(le) =>
           match try_eval(right, req, store) {
             @ast.PartialValue::Value(rv) =>
@@ -391,7 +396,8 @@ pub fn[S : EntityStore] eval_expr(
                 @ast.Expr::Or(@ast.Expr::Lit(@ast.Literal::Bool(false)), re),
               )
           }
-        @ast.PartialValue::Value(_) => raise TypeMismatch("Or requires Bool operands")
+        @ast.PartialValue::Value(_) =>
+          raise TypeMismatch("Or requires Bool operands")
         @ast.PartialValue::Residual(le) =>
           match try_eval(right, req, store) {
             @ast.PartialValue::Value(rv) =>
@@ -404,7 +410,8 @@ pub fn[S : EntityStore] eval_expr(
     // UnaryApp — delegate to operator module
     @ast.Expr::UnaryApp(op, arg) =>
       match eval_expr(arg, req, store) {
-        @ast.PartialValue::Value(v) => @ast.PartialValue::Value(eval_unary(op, v))
+        @ast.PartialValue::Value(v) =>
+          @ast.PartialValue::Value(eval_unary(op, v))
         @ast.PartialValue::Residual(re) =>
           @ast.PartialValue::Residual(@ast.Expr::UnaryApp(op, re))
       }
@@ -524,8 +531,10 @@ pub fn[S : EntityStore] eval_expr(
       match eval_expr(e, req, store) {
         @ast.PartialValue::Value(@ast.Value::EntityUID(uid)) =>
           @ast.PartialValue::Value(@ast.Value::Bool(uid.type_ == ty.0))
-        @ast.PartialValue::Value(_) => @ast.PartialValue::Value(@ast.Value::Bool(false))
-        @ast.PartialValue::Residual(re) => @ast.PartialValue::Residual(@ast.Expr::Is(re, ty))
+        @ast.PartialValue::Value(_) =>
+          @ast.PartialValue::Value(@ast.Value::Bool(false))
+        @ast.PartialValue::Residual(re) =>
+          @ast.PartialValue::Residual(@ast.Expr::Is(re, ty))
       }
 
     // Set — evaluate all elements

@@ -4,10 +4,11 @@ package "jaredzhou/mooncedar/evaluator"
 import {
   "jaredzhou/mooncedar/ast",
   "moonbitlang/core/debug",
-  "moonbitlang/core/json",
 }
 
 // Values
+pub fn concrete_context(@ast.Value) -> Context
+
 pub fn concrete_uid(String, String) -> EntityUIDEntry
 
 pub fn eval_binary(@ast.BinaryOp, @ast.Value, @ast.Value) -> @ast.Value raise EvalError
@@ -20,9 +21,15 @@ pub fn eval_unary(@ast.UnaryOp, @ast.Value) -> @ast.Value raise EvalError
 
 pub fn[S : EntityStore] is_descendant(@ast.EntityUID, @ast.EntityUID, S) -> Bool
 
+pub fn partial_context(@ast.Expr) -> Context
+
 pub fn[S : EntityStore] scope_match(@ast.ScopeConstraint, @ast.EntityUID, S) -> Bool
 
 pub fn sub_long(@ast.Value, @ast.Value) -> @ast.Value raise EvalError
+
+pub fn unknown_context() -> Context
+
+pub fn unknown_uid(String) -> EntityUIDEntry
 
 pub fn value_to_expr(@ast.Value) -> @ast.Expr
 
@@ -41,7 +48,7 @@ pub(all) suberror EvalError {
 // Types and methods
 pub(all) enum Context {
   Concrete(@ast.Value)
-  Unknown(@ast.Expr)
+  Unknown
   Partial(@ast.Expr)
 } derive(Eq, @debug.Debug)
 

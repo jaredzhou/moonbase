@@ -519,9 +519,7 @@ test "scope_match: IsIn" {
   let e = entity(uid("Photo", "sunset.jpg"), Map([]), Map([]), [
     uid("Album", "vacation"),
   ])
-  let store = TestStore::{
-    entities: Map([(uid("Photo", "sunset.jpg"), e)]),
-  }
+  let store = TestStore::{ entities: Map([(uid("Photo", "sunset.jpg"), e)]) }
   let sc = @ast.ScopeConstraint::IsIn(
     @ast.EntityType("Photo"),
     uid("Album", "vacation"),
@@ -544,9 +542,7 @@ test "is_descendant: direct parent" {
   let e = entity(uid("Photo", "sunset.jpg"), Map([]), Map([]), [
     uid("Album", "vacation"),
   ])
-  let store = TestStore::{
-    entities: Map([(uid("Photo", "sunset.jpg"), e)]),
-  }
+  let store = TestStore::{ entities: Map([(uid("Photo", "sunset.jpg"), e)]) }
   @debug.assert_eq(
     true,
     is_descendant(uid("Photo", "sunset.jpg"), uid("Album", "vacation"), store),
@@ -590,7 +586,8 @@ test "is_descendant: transitive" {
 test "eval_expr: Lit Bool" {
   let e = @ast.Expr::Lit(@ast.Literal::Bool(true))
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -599,7 +596,8 @@ test "eval_expr: Lit Bool" {
 test "eval_expr: Lit Long" {
   let e = @ast.Expr::Lit(@ast.Literal::Long(42L))
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Long(42L))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Long(42L))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -665,7 +663,8 @@ test "eval_expr: And both true" {
     @ast.Expr::Lit(@ast.Literal::Bool(true)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -677,7 +676,8 @@ test "eval_expr: And short-circuit false" {
     @ast.Expr::Lit(@ast.Literal::Bool(true)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -689,7 +689,8 @@ test "eval_expr: Or both false" {
     @ast.Expr::Lit(@ast.Literal::Bool(false)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -701,7 +702,8 @@ test "eval_expr: Or short-circuit true" {
     @ast.Expr::Lit(@ast.Literal::Bool(false)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -714,7 +716,8 @@ test "eval_expr: If true branch" {
     @ast.Expr::Lit(@ast.Literal::Long(2L)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Long(1L))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Long(1L))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -727,7 +730,8 @@ test "eval_expr: If false branch" {
     @ast.Expr::Lit(@ast.Literal::Long(2L)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Long(2L))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Long(2L))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -745,7 +749,8 @@ test "cpe: true && unknown preserves And wrapper" {
     @ast.expr_unknown("x"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Residual(@ast.Expr::And(_, _)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Residual(@ast.Expr::And(_, _)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -757,7 +762,8 @@ test "cpe: false && unknown short-circuits" {
     @ast.expr_unknown("x"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(@ast.Value::Bool(false)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Value(@ast.Value::Bool(false)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -769,7 +775,8 @@ test "cpe: false || unknown preserves Or wrapper" {
     @ast.expr_unknown("x"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Residual(@ast.Expr::Or(_, _)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Residual(@ast.Expr::Or(_, _)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -781,7 +788,8 @@ test "cpe: true || unknown short-circuits" {
     @ast.expr_unknown("x"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(@ast.Value::Bool(true)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Value(@ast.Value::Bool(true)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -824,10 +832,14 @@ test "cpe: residual || type_error is suppressed" {
 test "cpe and_semantics1: false && (unknown && false) => false" {
   let e = @ast.Expr::And(
     @ast.Expr::Lit(@ast.Literal::Bool(false)),
-    @ast.Expr::And(@ast.expr_unknown("a"), @ast.Expr::Lit(@ast.Literal::Bool(false))),
+    @ast.Expr::And(
+      @ast.expr_unknown("a"),
+      @ast.Expr::Lit(@ast.Literal::Bool(false)),
+    ),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(@ast.Value::Bool(false)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Value(@ast.Value::Bool(false)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -836,7 +848,10 @@ test "cpe and_semantics1: false && (unknown && false) => false" {
 test "cpe and_semantics2: true && (unknown && false) => residual" {
   let e = @ast.Expr::And(
     @ast.Expr::Lit(@ast.Literal::Bool(true)),
-    @ast.Expr::And(@ast.expr_unknown("a"), @ast.Expr::Lit(@ast.Literal::Bool(false))),
+    @ast.Expr::And(
+      @ast.expr_unknown("a"),
+      @ast.Expr::Lit(@ast.Literal::Bool(false)),
+    ),
   )
   // true && residual → Residual(And(true, residual)), not simplified
   match eval_simple(e) {
@@ -849,10 +864,14 @@ test "cpe and_semantics2: true && (unknown && false) => residual" {
 test "cpe or_semantics1: true || (unknown && false) => true" {
   let e = @ast.Expr::Or(
     @ast.Expr::Lit(@ast.Literal::Bool(true)),
-    @ast.Expr::And(@ast.expr_unknown("a"), @ast.Expr::Lit(@ast.Literal::Bool(false))),
+    @ast.Expr::And(
+      @ast.expr_unknown("a"),
+      @ast.Expr::Lit(@ast.Literal::Bool(false)),
+    ),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(@ast.Value::Bool(true)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Value(@ast.Value::Bool(true)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -861,7 +880,10 @@ test "cpe or_semantics1: true || (unknown && false) => true" {
 test "cpe or_semantics2: false || (unknown && false) => residual" {
   let e = @ast.Expr::Or(
     @ast.Expr::Lit(@ast.Literal::Bool(false)),
-    @ast.Expr::And(@ast.expr_unknown("a"), @ast.Expr::Lit(@ast.Literal::Bool(false))),
+    @ast.Expr::And(
+      @ast.expr_unknown("a"),
+      @ast.Expr::Lit(@ast.Literal::Bool(false)),
+    ),
   )
   match eval_simple(e) {
     @ast.PartialValue::Residual(_) => @debug.assert_eq(true, true)
@@ -950,7 +972,8 @@ test "cpe partial_and_false_res: false && residual => false" {
     @ast.expr_unknown("a"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(@ast.Value::Bool(false)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Value(@ast.Value::Bool(false)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1002,7 +1025,8 @@ test "cpe partial_or_true_res: true || residual => true" {
     @ast.expr_unknown("a"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(@ast.Value::Bool(true)) => @debug.assert_eq(true, true)
+    @ast.PartialValue::Value(@ast.Value::Bool(true)) =>
+      @debug.assert_eq(true, true)
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1224,7 +1248,8 @@ test "eval_expr: UnaryApp Not" {
     @ast.Expr::Lit(@ast.Literal::Bool(true)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1237,7 +1262,8 @@ test "eval_expr: BinaryApp Add" {
     @ast.Expr::Lit(@ast.Literal::Long(4L)),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Long(7L))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Long(7L))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1250,7 +1276,8 @@ test "eval_expr: BinaryApp Eq entities" {
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("User", "a"))),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1262,7 +1289,8 @@ test "eval_expr: Like matching" {
   }
   let e = @ast.Expr::Like(@ast.Expr::Lit(@ast.Literal::String("abcz")), pattern)
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1274,7 +1302,8 @@ test "eval_expr: Like non-matching" {
   }
   let e = @ast.Expr::Like(@ast.Expr::Lit(@ast.Literal::String("xyz")), pattern)
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1286,7 +1315,8 @@ test "eval_expr: Is matching type" {
     @ast.EntityType("User"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1298,7 +1328,8 @@ test "eval_expr: Is non-matching type" {
     @ast.EntityType("Photo"),
   )
   match eval_simple(e) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1337,7 +1368,8 @@ test "eval_expr: HasAttr entity has attribute" {
     "name",
   )
   match eval_expr(e, empty_req(), store) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1351,7 +1383,8 @@ test "eval_expr: HasAttr entity lacks attribute" {
     "missing",
   )
   match eval_expr(e, empty_req(), store) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1439,7 +1472,8 @@ test "eval_expr: BinaryApp In hierarchy match" {
     @ast.Expr::Lit(@ast.Literal::EntityUID(uid("Team", "admins"))),
   )
   match eval_expr(e, empty_req(), store) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1470,7 +1504,8 @@ test "eval_expr: HasTag" {
     @ast.Expr::Lit(@ast.Literal::String("env")),
   )
   match eval_expr(e, empty_req(), store) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(true))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(true))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1484,7 +1519,8 @@ test "eval_expr: HasTag missing" {
     @ast.Expr::Lit(@ast.Literal::String("missing")),
   )
   match eval_expr(e, empty_req(), store) {
-    @ast.PartialValue::Value(v) => @debug.assert_eq(true, v == @ast.Value::Bool(false))
+    @ast.PartialValue::Value(v) =>
+      @debug.assert_eq(true, v == @ast.Value::Bool(false))
     _ => @debug.assert_eq(true, false)
   }
 }
@@ -1651,7 +1687,8 @@ test "eval_policy: scope In match" {
   }
   @debug.assert_eq(
     true,
-    eval_policy(p, req, store) == @ast.PartialValue::Value(@ast.Value::Bool(true)),
+    eval_policy(p, req, store) ==
+    @ast.PartialValue::Value(@ast.Value::Bool(true)),
   )
 }
 

@@ -13,41 +13,41 @@ pub fn entity_type(String) -> EntityType
 
 pub fn entity_uid(String, String) -> EntityUID
 
+pub fn expr_action() -> Expr
+
+pub fn expr_bool(Bool) -> Expr
+
+pub fn expr_context() -> Expr
+
+pub fn expr_euid(String, String) -> Expr
+
 pub fn expr_ext_call(Name, Array[Expr]) -> Expr
 
 pub fn expr_if(Expr, Expr, Expr) -> Expr
 
 pub fn expr_is_empty(Expr) -> Expr
 
+pub fn expr_long(Int64) -> Expr
+
 pub fn expr_neg(Expr) -> Expr
 
 pub fn expr_not(Expr) -> Expr
 
+pub fn expr_principal() -> Expr
+
 pub fn expr_record(Array[(String, Expr)]) -> Expr
+
+pub fn expr_resource() -> Expr
 
 pub fn expr_set(Array[Expr]) -> Expr
 
-pub fn expr_unknown(String) -> Expr
-
-pub fn expr_bool(Bool) -> Expr
-
-pub fn expr_euid(String, String) -> Expr
-
-pub fn expr_long(Int64) -> Expr
-
 pub fn expr_str(String) -> Expr
+
+pub fn expr_unknown(String) -> Expr
 
 pub fn validate_policies(Array[Policy]) -> Unit raise ValidationError
 
 pub fn validate_policy(Policy) -> Unit raise ValidationError
-
-pub fn expr_action() -> Expr
-
-pub fn expr_context() -> Expr
-
-pub fn expr_principal() -> Expr
-
-pub fn expr_resource() -> Expr
 
 // Errors
 pub(all) suberror ValidationError {
@@ -91,7 +91,9 @@ pub(all) struct Entity {
   attrs : Map[String, Value]
   tags : Map[String, Value]
   parents : Array[EntityUID]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+} derive(Eq, @debug.Debug)
+pub impl ToJson for Entity
+pub impl @json.FromJson for Entity
 
 pub(all) struct EntityType(String) derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -161,8 +163,6 @@ pub(all) enum PartialValue {
   Value(Value)
   Residual(Expr)
 } derive(Eq, @debug.Debug)
-pub impl ToJson for PartialValue
-pub impl @json.FromJson for PartialValue
 
 pub(all) struct Pattern {
   elements : Array[PatternElem]

@@ -78,7 +78,11 @@ test "stringify var context" {
 
 ///|
 test "stringify if then else" {
-  let e = @ast.expr_if(@ast.expr_bool(true), @ast.expr_long(1L), @ast.expr_long(2L))
+  let e = @ast.expr_if(
+    @ast.expr_bool(true),
+    @ast.expr_long(1L),
+    @ast.expr_long(2L),
+  )
   inspect(stringify_expr(e), content="if true then 1 else 2")
 }
 
@@ -122,7 +126,9 @@ test "stringify chained and" {
 
 ///|
 test "stringify chained or" {
-  let e = @ast.expr_bool(true).or_(@ast.expr_bool(false)).or_(@ast.expr_bool(true))
+  let e = @ast.expr_bool(true)
+    .or_(@ast.expr_bool(false))
+    .or_(@ast.expr_bool(true))
   inspect(stringify_expr(e), content="true || false || true")
 }
 
@@ -354,7 +360,11 @@ test "stringify empty set" {
 
 ///|
 test "stringify set with elements" {
-  let e = @ast.expr_set([@ast.expr_long(1L), @ast.expr_long(2L), @ast.expr_long(3L)])
+  let e = @ast.expr_set([
+    @ast.expr_long(1L),
+    @ast.expr_long(2L),
+    @ast.expr_long(3L),
+  ])
   inspect(stringify_expr(e), content="[1, 2, 3]")
 }
 
@@ -662,7 +672,10 @@ test "stringify policy when condition" {
 
 ///|
 test "stringify policy unless condition" {
-  let p = @ast.default().with_id("policy").permit().unless(@ast.expr_bool(false))
+  let p = @ast.default()
+    .with_id("policy")
+    .permit()
+    .unless(@ast.expr_bool(false))
   inspect(
     stringify(p),
     content=(

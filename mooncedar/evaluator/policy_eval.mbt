@@ -14,15 +14,20 @@ fn[S : EntityStore] eval_single_condition(
   match eval_expr(cond.body, req, store) {
     @ast.PartialValue::Value(@ast.Value::Bool(b)) =>
       match cond.kind {
-        @ast.ConditionKind::When => @ast.PartialValue::Value(@ast.Value::Bool(b))
-        @ast.ConditionKind::Unless => @ast.PartialValue::Value(@ast.Value::Bool(!b))
+        @ast.ConditionKind::When =>
+          @ast.PartialValue::Value(@ast.Value::Bool(b))
+        @ast.ConditionKind::Unless =>
+          @ast.PartialValue::Value(@ast.Value::Bool(!b))
       }
-    @ast.PartialValue::Value(_) => @ast.PartialValue::Value(@ast.Value::Bool(false))
+    @ast.PartialValue::Value(_) =>
+      @ast.PartialValue::Value(@ast.Value::Bool(false))
     @ast.PartialValue::Residual(re) =>
       match cond.kind {
         @ast.ConditionKind::When => @ast.PartialValue::Residual(re)
         @ast.ConditionKind::Unless =>
-          @ast.PartialValue::Residual(@ast.Expr::UnaryApp(@ast.UnaryOp::Not, re))
+          @ast.PartialValue::Residual(
+            @ast.Expr::UnaryApp(@ast.UnaryOp::Not, re),
+          )
       }
   }
 }
@@ -144,7 +149,8 @@ pub fn[S : EntityStore] eval_policy(
       @ast.PartialValue::Value(@ast.Value::Bool(true)) => continue
       @ast.PartialValue::Value(@ast.Value::Bool(false)) =>
         return @ast.PartialValue::Value(@ast.Value::Bool(false))
-      @ast.PartialValue::Value(_) => return @ast.PartialValue::Value(@ast.Value::Bool(false))
+      @ast.PartialValue::Value(_) =>
+        return @ast.PartialValue::Value(@ast.Value::Bool(false))
       @ast.PartialValue::Residual(re) => {
         residuals.push(re)
         continue

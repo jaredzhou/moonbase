@@ -75,7 +75,10 @@ test "neg" {
 
 ///|
 test "is_empty" {
-  @debug.assert_eq(expr_is_empty(expr_str("x")), UnaryApp(IsEmpty, Lit(String("x"))))
+  @debug.assert_eq(
+    expr_is_empty(expr_str("x")),
+    UnaryApp(IsEmpty, Lit(String("x"))),
+  )
 }
 
 ///|
@@ -87,7 +90,10 @@ test "set_" {
 
 ///|
 test "record_" {
-  let pairs : Array[(String, Expr)] = [("a", expr_long(1L)), ("b", expr_str("x"))]
+  let pairs : Array[(String, Expr)] = [
+    ("a", expr_long(1L)),
+    ("b", expr_str("x")),
+  ]
   @debug.assert_eq(expr_record(pairs), Record(pairs))
 }
 

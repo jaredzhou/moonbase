@@ -82,7 +82,8 @@ pub fn cedar_entity_from_json(
   match json {
     Json::Object(obj) => {
       let uid = match obj.get("uid") {
-        Some(uid_json) => @ast.EntityUID::from_json(uid_json, path.add_key("uid"))
+        Some(uid_json) =>
+          @ast.EntityUID::from_json(uid_json, path.add_key("uid"))
         None => raise @json.JsonDecodeError((path, "missing 'uid' in entity"))
       }
       let attrs = match obj.get("attrs") {
@@ -97,7 +98,10 @@ pub fn cedar_entity_from_json(
           attrs
         }
         Some(Json::Null) => Map([])
-        Some(_) => raise @json.JsonDecodeError((path.add_key("attrs"), "expected object or null"))
+        Some(_) =>
+          raise @json.JsonDecodeError(
+            (path.add_key("attrs"), "expected object or null"),
+          )
         None => Map([])
       }
       let tags = match obj.get("tags") {
@@ -112,7 +116,10 @@ pub fn cedar_entity_from_json(
           tags
         }
         Some(Json::Null) => Map([])
-        Some(_) => raise @json.JsonDecodeError((path.add_key("tags"), "expected object or null"))
+        Some(_) =>
+          raise @json.JsonDecodeError(
+            (path.add_key("tags"), "expected object or null"),
+          )
         None => Map([])
       }
       let parents = match obj.get("parents") {
@@ -120,12 +127,18 @@ pub fn cedar_entity_from_json(
           let parents : Array[@ast.EntityUID] = []
           for j = 0; j < parents_arr.length(); j = j + 1 {
             parents.push(
-              @ast.EntityUID::from_json(parents_arr[j], path.add_key("parents").add_index(j)),
+              @ast.EntityUID::from_json(
+                parents_arr[j],
+                path.add_key("parents").add_index(j),
+              ),
             )
           }
           parents
         }
-        Some(_) => raise @json.JsonDecodeError((path.add_key("parents"), "expected array"))
+        Some(_) =>
+          raise @json.JsonDecodeError(
+            (path.add_key("parents"), "expected array"),
+          )
         None => []
       }
       @ast.Entity::{ uid, attrs, tags, parents }
@@ -146,7 +159,8 @@ pub fn cedar_value_from_json(
   match json {
     Json::True => @ast.Value::Bool(true)
     Json::False => @ast.Value::Bool(false)
-    Json::Null => raise @json.JsonDecodeError((path, "null is not a valid Cedar value"))
+    Json::Null =>
+      raise @json.JsonDecodeError((path, "null is not a valid Cedar value"))
     Json::Number(n, ..) => @ast.Value::Long(n.to_int64())
     Json::String(s) => @ast.Value::String(s)
     Json::Array(arr) => {
@@ -181,10 +195,19 @@ pub fn cedar_value_from_object(
         Json::Object(m) =>
           match (m.get("fn"), m.get("arg")) {
             (Some(Json::String(fn_name)), Some(Json::String(arg))) =>
-              return @ast.Value::Extension(@ast.Name::{ ns: [], name: fn_name }, arg)
-            _ => raise @json.JsonDecodeError((path.add_key("__extn"), "expected {fn, arg} strings"))
+              return @ast.Value::Extension(
+                @ast.Name::{ ns: [], name: fn_name },
+                arg,
+              )
+            _ =>
+              raise @json.JsonDecodeError(
+                (path.add_key("__extn"), "expected {fn, arg} strings"),
+              )
           }
-        _ => raise @json.JsonDecodeError((path.add_key("__extn"), "expected object"))
+        _ =>
+          raise @json.JsonDecodeError(
+            (path.add_key("__extn"), "expected object"),
+          )
       }
     None => ()
   }
@@ -214,7 +237,11 @@ fn parc_to_str(entry : @evaluator.EntityUIDEntry) -> String? {
     @evaluator.Concrete(uid) => Some(uid.type_ + "::\"" + uid.id + "\"")
     @evaluator.Unknown(ty) => {
       let s = entity_type_str(ty)
-      if s == "" { None } else { Some(s) }
+      if s == "" {
+        None
+      } else {
+        Some(s)
+      }
     }
   }
 }
@@ -357,50 +384,68 @@ pub impl FromJson for RequestJSON with fn from_json(
   match json {
     Json::Object(obj) => {
       let principal = match obj.get("principal") {
-        Some(j) => match j {
-          Json::String(s) => Some(s)
-          Json::Object(_) => {
-            let uid = @ast.EntityUID::from_json(j, path.add_key("principal"))
-            Some(uid.type_ + "::\"" + uid.id + "\"")
+        Some(j) =>
+          match j {
+            Json::String(s) => Some(s)
+            Json::Object(_) => {
+              let uid = @ast.EntityUID::from_json(j, path.add_key("principal"))
+              Some(uid.type_ + "::\"" + uid.id + "\"")
+            }
+            Json::Null => None
+            _ =>
+              raise @json.JsonDecodeError(
+                (path.add_key("principal"), "expected string, object, or null"),
+              )
           }
-          Json::Null => None
-          _ => raise @json.JsonDecodeError((path.add_key("principal"), "expected string, object, or null"))
-        }
         None => None
       }
       let action = match obj.get("action") {
-        Some(j) => match j {
-          Json::String(s) => Some(s)
-          Json::Object(_) => {
-            let uid = @ast.EntityUID::from_json(j, path.add_key("action"))
-            Some(uid.type_ + "::\"" + uid.id + "\"")
+        Some(j) =>
+          match j {
+            Json::String(s) => Some(s)
+            Json::Object(_) => {
+              let uid = @ast.EntityUID::from_json(j, path.add_key("action"))
+              Some(uid.type_ + "::\"" + uid.id + "\"")
+            }
+            Json::Null => None
+            _ =>
+              raise @json.JsonDecodeError(
+                (path.add_key("action"), "expected string, object, or null"),
+              )
           }
-          Json::Null => None
-          _ => raise @json.JsonDecodeError((path.add_key("action"), "expected string, object, or null"))
-        }
         None => None
       }
       let resource = match obj.get("resource") {
-        Some(j) => match j {
-          Json::String(s) => Some(s)
-          Json::Object(_) => {
-            let uid = @ast.EntityUID::from_json(j, path.add_key("resource"))
-            Some(uid.type_ + "::\"" + uid.id + "\"")
+        Some(j) =>
+          match j {
+            Json::String(s) => Some(s)
+            Json::Object(_) => {
+              let uid = @ast.EntityUID::from_json(j, path.add_key("resource"))
+              Some(uid.type_ + "::\"" + uid.id + "\"")
+            }
+            Json::Null => None
+            _ =>
+              raise @json.JsonDecodeError(
+                (path.add_key("resource"), "expected string, object, or null"),
+              )
           }
-          Json::Null => None
-          _ => raise @json.JsonDecodeError((path.add_key("resource"), "expected string, object, or null"))
-        }
         None => None
       }
       let context = match obj.get("context") {
-        Some(j) => match j {
-          Json::Null => None
-          Json::Object(inner) => if inner.size() == 0 { None } else { Some(cedar_value_from_json(j, path.add_key("context"))) }
-          _ => Some(cedar_value_from_json(j, path.add_key("context")))
-        }
+        Some(j) =>
+          match j {
+            Json::Null => None
+            Json::Object(inner) =>
+              if inner.size() == 0 {
+                None
+              } else {
+                Some(cedar_value_from_json(j, path.add_key("context")))
+              }
+            _ => Some(cedar_value_from_json(j, path.add_key("context")))
+          }
         None => None
       }
-      RequestJSON::{ principal, action, resource, context, }
+      RequestJSON::{ principal, action, resource, context }
     }
     _ => raise @json.JsonDecodeError((path, "expected object"))
   }

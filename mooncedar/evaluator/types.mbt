@@ -14,6 +14,7 @@ pub(all) enum Dereference {
   NoSuchEntity
   Residual(@ast.Expr)
 } derive(Debug, Eq)
+
 ///|
 /// Errors that can occur during expression evaluation.
 pub(all) suberror EvalError {
@@ -36,17 +37,18 @@ pub(all) enum EntityUIDEntry {
   Unknown(@ast.EntityType)
 } derive(Debug, Eq)
 
-
 ///|
 /// Helper: construct a concrete EntityUIDEntry.
 pub fn concrete_uid(type_ : String, id : String) -> EntityUIDEntry {
   Concrete(@ast.EntityUID::{ type_, id })
 }
 
+///|
 /// construct a unknown EntityUIDEntry.
 pub fn unknown_uid(type_ : String) -> EntityUIDEntry {
   Unknown(@ast.EntityType(type_))
 }
+
 ///|
 /// Request context — three states matching Rust's CPE:
 /// - Concrete(Value::Record(...)): fully known context
@@ -59,20 +61,24 @@ pub(all) enum Context {
   Partial(@ast.Expr)
 } derive(Debug, Eq)
 
+///|
 /// construct a concrete Context from a Value.
 pub fn concrete_context(value : @ast.Value) -> Context {
   Concrete(value)
 }
 
+///|
 /// construct an unknown Context.
 pub fn unknown_context() -> Context {
   Unknown
 }
 
+///|
 /// construct a partial Context from an Expr.
 pub fn partial_context(expr : @ast.Expr) -> Context {
   Partial(expr)
 }
+
 ///|
 /// The PARC authorization request.
 pub(all) struct Request {
@@ -92,5 +98,3 @@ pub(all) struct Request {
 pub(open) trait EntityStore {
   fn get_entity(Self, @ast.EntityUID) -> @ast.Entity?
 }
-
-
