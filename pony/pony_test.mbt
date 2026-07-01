@@ -433,8 +433,12 @@ test "ext_store" {
   assert_eq(user_id, "USER-99")
 }
 
+///|
 /// Build a multipart body with explicit CRLF bytes (avoids encoding ambiguity).
-fn build_body(boundary : String, parts : Array[(String, String?, String)]) -> Bytes {
+fn build_body(
+  boundary : String,
+  parts : Array[(String, String?, String)],
+) -> Bytes {
   let buf = @buffer.Buffer::Buffer()
   for part in parts {
     let (name, filename, content) = part
@@ -442,7 +446,9 @@ fn build_body(boundary : String, parts : Array[(String, String?, String)]) -> By
     buf.write_string_utf8("Content-Disposition: form-data; name=\"\{name}\"")
     match filename {
       Some(f) => {
-        buf.write_string_utf8("; filename=\"\{f}\"\r\nContent-Type: application/octet-stream\r\n\r\n")
+        buf.write_string_utf8(
+          "; filename=\"\{f}\"\r\nContent-Type: application/octet-stream\r\n\r\n",
+        )
         buf.write_string_utf8(content)
       }
       None => {
@@ -456,6 +462,7 @@ fn build_body(boundary : String, parts : Array[(String, String?, String)]) -> By
   buf.to_bytes()
 }
 
+///|
 /// Integration: parse a multipart upload through the HTTP server.
 async test "test_multipart_upload" {
   let r = Router::Router()
@@ -464,13 +471,19 @@ async test "test_multipart_upload" {
     "/upload",
     async fn(ctx) {
       ctx.parse_multipart_form() catch {
-        _ => { ctx.write_text(400, "bad form"); return }
+        _ => {
+          ctx.write_text(400, "bad form")
+          return
+        }
       }
       let username = ctx.form("username").unwrap_or("")
       match ctx.form_file("avatar") {
         Some(file) => {
           let path = file.path().unwrap_or("memory")
-          ctx.write_text(200, "\{file.filename}/\{file.size}/\{username}/\{path}")
+          ctx.write_text(
+            200,
+            "\{file.filename}/\{file.size}/\{username}/\{path}",
+          )
         }
         None => ctx.write_text(200, "no-file/\{username}")
       }
@@ -487,23 +500,19 @@ async test "test_multipart_upload" {
     @async.sleep(1000)
 
     let boundary = "----testboundary"
-    let body = build_body(
-      boundary,
-      [
-        ("username", None, "alice"),
-        ("avatar", Some("photo.png"), "binarydata"),
-      ],
-    )
-    let (resp, body) = @http.post(
-      base + "/upload",
-      body,
-      headers={ "Content-Type": "multipart/form-data; boundary=\{boundary}" },
-    )
+    let body = build_body(boundary, [
+      ("username", None, "alice"),
+      ("avatar", Some("photo.png"), "binarydata"),
+    ])
+    let (resp, body) = @http.post(base + "/upload", body, headers={
+      "Content-Type": "multipart/form-data; boundary=\{boundary}",
+    })
     assert_eq(resp.code, 200)
     assert_eq(body.text(), "photo.png/10/alice/memory")
   }
 }
 
+///|
 /// Integration: force disk spill with max_memory=1, upload real image.
 async test "test_multipart_upload_disk_spill" {
   let r = Router::Router()
@@ -512,7 +521,10 @@ async test "test_multipart_upload_disk_spill" {
     "/upload-spill",
     async fn(ctx) {
       ctx.parse_multipart_form(max_memory=1) catch {
-        _ => { ctx.write_text(400, "bad form"); return }
+        _ => {
+          ctx.write_text(400, "bad form")
+          return
+        }
       }
       let username = ctx.form("username").unwrap_or("")
       match ctx.form_file("avatar") {
@@ -521,9 +533,14 @@ async test "test_multipart_upload_disk_spill" {
           let disk_path = file.path().unwrap_or("memory")
           // Save the uploaded image to data/test.jpg.
           let save_path = "data/test.jpg"
-          @fs.remove(save_path) catch { _ => () }
+          @fs.remove(save_path) catch {
+            _ => ()
+          }
           @fs.write_file(save_path, data, create_mode=CreateNew)
-          ctx.write_text(200, "\{file.filename}/\{file.size}/\{disk_path}/\{username}/\{save_path}")
+          ctx.write_text(
+            200,
+            "\{file.filename}/\{file.size}/\{disk_path}/\{username}/\{save_path}",
+          )
         }
         None => ctx.write_text(200, "no-file/\{username}")
       }
@@ -548,11 +565,15 @@ async test "test_multipart_upload_disk_spill" {
     let buf = @buffer.Buffer::Buffer()
     // -- text field: username=alice
     buf.write_string_utf8("--\{boundary}\r\n")
-    buf.write_string_utf8("Content-Disposition: form-data; name=\"username\"\r\n\r\n")
+    buf.write_string_utf8(
+      "Content-Disposition: form-data; name=\"username\"\r\n\r\n",
+    )
     buf.write_string_utf8("alice\r\n")
     // -- file field: avatar with actual JPEG bytes
     buf.write_string_utf8("--\{boundary}\r\n")
-    buf.write_string_utf8("Content-Disposition: form-data; name=\"avatar\"; filename=\"test.jpg\"\r\n")
+    buf.write_string_utf8(
+      "Content-Disposition: form-data; name=\"avatar\"; filename=\"test.jpg\"\r\n",
+    )
     buf.write_string_utf8("Content-Type: image/jpeg\r\n\r\n")
     buf.write_bytes(image_bytes)
     buf.write_string_utf8("\r\n")
@@ -560,11 +581,9 @@ async test "test_multipart_upload_disk_spill" {
     buf.write_string_utf8("--\{boundary}--\r\n")
     let body = buf.to_bytes()
 
-    let (resp, resp_body) = @http.post(
-      base + "/upload-spill",
-      body,
-      headers={ "Content-Type": "multipart/form-data; boundary=\{boundary}" },
-    )
+    let (resp, resp_body) = @http.post(base + "/upload-spill", body, headers={
+      "Content-Type": "multipart/form-data; boundary=\{boundary}",
+    })
     assert_eq(resp.code, 200)
     let text = resp_body.text()
     assert_eq(text.contains("/pony-multipart-"), true)
@@ -576,11 +595,14 @@ async test "test_multipart_upload_disk_spill" {
   }
 }
 
+///|
 /// Integration: custom `FileWriter` streams file directly to a target,
 /// bypassing memory buffer and temp files entirely.
 async test "test_multipart_upload_custom_writer" {
   let target = "data/uploaded_by_writer.jpg"
-  @fs.remove(target) catch { _ => () }
+  @fs.remove(target) catch {
+    _ => ()
+  }
 
   let r = Router::Router()
   r.add(
@@ -588,16 +610,24 @@ async test "test_multipart_upload_custom_writer" {
     "/upload-writer",
     async fn(ctx) {
       let file = @fs.create(target) catch {
-        _ => { ctx.write_text(500, "cannot create target"); return }
+        _ => {
+          ctx.write_text(500, "cannot create target")
+          return
+        }
       }
-      let _ = ctx.parse_multipart_form(writers={"avatar": FileWriter(file)}) catch {
-        _ => { ctx.write_text(400, "bad form"); return }
+      let _ = ctx.parse_multipart_form(writers={ "avatar": FileWriter(file) }) catch {
+        _ => {
+          ctx.write_text(400, "bad form")
+          return
+        }
       }
       match ctx.form_file("avatar") {
-        Some(fh) => {
+        Some(fh) =>
           // Backend is External — no local temp copy, path() returns None.
-          ctx.write_text(200, "\{fh.filename}/\{fh.size}/\{fh.path().unwrap_or("none")}")
-        }
+          ctx.write_text(
+            200,
+            "\{fh.filename}/\{fh.size}/\{fh.path().unwrap_or("none")}",
+          )
         None => ctx.write_text(200, "no-file")
       }
     },
@@ -618,21 +648,23 @@ async test "test_multipart_upload_custom_writer" {
 
     let buf = @buffer.Buffer::Buffer()
     buf.write_string_utf8("--\{boundary}\r\n")
-    buf.write_string_utf8("Content-Disposition: form-data; name=\"username\"\r\n\r\n")
+    buf.write_string_utf8(
+      "Content-Disposition: form-data; name=\"username\"\r\n\r\n",
+    )
     buf.write_string_utf8("alice\r\n")
     buf.write_string_utf8("--\{boundary}\r\n")
-    buf.write_string_utf8("Content-Disposition: form-data; name=\"avatar\"; filename=\"custom.jpg\"\r\n")
+    buf.write_string_utf8(
+      "Content-Disposition: form-data; name=\"avatar\"; filename=\"custom.jpg\"\r\n",
+    )
     buf.write_string_utf8("Content-Type: image/jpeg\r\n\r\n")
     buf.write_bytes(image_bytes)
     buf.write_string_utf8("\r\n")
     buf.write_string_utf8("--\{boundary}--\r\n")
     let body = buf.to_bytes()
 
-    let (resp, resp_body) = @http.post(
-      base + "/upload-writer",
-      body,
-      headers={ "Content-Type": "multipart/form-data; boundary=\{boundary}" },
-    )
+    let (resp, resp_body) = @http.post(base + "/upload-writer", body, headers={
+      "Content-Type": "multipart/form-data; boundary=\{boundary}",
+    })
     assert_eq(resp.code, 200)
     // path() returns "none" — FileWriter streams directly, backend is External
     assert_eq(resp_body.text(), "custom.jpg/\{image_size}/none")
@@ -640,6 +672,8 @@ async test "test_multipart_upload_custom_writer" {
     // The file was written directly by FileWriter, not through a temp file.
     let saved_data = @fs.read_file(target).binary()
     assert_eq(saved_data, image_bytes)
-    @fs.remove(target) catch { _ => () }
+    @fs.remove(target) catch {
+      _ => ()
+    }
   }
 }

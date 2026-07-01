@@ -104,11 +104,13 @@
 // pass.  This two‑phase approach keeps the parser pure and testable
 // while deferring I/O to the async runtime.
 
+///|
 /// Default memory threshold: 32 MiB.
 /// Files larger than this are written to temporary disk files
 /// (via `MultipartForm::spill_to_disk`).
 pub let default_max_memory : Int64 = 32 * 1024 * 1024
 
+///|
 /// Errors that may occur during multipart parsing.
 pub(all) suberror MultipartError {
   MissingBoundary
@@ -122,20 +124,25 @@ pub(all) suberror MultipartError {
 // IO traits
 // ---------------------------------------------------------------------------
 
+///|
 /// Close the resource. Safe to call multiple times.
 pub trait Closer {
-  close(Self) -> Unit
+  fn close(Self) -> Unit
 }
 
+///|
 /// A writer that can be closed.
-pub trait WriterCloser : @io.Writer + Closer {}
+pub trait WriterCloser: @io.Writer + Closer {}
 
+///|
 /// A reader that can be closed.
-pub trait ReaderCloser : @io.Reader + Closer {}
+pub trait ReaderCloser: @io.Reader + Closer {}
 
+///|
 /// Wraps an `@fs.File` as a `WriterCloser` for multipart uploads.
 pub(all) struct FileWriter(@fs.File)
 
+///|
 impl @io.Writer for FileWriter with fn write_once(
   self : FileWriter,
   data : Bytes,
@@ -146,7 +153,8 @@ impl @io.Writer for FileWriter with fn write_once(
   f.write_once(data, offset~, len~)
 }
 
-impl Closer for FileWriter with close(self : FileWriter) -> Unit {
+///|
+impl Closer for FileWriter with fn close(self : FileWriter) -> Unit {
   let FileWriter(f) = self
   f.close()
 }
@@ -155,6 +163,7 @@ impl Closer for FileWriter with close(self : FileWriter) -> Unit {
 // Public types
 // ---------------------------------------------------------------------------
 
+///|
 /// Case-insensitive MIME part headers.
 ///
 /// Keys are normalised to lower-case on insertion and lookup.
@@ -171,12 +180,14 @@ fn PartHeaders::set(self : PartHeaders, key : String, value : String) -> Unit {
   m[key.to_lower()] = value
 }
 
+///|
 /// Return the value for `key` (case-insensitive), or `None`.
 pub fn PartHeaders::get(self : PartHeaders, key : String) -> String? {
   let PartHeaders(m) = self
   m.get(key.to_lower())
 }
 
+///|
 /// Return true if `key` is present.
 pub fn PartHeaders::has(self : PartHeaders, key : String) -> Bool {
   let k = key.to_lower()
@@ -184,6 +195,7 @@ pub fn PartHeaders::has(self : PartHeaders, key : String) -> Bool {
   m.contains(k)
 }
 
+///|
 /// Return true if there are no entries.
 pub fn PartHeaders::is_empty(self : PartHeaders) -> Bool {
   let PartHeaders(m) = self
@@ -194,6 +206,7 @@ pub fn PartHeaders::is_empty(self : PartHeaders) -> Bool {
 // Streaming Part
 // ============================================================================
 
+///|
 /// A single part in a multipart stream.
 ///
 /// Owns a lookback buffer for boundary scanning. When the body reaches
@@ -202,35 +215,39 @@ pub fn PartHeaders::is_empty(self : PartHeaders) -> Bool {
 /// `take_remaining()`.
 pub(all) struct Part {
   source : &@io.Reader
-  delimiter : Bytes          // "--boundary"
+  delimiter : Bytes // "--boundary"
   headers : PartHeaders
-  mut buf : @buffer.Buffer   // unprocessed data (initial + new chunks)
-  mut body_eof : Bool        // true when boundary delimiter found
+  mut buf : @buffer.Buffer // unprocessed data (initial + new chunks)
+  mut body_eof : Bool // true when boundary delimiter found
 }
 
+///|
 /// Return the part's MIME headers.
 pub fn Part::headers(self : Part) -> PartHeaders {
   self.headers
 }
 
+///|
 /// Return the `Content-Type` of the part, if present.
 pub fn Part::content_type(self : Part) -> String? {
   self.headers.get("Content-Type")
 }
 
+///|
 /// Extract `(name, filename?)` from the `Content-Disposition` header.
 pub fn Part::form_name(self : Part) -> (String, String?) {
   let cd = self.headers.get("Content-Disposition").unwrap_or("")
   split_content_disposition(cd)
 }
 
+///|
 /// Read the next body chunk (up to `max_len` bytes).
 ///
 /// Returns `None` when the boundary delimiter has been reached or the
 /// source is exhausted.
 async fn Part::read_chunk(
   self : Part,
-  max_len~ : Int = stream_chunk_size,
+  max_len? : Int = stream_chunk_size,
 ) -> Bytes? {
   guard self.body_eof is false else { return None }
 
@@ -239,7 +256,9 @@ async fn Part::read_chunk(
   match data[:].find(self.delimiter[:]) {
     Some(pos) => {
       // Trim trailing CRLF before the boundary
-      let body_end = if pos >= 2 && data[pos - 2] == b'\r' && data[pos - 1] == b'\n' {
+      let body_end = if pos >= 2 &&
+        data[pos - 2] == b'\r' &&
+        data[pos - 1] == b'\n' {
         pos - 2
       } else if pos >= 1 && data[pos - 1] == b'\n' {
         pos - 1
@@ -287,7 +306,11 @@ async fn Part::read_chunk(
             let chunk = self.buf.to_bytes()
             self.body_eof = true
             self.buf = @buffer.Buffer::Buffer()
-            if chunk.length() > 0 { Some(chunk) } else { None }
+            if chunk.length() > 0 {
+              Some(chunk)
+            } else {
+              None
+            }
           }
         }
       }
@@ -295,15 +318,18 @@ async fn Part::read_chunk(
   }
 }
 
+///|
 /// Internal helper: retry boundary scan after reading more data.
 async fn Part::read_chunk_retry(
   self : Part,
-  max_len~ : Int = stream_chunk_size,
+  max_len? : Int = stream_chunk_size,
 ) -> Bytes? {
   let data = self.buf.to_bytes()
   match data[:].find(self.delimiter[:]) {
     Some(pos) => {
-      let body_end = if pos >= 2 && data[pos - 2] == b'\r' && data[pos - 1] == b'\n' {
+      let body_end = if pos >= 2 &&
+        data[pos - 2] == b'\r' &&
+        data[pos - 1] == b'\n' {
         pos - 2
       } else if pos >= 1 && data[pos - 1] == b'\n' {
         pos - 1
@@ -339,6 +365,7 @@ async fn Part::read_chunk_retry(
   }
 }
 
+///|
 /// Return leftover bytes after the boundary delimiter.
 ///
 /// Callers should pass these to `MultipartReader` after consuming
@@ -347,6 +374,7 @@ fn Part::take_remaining(self : Part) -> Bytes {
   self.buf.to_bytes()
 }
 
+///|
 /// Metadata for a single uploaded file, plus its content.
 /// Fields mirror Go's `mime/multipart.FileHeader`.
 pub(all) struct FileHeader {
@@ -362,13 +390,15 @@ pub(all) struct FileHeader {
   mut backend : FileBackend
 }
 
+///|
 /// Where the uploaded file content lives.
 enum FileBackend {
   Memory(Bytes)
-  Disk(String)  // path to temporary file
-  External      // handled by a custom writer, no local copy
+  Disk(String) // path to temporary file
+  External // handled by a custom writer, no local copy
 }
 
+///|
 /// Read the entire file content as `Bytes`.
 ///
 /// * For files that fit in memory: returns immediately.
@@ -384,6 +414,7 @@ pub async fn FileHeader::bytes(self : FileHeader) -> Bytes {
   }
 }
 
+///|
 /// Return the file path for on-disk files, or `None` for in-memory/External.
 pub fn FileHeader::path(self : FileHeader) -> String? {
   match self.backend {
@@ -392,6 +423,7 @@ pub fn FileHeader::path(self : FileHeader) -> String? {
   }
 }
 
+///|
 /// Open a reader for the file content.
 ///
 /// * Memory: returns a reader backed by the in-memory bytes.
@@ -410,6 +442,7 @@ pub async fn FileHeader::open(self : FileHeader) -> @io.MemoryReader {
 // Internal form container
 // ---------------------------------------------------------------------------
 
+///|
 /// Accumulator for a parsed multipart form.
 /// Holds both regular fields (via `Values`) and file uploads.
 struct MultipartForm {
@@ -417,14 +450,17 @@ struct MultipartForm {
   files : Map[String, Array[FileHeader]]
 }
 
+///|
 fn MultipartForm::new() -> MultipartForm {
   { values: Values::new(), files: {} }
 }
 
+///|
 fn MultipartForm::field_value(self : MultipartForm, key : String) -> String? {
   self.values.get(key)
 }
 
+///|
 fn MultipartForm::file_of(self : MultipartForm, key : String) -> FileHeader? {
   match self.files.get(key) {
     Some(arr) if arr.length() > 0 => Some(arr[0])
@@ -432,10 +468,15 @@ fn MultipartForm::file_of(self : MultipartForm, key : String) -> FileHeader? {
   }
 }
 
-fn MultipartForm::files_of(self : MultipartForm, key : String) -> Array[FileHeader] {
+///|
+fn MultipartForm::files_of(
+  self : MultipartForm,
+  key : String,
+) -> Array[FileHeader] {
   self.files.get(key).unwrap_or([])
 }
 
+///|
 /// Walk every file field and, when its size exceeds `max_memory`,
 /// write it to a unique temp file under `temp_dir`.
 ///
@@ -446,12 +487,14 @@ async fn MultipartForm::spill_large_files_to_disk(
   max_memory : Int64,
   temp_dir : String,
 ) -> Unit {
-  for field_name, file_arr in self.files{
+  for field_name, file_arr in self.files {
     for file in file_arr {
       match file.backend {
         Memory(b) if b.length().to_int64() > max_memory => {
           let path = "\{temp_dir}/pony-multipart-\{random_hex(8)}"
-          @fs.write_file(path, b, create_mode=CreateNew) catch { _ => () }
+          @fs.write_file(path, b, create_mode=CreateNew) catch {
+            _ => ()
+          }
           file.backend = Disk(path)
         }
         _ => ()
@@ -460,6 +503,7 @@ async fn MultipartForm::spill_large_files_to_disk(
   }
 }
 
+///|
 /// Remove every temporary disk file held by this form.
 /// Safe to call when no disk files exist (no-op).
 /// Does NOT remove External files (belong to the caller).
@@ -480,6 +524,7 @@ async fn MultipartForm::cleanup(self : MultipartForm) -> Unit {
 
 // -- boundary extraction -----------------------------------------------
 
+///|
 /// Extract the boundary string from a `Content-Type` header value.
 ///
 /// ## Examples
@@ -507,22 +552,21 @@ fn boundary_from(content_type : String) -> String raise {
 
   // Find "boundary=" position (case‑insensitive, via lowercased copy)
   let bp_pos = lower.find(prefix)
-  guard bp_pos is Some(pos) else {
-    raise MultipartError::MissingBoundary
-  }
+  guard bp_pos is Some(pos) else { raise MultipartError::MissingBoundary }
 
   let rest = content_type[pos + prefix.length():]
   // Quoted: value between quotes is the pure boundary.
   // Unquoted: trim whitespace,  ';' if present.
   match rest {
     [] => raise MultipartError::MissingBoundary
-    ['"', ..inner, '"'] => inner.to_owned()
-    _ => rest.trim(chars = "; ").to_owned() 
+    ['"', .. inner, '"'] => inner.to_owned()
+    _ => rest.trim(chars="; ").to_owned()
   }
 }
 
 // -- byte-level primitives ---------------------------------------------
 
+///|
 /// Advance one line from `data`.
 ///
 /// Returns `Some((line, rest))` where `line` is the content before the
@@ -533,25 +577,26 @@ fn to_utf8_string(data : BytesView) -> String {
 
 // -- part header parsing -----------------------------------------------
 
+///|
 /// Parse MIME part headers from `data`.
 ///
 /// Returns `(headers, rest)` where `rest` is the bytes immediately
 /// after the blank line that terminates the headers (i.e. the body).
-fn read_part_headers(
-  data : BytesView,
-) -> (PartHeaders, BytesView) raise {
+fn read_part_headers(data : BytesView) -> (PartHeaders, BytesView) raise {
   let headers = PartHeaders::new()
 
   for rest = data {
     match rest {
-      [..b"\r\n", ..rest] | [..b"\n", ..rest] => return (headers, rest)
+      [.. b"\r\n", .. rest] | [.. b"\n", .. rest] => return (headers, rest)
       _ => {
         let (line_end, skip) = match rest.find(b"\r\n") {
           Some(pos) => (pos, 2)
-          None => match rest.find(b"\n") {
-            Some(pos) => (pos, 1)
-            None => raise MultipartError::MalformedBody("part header: no CRLF")
-          }
+          None =>
+            match rest.find(b"\n") {
+              Some(pos) => (pos, 1)
+              None =>
+                raise MultipartError::MalformedBody("part header: no CRLF")
+            }
         }
 
         let line_str = to_utf8_string(rest[:line_end])
@@ -570,6 +615,7 @@ fn read_part_headers(
   }
 }
 
+///|
 /// Split a `Content-Disposition` value into `(name, filename?)`.
 ///
 /// ## Example
@@ -581,17 +627,20 @@ fn split_content_disposition(cd_value : String) -> (String, String?) {
   let mut filename : String? = None
   for part in cd_value.split(";") {
     let trimmed = part.trim()
-    guard !(trimmed.has_prefix("name=")) else {
+    guard !trimmed.has_prefix("name=") else {
       name = Some(unquote_mime_value(trimmed["name=".length():].to_owned()))
       continue
     }
-    guard !(trimmed.has_prefix("filename=")) else {
-      filename = Some(unquote_mime_value(trimmed["filename=".length():].to_owned()))
+    guard !trimmed.has_prefix("filename=") else {
+      filename = Some(
+        unquote_mime_value(trimmed["filename=".length():].to_owned()),
+      )
     }
   }
   (name.unwrap_or(""), filename)
 }
 
+///|
 /// Strip surrounding double quotes from a MIME parameter value.
 ///
 /// ## Example
@@ -606,11 +655,9 @@ fn unquote_mime_value(raw : String) -> String {
 
 // -- part decoding -----------------------------------------------------
 
+///|
 /// Decode one multipart part (headers + body) and add it to `form`.
-fn next_part(
-  part_data : BytesView,
-  form : MultipartForm,
-) -> Unit raise {
+fn next_part(part_data : BytesView, form : MultipartForm) -> Unit raise {
   let (part_headers, body) = read_part_headers(part_data)
 
   let cd = match part_headers.get("Content-Disposition") {
@@ -620,9 +667,7 @@ fn next_part(
 
   let (name, filename) = split_content_disposition(cd)
 
-  guard name.length() > 0 else {
-    raise MultipartError::MissingName
-  }
+  guard name.length() > 0 else { raise MultipartError::MissingName }
 
   let content_type = part_headers.get("Content-Type")
 
@@ -640,9 +685,7 @@ fn next_part(
 
       // Always buffer in memory first.
       // Large files are spilled to disk later via spill_large_files_to_disk().
-      form.files
-        .get_or_init(name, () => [])
-        .push(file_header)
+      form.files.get_or_init(name, () => []).push(file_header)
     }
     _ => {
       // Regular form field (no filename)
@@ -652,6 +695,7 @@ fn next_part(
   }
 }
 
+///|
 /// Generate a random hex string of `n` digits.
 fn random_hex(n : Int) -> String {
   let r = @random.Rand::new()
@@ -667,6 +711,7 @@ fn random_hex(n : Int) -> String {
 // Main entry point
 // ============================================================================
 
+///|
 /// Parse a `multipart/form-data` request body.
 ///
 /// * `body`       — raw request body bytes.
@@ -680,10 +725,7 @@ fn random_hex(n : Int) -> String {
 /// ## Panics / errors
 /// Raises `MultipartError` when the body is malformed, the boundary is
 /// missing, or a part is missing a required `name`.
-fn parse_multipart(
-  body : Bytes,
-  content_type : String,
-) -> MultipartForm raise {
+fn parse_multipart(body : Bytes, content_type : String) -> MultipartForm raise {
   let boundary = boundary_from(content_type)
   let delimiter = (b"--" + @utf8.encode(boundary))[:]
   let final_delimiter = (b"--" + @utf8.encode(boundary) + b"--")[:]
@@ -711,6 +753,7 @@ fn parse_multipart(
   form
 }
 
+///|
 /// Extract the boundary line from the front of `data` and skip its CRLF.
 fn next_boundary(data : BytesView) -> (BytesView, BytesView) {
   let line_end = match data.find(b"\r\n") {
@@ -728,8 +771,12 @@ fn next_boundary(data : BytesView) -> (BytesView, BytesView) {
   (delim, after)
 }
 
+///|
 /// Cut the part content from `data` up to the next `marker`.
-fn cut_part(data : BytesView, marker : BytesView) -> (BytesView, BytesView) raise {
+fn cut_part(
+  data : BytesView,
+  marker : BytesView,
+) -> (BytesView, BytesView) raise {
   match data.find(marker) {
     Some(pos) => {
       let content = data[:pos]
@@ -750,9 +797,11 @@ fn cut_part(data : BytesView, marker : BytesView) -> (BytesView, BytesView) rais
 // Streaming multipart reader
 // ============================================================================
 
+///|
 /// Chunk size for streaming reads (8 KiB).
 let stream_chunk_size : Int = 8192
 
+///|
 /// Streaming multipart reader — yields `Part` values one at a time.
 ///
 /// The caller passes leftover bytes from each Part back via
@@ -760,14 +809,18 @@ let stream_chunk_size : Int = 8192
 /// and part headers.
 struct MultipartReader {
   source : &@io.Reader
-  delimiter : Bytes          // "--boundary"
-  final_delimiter : Bytes    // "--boundary--"
-  mut initial_buf : @buffer.Buffer  // carry-over bytes from previous part
+  delimiter : Bytes // "--boundary"
+  final_delimiter : Bytes // "--boundary--"
+  mut initial_buf : @buffer.Buffer // carry-over bytes from previous part
   mut preamble_skipped : Bool
   mut done : Bool
 }
 
-fn MultipartReader::new(source : &@io.Reader, boundary : String) -> MultipartReader {
+///|
+fn MultipartReader::new(
+  source : &@io.Reader,
+  boundary : String,
+) -> MultipartReader {
   let delim = b"--" + @utf8.encode(boundary)
   {
     source,
@@ -779,6 +832,7 @@ fn MultipartReader::new(source : &@io.Reader, boundary : String) -> MultipartRea
   }
 }
 
+///|
 /// Produce the next `Part` from the stream.
 ///
 /// The first call skips any preamble bytes and reads the initial
@@ -786,7 +840,7 @@ fn MultipartReader::new(source : &@io.Reader, boundary : String) -> MultipartRea
 /// stashed via `store_remaining`.
 ///
 /// Returns `None` when the final delimiter is consumed.
-async fn MultipartReader::next_part(self : MultipartReader) -> Part? raise {
+async fn MultipartReader::next_part(self : MultipartReader) -> Part? {
   guard self.done is false else { return None }
 
   // Build a scan buffer from any carry-over bytes.
@@ -864,7 +918,8 @@ async fn MultipartReader::next_part(self : MultipartReader) -> Part? raise {
   while true {
     let data = scan_buf.to_bytes()
     // Check for blank line (end of headers).
-    let has_blank = data[:].find(b"\r\n\r\n") is Some(_) || data[:].find(b"\n\n") is Some(_)
+    let has_blank = data[:].find(b"\r\n\r\n") is Some(_) ||
+      data[:].find(b"\n\n") is Some(_)
     if has_blank {
       let (headers, rest) = read_part_headers(data[:])
       part_headers = headers
@@ -878,17 +933,16 @@ async fn MultipartReader::next_part(self : MultipartReader) -> Part? raise {
       None => raise MultipartError::MalformedBody("incomplete headers")
     }
   }
-  Some(
-    Part::{
-      source: self.source,
-      delimiter: self.delimiter[:].to_owned(),
-      headers: part_headers,
-      buf: part_body_buf,
-      body_eof: false,
-    },
-  )
+  Some(Part::{
+    source: self.source,
+    delimiter: self.delimiter[:].to_owned(),
+    headers: part_headers,
+    buf: part_body_buf,
+    body_eof: false,
+  })
 }
 
+///|
 /// Read all parts into a `MultipartForm`.
 ///
 /// Iterates through every part, streams file bodies into `BodyWriter`
@@ -902,8 +956,8 @@ async fn MultipartReader::read_form(
   self : MultipartReader,
   max_memory : Int64,
   temp_dir : String,
-  writers~ : Map[String, FileWriter] = {},
-) -> MultipartForm raise {
+  writers? : Map[String, FileWriter] = {},
+) -> MultipartForm {
   let form = MultipartForm::new()
   while true {
     match self.next_part() {
@@ -960,9 +1014,7 @@ async fn MultipartReader::read_form(
                 (fh, backend)
               }
             }
-            form.files
-              .get_or_init(name, () => [])
-              .push(file_header)
+            form.files.get_or_init(name, () => []).push(file_header)
             self.store_remaining(part.take_remaining())
           }
           _ => {
@@ -981,6 +1033,7 @@ async fn MultipartReader::read_form(
   form
 }
 
+///|
 /// Stash leftover bytes from a Part so the next `next_part` call
 /// can find the boundary line and headers.
 fn MultipartReader::store_remaining(
@@ -992,13 +1045,14 @@ fn MultipartReader::store_remaining(
   }
 }
 
+///|
 /// Strip the boundary line from `scan_buf` and return the remaining
 /// bytes (the part headers / body).  Returns `None` when the final
 /// delimiter is encountered.
 async fn MultipartReader::skip_boundary_line(
   self : MultipartReader,
   scan_buf : @buffer.Buffer,
-) -> @buffer.Buffer? raise {
+) -> @buffer.Buffer? {
   let delim_len = self.delimiter.length()
   while true {
     let data = scan_buf.to_bytes()
@@ -1038,6 +1092,7 @@ async fn MultipartReader::skip_boundary_line(
   raise MultipartError::MalformedBody("incomplete boundary line")
 }
 
+///|
 /// Match body data to memory or disk.  Spills when total exceeds
 /// `max_memory`.  Stream chunks via `write()`, then call `close()`.
 /// Implements `WriterCloser` so it can be used both as default writer
@@ -1051,6 +1106,7 @@ struct BodyWriter {
   temp_dir : String
 }
 
+///|
 fn BodyWriter::new(max_memory : Int64, temp_dir : String) -> BodyWriter {
   {
     buf: @buffer.Buffer::Buffer(),
@@ -1062,6 +1118,7 @@ fn BodyWriter::new(max_memory : Int64, temp_dir : String) -> BodyWriter {
   }
 }
 
+///|
 /// Implement `@io.Writer` via `write_once`. The default `write(&Data)`
 /// converts to bytes inside the @io package and calls back to us here.
 impl @io.Writer for BodyWriter with fn write_once(
@@ -1077,10 +1134,14 @@ impl @io.Writer for BodyWriter with fn write_once(
   if self.disk_path.length() > 0 || self.total > self.max_memory {
     if self.disk_path.length() == 0 {
       let path = "\{self.temp_dir}/pony-multipart-\{random_hex(8)}"
-      self.disk_file = Some(@fs.create(path) catch { _ => {
-        self.buf.write_bytes(chunk)
-        return len
-      }})
+      self.disk_file = Some(
+        @fs.create(path) catch {
+          _ => {
+            self.buf.write_bytes(chunk)
+            return len
+          }
+        },
+      )
       self.disk_file.unwrap().write(self.buf.to_bytes()[:]) |> ignore
       self.buf = @buffer.Buffer::Buffer()
       self.disk_path = path
@@ -1095,8 +1156,9 @@ impl @io.Writer for BodyWriter with fn write_once(
   len
 }
 
+///|
 /// Close the underlying file handle, if any.
-impl Closer for BodyWriter with close(self : BodyWriter) -> Unit {
+impl Closer for BodyWriter with fn close(self : BodyWriter) -> Unit {
   match self.disk_file {
     Some(f) => f.close()
     _ => ()

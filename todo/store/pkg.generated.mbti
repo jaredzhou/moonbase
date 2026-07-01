@@ -2,8 +2,8 @@
 package "jaredzhou/todo/store"
 
 import {
+  "jaredzhou/mooncedar",
   "jaredzhou/mooncedar/ast",
-  "jaredzhou/mooncedar/evaluator",
   "moonbitlang/core/debug",
 }
 

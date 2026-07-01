@@ -15,12 +15,14 @@
 //   --boundary         → part separator
 //   --boundary--       → end marker
 
+///|
 /// Spec: [RFC 2046 §5.1] Quoted boundary values are properly unwrapped.
 test "boundary_from unwraps quoted boundary" {
   let result = boundary_from("multipart/form-data; boundary=\"----foo\"")
   @debug.assert_eq(result, "----foo")
 }
 
+///|
 /// Spec: [RFC 2046 §5.1] Unquoted boundary values are extracted as-is.
 test "boundary_from handles unquoted boundary" {
   let result = boundary_from("multipart/form-data; boundary=----bar")
@@ -31,6 +33,7 @@ test "boundary_from handles unquoted boundary" {
 // Spec: RFC 2046 §5.1 — byte-level primitives
 // ============================================================================
 
+///|
 /// Spec: [RFC 2046 §5.1] A part boundary marker `--boundary` must be
 /// locatable within the body bytes.
 test "BytesView::find locates substring" {
@@ -39,6 +42,7 @@ test "BytesView::find locates substring" {
   @debug.assert_eq(pos, Some(3))
 }
 
+///|
 /// Spec: [RFC 2046 §5.1] A second boundary marker should be found after
 /// skipping past the first one.
 test "BytesView::find after start offset" {
@@ -57,18 +61,21 @@ test "BytesView::find after start offset" {
 //   Content-Disposition: form-data; name="field1"
 //   Content-Disposition: form-data; name="file1"; filename="test.txt"
 
+///|
 /// Spec: [RFC 2183 §2] Quoted parameter values are unescaped.
 test "unquote_mime_value strips surrounding quotes" {
   let result = unquote_mime_value("\"value\"")
   @debug.assert_eq(result, "value")
 }
 
+///|
 /// Spec: [RFC 2183 §2] Unquoted parameter values are left alone.
 test "unquote_mime_value passes through unquoted text" {
   let result = unquote_mime_value("plain")
   @debug.assert_eq(result, "plain")
 }
 
+///|
 /// Spec: [RFC 7578 §4.3] The `name` parameter identifies the form field.
 test "split_content_disposition extracts name parameter" {
   let (name, filename) = split_content_disposition("form-data; name=\"field1\"")
@@ -76,10 +83,13 @@ test "split_content_disposition extracts name parameter" {
   @debug.assert_eq(filename is None, true)
 }
 
+///|
 /// Spec: [RFC 7578 §4.3] The `filename` parameter (when present) identifies
 /// the original file name.
 test "split_content_disposition extracts filename parameter" {
-  let (name, filename) = split_content_disposition("form-data; name=\"file1\"; filename=\"test.txt\"")
+  let (name, filename) = split_content_disposition(
+    "form-data; name=\"file1\"; filename=\"test.txt\"",
+  )
   @debug.assert_eq(name, "file1")
   match filename {
     Some(f) => @debug.assert_eq(f, "test.txt")
@@ -93,6 +103,7 @@ test "split_content_disposition extracts filename parameter" {
 // A parsed multipart form contains regular form fields (Values) and
 // file uploads (UploadedFile entries), keyed by their `name`.
 
+///|
 /// Spec: [RFC 7578 §4.2] An empty form has no values and no files.
 test "MultipartForm new is empty" {
   let form = MultipartForm::new()
@@ -105,15 +116,22 @@ test "MultipartForm new is empty" {
 // Part struct whitebox tests
 // ============================================================================
 
+///|
 /// Construct a Part with a given Content-Disposition header and verify
 /// form_name extracts the name and optional filename.
 test "Part form_name extracts name and filename" {
   let headers = PartHeaders::new()
-  headers.set("Content-Disposition", "form-data; name=\"file1\"; filename=\"test.txt\"")
+  headers.set(
+    "Content-Disposition", "form-data; name=\"file1\"; filename=\"test.txt\"",
+  )
   headers.set("Content-Type", "text/plain")
-  let reader = @io.MemoryReader() <| w => {}
+  let reader = @io.MemoryReader() <| w => {  }
   let part = Part::{
-    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+    source: reader,
+    delimiter: b"--boundary",
+    headers,
+    buf: @buffer.Buffer::Buffer(),
+    body_eof: false,
   }
   let (name, filename) = part.form_name()
   @debug.assert_eq(name, "file1")
@@ -123,34 +141,49 @@ test "Part form_name extracts name and filename" {
   }
 }
 
+///|
 /// Verify Part::content_type returns the Content-Type header value.
 test "Part content_type" {
   let headers = PartHeaders::new()
   headers.set("Content-Type", "image/png")
-  let reader = @io.MemoryReader() <| w => {}
+  let reader = @io.MemoryReader() <| w => {  }
   let part = Part::{
-    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+    source: reader,
+    delimiter: b"--boundary",
+    headers,
+    buf: @buffer.Buffer::Buffer(),
+    body_eof: false,
   }
   @debug.assert_eq(part.content_type(), Some("image/png"))
 }
 
+///|
 /// Verify Part::content_type returns None when no Content-Type header.
 test "Part content_type none" {
   let headers = PartHeaders::new()
-  let reader = @io.MemoryReader() <| w => {}
+  let reader = @io.MemoryReader() <| w => {  }
   let part = Part::{
-    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+    source: reader,
+    delimiter: b"--boundary",
+    headers,
+    buf: @buffer.Buffer::Buffer(),
+    body_eof: false,
   }
   @debug.assert_eq(part.content_type() is None, true)
 }
 
+///|
 /// Verify Part::headers returns the part's MIME headers.
 test "Part headers" {
   let headers = PartHeaders::new()
   headers.set("X-Custom", "value")
-  let reader = @io.MemoryReader() <| w => {}
+  let reader = @io.MemoryReader() <| w => {  }
   let part = Part::{
-    source: reader, delimiter: b"--boundary", headers, buf: @buffer.Buffer::Buffer(), body_eof: false,
+    source: reader,
+    delimiter: b"--boundary",
+    headers,
+    buf: @buffer.Buffer::Buffer(),
+    body_eof: false,
   }
   @debug.assert_eq(part.headers().get("x-custom"), Some("value"))
 }
@@ -159,8 +192,13 @@ test "Part headers" {
 // MultipartReader streaming whitebox tests
 // ============================================================================
 
+///|
 /// Build a complete multipart body with the given boundary and one text part.
-fn build_multipart_body(boundary : String, name : String, value : String) -> Bytes {
+fn build_multipart_body(
+  boundary : String,
+  name : String,
+  value : String,
+) -> Bytes {
   let buf = @buffer.Buffer::Buffer()
   buf.write_string_utf8("--\{boundary}\r\n")
   buf.write_string_utf8("Content-Disposition: form-data; name=\"\{name}\"\r\n")
@@ -170,6 +208,7 @@ fn build_multipart_body(boundary : String, name : String, value : String) -> Byt
   buf.to_bytes()
 }
 
+///|
 /// Streaming: parse a single text field part through MultipartReader.
 async test "MultipartReader yields Part with text field" {
   let boundary = "----boundary"
@@ -191,12 +230,15 @@ async test "MultipartReader yields Part with text field" {
   }
 }
 
+///|
 /// Streaming: parse a file part with filename through MultipartReader.
 async test "MultipartReader yields Part with file field" {
   let boundary = "----fileboundary"
   let buf = @buffer.Buffer::Buffer()
   buf.write_string_utf8("--\{boundary}\r\n")
-  buf.write_string_utf8("Content-Disposition: form-data; name=\"avatar\"; filename=\"photo.png\"\r\n")
+  buf.write_string_utf8(
+    "Content-Disposition: form-data; name=\"avatar\"; filename=\"photo.png\"\r\n",
+  )
   buf.write_string_utf8("Content-Type: image/png\r\n")
   buf.write_string_utf8("\r\n")
   buf.write_bytes(b"\x00\x01\x02\x03")
@@ -223,6 +265,7 @@ async test "MultipartReader yields Part with file field" {
   }
 }
 
+///|
 /// Streaming: MultipartReader returns None after final boundary.
 async test "MultipartReader returns None after final boundary" {
   let boundary = "----endboundary"
@@ -244,9 +287,8 @@ async test "MultipartReader returns None after final boundary" {
 // readutil test (existing)
 // ============================================================================
 
+///|
 async test "readutil test" {
-  let reader = @io.MemoryReader() <| w => {
-    w.write("\r\n")
-  }
+  let reader = @io.MemoryReader() <| w => { w.write("\r\n") }
   @debug.assert_eq(reader.read_until("\r\n"), Some(""))
 }

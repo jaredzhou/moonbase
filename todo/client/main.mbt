@@ -28,20 +28,79 @@ async fn main {
 
   match cmd {
     "list" => get(user, "/lists")
-    "view" => if args.length() >= 4 { get(user, "/lists/" + args[3]) } else { println("usage: view <id>") }
-    "new" => if args.length() >= 4 { post(user, "/lists", b1("name", join(args, 3))) } else { println("usage: new <name>") }
-    "done" => if args.length() >= 4 { delete(user, "/lists/" + args[3]) } else { println("usage: done <id>") }
-    "task" => if args.length() >= 5 { post(user, "/lists/" + args[3] + "/tasks", b1("name", join(args, 4))) } else { println("usage: task <list> <name>") }
-    "toggle" => if args.length() >= 5 { patch(user, "/lists/" + args[3] + "/tasks/" + args[4], b1("state", "done")) } else { println("usage: toggle <list> <pos>") }
-    "del" => if args.length() >= 5 { delete(user, "/lists/" + args[3] + "/tasks/" + args[4]) } else { println("usage: del <list> <pos>") }
+    "view" =>
+      if args.length() >= 4 {
+        get(user, "/lists/" + args[3])
+      } else {
+        println("usage: view <id>")
+      }
+    "new" =>
+      if args.length() >= 4 {
+        post(user, "/lists", b1("name", join(args, 3)))
+      } else {
+        println("usage: new <name>")
+      }
+    "done" =>
+      if args.length() >= 4 {
+        delete(user, "/lists/" + args[3])
+      } else {
+        println("usage: done <id>")
+      }
+    "task" =>
+      if args.length() >= 5 {
+        post(user, "/lists/" + args[3] + "/tasks", b1("name", join(args, 4)))
+      } else {
+        println("usage: task <list> <name>")
+      }
+    "toggle" =>
+      if args.length() >= 5 {
+        patch(
+          user,
+          "/lists/" + args[3] + "/tasks/" + args[4],
+          b1("state", "done"),
+        )
+      } else {
+        println("usage: toggle <list> <pos>")
+      }
+    "del" =>
+      if args.length() >= 5 {
+        delete(user, "/lists/" + args[3] + "/tasks/" + args[4])
+      } else {
+        println("usage: del <list> <pos>")
+      }
     "share" => {
-      let id_str = if args.length() >= 4 { args[3] } else { println("usage: share <list> <user> [editor]"); return }
-      let target = if args.length() >= 5 { args[4] } else { println("usage: share <list> <user> [editor]"); return }
-      let ro = if args.length() >= 6 && args[5] == "editor" { "false" } else { "true" }
-      let body = "{" + "\"target\":\"" + target + "\"," + "\"readonly\":" + ro + "}"
+      let id_str = if args.length() >= 4 {
+        args[3]
+      } else {
+        println("usage: share <list> <user> [editor]")
+        return
+      }
+      let target = if args.length() >= 5 {
+        args[4]
+      } else {
+        println("usage: share <list> <user> [editor]")
+        return
+      }
+      let ro = if args.length() >= 6 && args[5] == "editor" {
+        "false"
+      } else {
+        "true"
+      }
+      let body = "{" +
+        "\"target\":\"" +
+        target +
+        "\"," +
+        "\"readonly\":" +
+        ro +
+        "}"
       post(user, "/lists/" + id_str + "/share", body)
     }
-    "unshare" => if args.length() >= 5 { delete_body(user, "/lists/" + args[3] + "/share", b1("target", args[4])) } else { println("usage: unshare <list> <user>") }
+    "unshare" =>
+      if args.length() >= 5 {
+        delete_body(user, "/lists/" + args[3] + "/share", b1("target", args[4]))
+      } else {
+        println("usage: unshare <list> <user>")
+      }
     "" => show_usage()
     _ => println("unknown: " + cmd)
   }
@@ -67,7 +126,9 @@ fn b1(key : String, val : String) -> String {
 fn join(args : Array[String], start : Int) -> String {
   let mut s = ""
   for i = start; i < args.length(); i = i + 1 {
-    if i > start { s = s + " " }
+    if i > start {
+      s = s + " "
+    }
     s = s + args[i]
   }
   s
@@ -116,5 +177,9 @@ async fn delete_body(user : String, path : String, body : String) -> Unit {
 ///|
 fn show_rsp(resp : @http.Response, body : &@io.Data) -> String {
   let txt = body.text() catch { _ => "" }
-  if txt == "" { resp.code.to_string() + " " + resp.reason } else { txt }
+  if txt == "" {
+    resp.code.to_string() + " " + resp.reason
+  } else {
+    txt
+  }
 }

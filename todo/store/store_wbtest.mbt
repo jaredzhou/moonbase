@@ -63,8 +63,7 @@ test "add_list updates entity store" {
   )
   // owner attribute is an EntityUID value pointing to User::"emina"
   match e.attrs["owner"] {
-    @ast.Value::EntityUID(uid) =>
-      @debug.assert_eq("emina", uid.id)
+    @ast.Value::EntityUID(uid) => @debug.assert_eq("emina", uid.id)
     _ => abort("expected EntityUID for owner")
   }
 }
@@ -105,8 +104,7 @@ test "update_list_entity reflects changes" {
     .get_entity(@ast.EntityUID::{ type_: "List", id: "0" })
     .unwrap()
   match entity.attrs["readers"] {
-    @ast.Value::Set(refs) =>
-      @debug.assert_eq(1, refs.length())
+    @ast.Value::Set(refs) => @debug.assert_eq(1, refs.length())
     _ => abort("expected Set for readers")
   }
 }

@@ -3,8 +3,10 @@ package "jaredzhou/pony"
 
 import {
   "jaredzhou/libs/url",
+  "moonbitlang/async/fs",
   "moonbitlang/async/http",
   "moonbitlang/async/io",
+  "moonbitlang/core/buffer",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "tonyfettes/any",
@@ -22,6 +24,8 @@ pub fn canonicalHeaderKey(String) -> String
 pub let data_loss : Int
 
 pub let deadline_exceeded : Int
+
+pub let default_max_memory : Int64
 
 pub let failed_precondition : Int
 
@@ -183,48 +187,63 @@ pub(all) suberror ExtError {
   DecodeError(key~ : String, msg~ : String)
 } derive(Eq, ToJson, @debug.Debug)
 
+pub(all) suberror MultipartError {
+  MissingBoundary
+  MissingName
+  MalformedBody(String)
+  FileTooLarge(String, Int64)
+  FileIOError(String)
+} derive(@debug.Debug)
+
 pub suberror RouterError {
-  InvalidPattern(String)
+  InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
 } derive(ToJson, @debug.Debug)
+pub impl Show for RouterError
 
 // Types and methods
 type ApiError derive(ToJson, @debug.Debug)
 pub fn ApiError::new(Int, String) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
 
+type BodyWriter
+
 pub(all) struct Context {
   http_method : HttpMethod
   url_str : String
   url : @url.URL
   mut route_path : String
-  req_headers : Map[String, String]
-  resp_headers : Map[String, String]
+  req_headers : HttpHeaders
+  resp_headers : HttpHeaders
   queries : Values
   mut form_values : Values?
+  mut multipart_form : MultipartForm?
   exts : ExtStore
   mut path_params : Array[ParamKV]
   req_body : &@io.Reader
   resp_writer : @http.ServerConnection
 }
+pub async fn Context::cleanup(Self) -> Unit
 pub async fn Context::form(Self, String) -> String?
+pub fn Context::form_file(Self, String) -> FileHeader?
+pub fn Context::form_files(Self, String) -> Array[FileHeader]
 pub fn[K, V] Context::get_ext(Self, K) -> V raise ExtError
 pub fn Context::header(Self, String) -> String?
 pub async fn[T : @json.FromJson] Context::json(Self) -> T
 pub async fn Context::no_content(Self) -> Unit
 pub fn Context::param(Self, String) -> String?
+pub async fn Context::parse_multipart_form(Self, max_memory? : Int64, writers? : Map[String, FileWriter]) -> Unit
 pub fn Context::query(Self, String) -> String?
-pub async fn Context::redirect(Self, String, http_status? : Int) -> Unit
+pub async fn Context::redirect(Self, String, http_status? : Int, msg? : String) -> Unit
 pub fn[K] Context::remove_ext(Self, K) -> Unit
-pub async fn Context::response_error(Self, Int, String) -> Unit
-pub async fn[T : ToJson] Context::response_ok(Self, T) -> Unit
+pub async fn Context::reply_error(Self, Int, String) -> Unit
+pub async fn[T : ToJson] Context::reply_ok(Self, T) -> Unit
 pub fn Context::set_content_type(Self, String) -> Unit
 pub fn[K, V] Context::set_ext(Self, K, V) -> Unit
 pub fn Context::set_header(Self, String, String) -> Unit
 pub fn[K, V] Context::try_get_ext(Self, K) -> V?
 pub fn Context::wildcard(Self) -> String?
-pub async fn Context::write_bytes(Self, Int, Bytes) -> Unit
+pub async fn Context::write_bytes(Self, Int, msg? : String, Bytes) -> Unit
 pub async fn[T : ToJson] Context::write_json(Self, Int, msg? : String, T) -> Unit
-pub async fn Context::write_status(Self, Int, end_response? : Bool) -> Unit
 pub async fn Context::write_text(Self, Int, msg? : String, String) -> Unit
 pub impl Show for Context
 
@@ -237,6 +256,21 @@ pub fn[K] ExtStore::remove(Self, K) -> Unit
 pub fn[K, V] ExtStore::set(Self, K, V) -> Unit
 pub fn[K, V] ExtStore::try_get(Self, K) -> V?
 
+type FileBackend
+
+pub(all) struct FileHeader {
+  filename : String
+  size : Int64
+  content_type : String?
+  header : PartHeaders
+  mut backend : FileBackend
+}
+pub async fn FileHeader::bytes(Self) -> Bytes
+pub async fn FileHeader::open(Self) -> @io.MemoryReader
+pub fn FileHeader::path(Self) -> String?
+
+pub(all) struct FileWriter(@fs.File)
+
 pub(all) struct Handler(async (Context) -> Unit) derive(@debug.Debug)
 
 pub struct Header(Map[String, Array[String]])
@@ -247,6 +281,14 @@ pub fn Header::get(Self, String) -> String?
 pub fn Header::has(Self, String) -> Bool
 pub fn Header::set(Self, String, String) -> Unit
 pub fn Header::values(Self, String) -> Array[String]
+
+pub(all) struct HttpHeaders(Map[String, String])
+pub fn HttpHeaders::from_map(Map[String, String]) -> Self
+pub fn HttpHeaders::get(Self, String) -> String?
+pub fn HttpHeaders::merge_in_place(Self, Map[String, String]) -> Unit
+pub fn HttpHeaders::new() -> Self
+pub fn HttpHeaders::set(Self, String, String) -> Unit
+pub fn HttpHeaders::to_map(Self) -> Map[String, String]
 
 pub(all) enum HttpMethod {
   Get
@@ -265,6 +307,10 @@ pub impl Show for HttpMethod
 
 pub(all) struct Middleware((Handler) -> Handler) derive(@debug.Debug)
 
+type MultipartForm
+
+type MultipartReader
+
 type Node derive(@debug.Debug)
 pub impl Show for Node
 
@@ -272,6 +318,23 @@ type NodeType derive(@debug.Debug)
 pub impl Show for NodeType
 
 type ParamKV
+
+pub(all) struct Part {
+  source : &@io.Reader
+  delimiter : Bytes
+  headers : PartHeaders
+  mut buf : @buffer.Buffer
+  mut body_eof : Bool
+}
+pub fn Part::content_type(Self) -> String?
+pub fn Part::form_name(Self) -> (String, String?)
+pub fn Part::headers(Self) -> PartHeaders
+
+pub(all) struct PartHeaders(Map[String, String])
+pub fn PartHeaders::get(Self, String) -> String?
+pub fn PartHeaders::has(Self, String) -> Bool
+pub fn PartHeaders::is_empty(Self) -> Bool
+pub fn PartHeaders::new() -> Self
 
 pub(all) struct RequestId {
 }
@@ -289,12 +352,12 @@ pub struct Router {
   mut method_not_allowed_handler : Handler?
 } derive(@debug.Debug)
 pub fn Router::Router() -> Self
-pub fn Router::add(Self, HttpMethod, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise
-pub fn Router::any(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise
+pub fn Router::add(Self, HttpMethod, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
+pub fn Router::any(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub fn Router::build_ctx(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Context
 pub async fn Router::handle(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Unit
 pub async fn Router::handler(Self, Context) -> Unit
-pub fn Router::mount(Self, String, Self) -> Unit raise
+pub fn Router::mount(Self, String, Self) -> Unit raise RouterError
 pub fn Router::set_method_not_allowed(Self, Handler) -> Unit
 pub fn Router::set_not_found(Self, Handler) -> Unit
 pub fn Router::use_mw(Self, Middleware) -> Unit
@@ -322,4 +385,13 @@ pub fn Values::new() -> Self
 // Type aliases
 
 // Traits
+pub trait Closer {
+  fn close(Self) -> Unit
+}
+
+pub trait ReaderCloser : @io.Reader + Closer {
+}
+
+pub trait WriterCloser : @io.Writer + Closer {
+}
 
