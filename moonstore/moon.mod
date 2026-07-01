@@ -13,6 +13,7 @@ preferred_target = "native"
 import {
   "jaredzhou/pony@0.1.1",
   "jaredzhou/mooncedar@0.1.1",
+  "jaredzhou/libs@0.1.1",
   "moonbitlang/async@0.19.4",
   "moonbitlang/x@0.4.45",
 }

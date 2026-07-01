@@ -46,25 +46,30 @@ pub fn Storage::new(
 }
 
 ///|
+let uuid_counter : Ref[Int64] = { val: 0L }
+
+///|
+/// Returns the current UTC time as an ISO-8601-like string.
 fn now_iso() -> String {
-  let pdt = @time.date_time(
-    2024,
-    1,
-    1,
-    hour=0,
-    minute=0,
-    second=0,
-    zone=@time.utc_zone,
-  ) catch {
+  let millis = @runtime_time.now_mill()
+  let seconds = millis / 1000L
+  let nanos = (millis % 1000L).to_int() * 1_000_000
+  let dt = @time.unix(seconds, nanosecond=nanos, zone=@time.utc_zone) catch {
     _ => panic()
   }
-  pdt.to_string()
+  dt.to_string()
 }
 
 ///|
+/// Generates a new unique identifier as a UUID string.
+/// Currently derived from the current timestamp plus an in-memory counter.
 fn new_uuid() -> String {
-  let ts = @time.unix(0, zone=@time.utc_zone) catch { _ => panic() }
-  ts.to_string()
+  let millis = @runtime_time.now_mill()
+  let count = uuid_counter.val
+  uuid_counter.val = count + 1L
+  let hex = millis.to_string(radix=16).pad_start(16, '0') +
+    count.to_string(radix=16).pad_start(16, '0')
+  try! @uuid.from_hex(hex).to_string()
 }
 
 ///|
