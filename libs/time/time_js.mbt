@@ -1,7 +1,7 @@
 ///|
 /// Returns the current UTC time.
 pub fn now() -> Datetime {
-  Datetime::{ millis: js_date_now() }
+  Datetime::from_unix_millis(js_date_now())
 }
 
 ///|
