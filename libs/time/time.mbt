@@ -39,21 +39,16 @@ pub fn Datetime::to_zoned(self : Datetime) -> @xtime.ZonedDateTime {
 }
 
 ///|
-/// Creates a `Datetime` from Unix epoch milliseconds in UTC.
-pub fn Datetime::from_unix_millis(millis : Int64) -> Datetime {
-  let seconds = millis / 1000L
-  let ns = (millis % 1000L * 1_000_000L).to_int()
-  let dt = @xtime.unix(seconds, nanosecond=ns, zone=@xtime.utc_zone) catch {
-    _ => panic()
-  }
+/// Creates a `Datetime` from Unix epoch seconds in UTC.
+pub fn Datetime::from_unix(seconds : Int64) -> Datetime {
+  let dt = @xtime.unix(seconds, zone=@xtime.utc_zone) catch { _ => panic() }
   Datetime::{ inner: dt }
 }
 
 ///|
-/// Returns the Unix epoch milliseconds.
-pub fn Datetime::to_unix_millis(self : Datetime) -> Int64 {
-  self.inner.to_unix_second() * 1000L +
-  (self.inner.nanosecond() / 1_000_000).to_int64()
+/// Returns the Unix epoch seconds.
+pub fn Datetime::to_unix(self : Datetime) -> Int64 {
+  self.inner.to_unix_second()
 }
 
 ///|

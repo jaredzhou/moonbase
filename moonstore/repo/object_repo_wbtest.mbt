@@ -16,7 +16,7 @@ test "MemoryObjectRepo insert and get" {
       cache_control: None,
     },
     user_metadata: Json::object(Map([])),
-    created_at: @time.Datetime::from_unix_millis(1704067200000L),
+    created_at: @time.Datetime::from_unix(1704067200L),
     updated_at: None,
     last_accessed_at: None,
   }
@@ -43,7 +43,7 @@ test "MemoryObjectRepo list with prefix" {
         cache_control: None,
       },
       user_metadata: Json::object(Map([])),
-      created_at: @time.Datetime::from_unix_millis(0L),
+      created_at: @time.Datetime::from_unix(0L),
       updated_at: None,
       last_accessed_at: None,
     }
@@ -72,7 +72,7 @@ test "MemoryObjectRepo delete and delete_batch" {
         cache_control: None,
       },
       user_metadata: Json::object(Map([])),
-      created_at: @time.Datetime::from_unix_millis(0L),
+      created_at: @time.Datetime::from_unix(0L),
       updated_at: None,
       last_accessed_at: None,
     }

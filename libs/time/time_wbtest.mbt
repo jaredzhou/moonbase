@@ -6,7 +6,7 @@ test "from_iso8601 parses UTC datetime" {
       panic()
     }
   }
-  inspect(dt.to_unix_millis(), content="1704067200000")
+  inspect(dt.to_unix(), content="1704067200")
 }
 
 ///|
@@ -17,7 +17,7 @@ test "from_iso8601 parses UTC datetime with fractional seconds" {
       panic()
     }
   }
-  inspect(dt.to_unix_millis(), content="1704067200123")
+  inspect(dt.to_unix(), content="1704067200")
 }
 
 ///|
@@ -28,5 +28,5 @@ test "from_iso8601 parses positive offset" {
       panic()
     }
   }
-  inspect(dt.to_unix_millis(), content="1704067200000")
+  inspect(dt.to_unix(), content="1704067200")
 }

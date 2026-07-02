@@ -10,8 +10,8 @@ test "bucket_to_entity produces correct Cedar entity" {
     public: true,
     file_size_limit: None,
     allowed_mime_types: None,
-    created_at: @time.Datetime::from_unix_millis(1704067200000L),
-    updated_at: @time.Datetime::from_unix_millis(1704067200000L),
+    created_at: @time.Datetime::from_unix(1704067200L),
+    updated_at: @time.Datetime::from_unix(1704067200L),
   }
   let (uid, entity) = bucket_to_entity(bucket)
   @debug.assert_eq(uid.type_, "Bucket")
@@ -41,7 +41,7 @@ test "object_to_entity produces correct Cedar entity" {
       cache_control: None,
     },
     user_metadata: Json::object(Map([])),
-    created_at: @time.Datetime::from_unix_millis(1704067200000L),
+    created_at: @time.Datetime::from_unix(1704067200L),
     updated_at: None,
     last_accessed_at: None,
   }

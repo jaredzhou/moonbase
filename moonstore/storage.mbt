@@ -58,7 +58,7 @@ fn now() -> @time.Datetime {
 /// Generates a new unique identifier as a UUID string.
 /// Currently derived from the current timestamp plus an in-memory counter.
 fn new_uuid() -> String {
-  let millis = @time.now().to_unix_millis()
+  let millis = @time.now().to_unix() * 1000L
   let count = uuid_counter.val
   uuid_counter.val = count + 1L
   let hex = millis.to_string(radix=16).pad_start(16, '0') +

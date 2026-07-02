@@ -15,11 +15,11 @@ pub struct Datetime {
   inner : @moonbitlang/x/time.ZonedDateTime
 } derive(@debug.Debug)
 pub fn Datetime::from_iso8601(String) -> Self raise
-pub fn Datetime::from_unix_millis(Int64) -> Self
+pub fn Datetime::from_unix(Int64) -> Self
 pub fn Datetime::from_zoned(@moonbitlang/x/time.ZonedDateTime) -> Self
 pub fn Datetime::to_iso8601(Self) -> String
 pub fn Datetime::to_pg_timestamptz(Self) -> String
-pub fn Datetime::to_unix_millis(Self) -> Int64
+pub fn Datetime::to_unix(Self) -> Int64
 pub fn Datetime::to_zoned(Self) -> @moonbitlang/x/time.ZonedDateTime
 pub impl Compare for Datetime
 pub impl Eq for Datetime
