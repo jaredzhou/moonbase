@@ -49,22 +49,16 @@ pub fn Storage::new(
 let uuid_counter : Ref[Int64] = { val: 0L }
 
 ///|
-/// Returns the current UTC time as an ISO-8601-like string.
-fn now_iso() -> String {
-  let millis = @runtime_time.now_mill()
-  let seconds = millis / 1000L
-  let nanos = (millis % 1000L).to_int() * 1_000_000
-  let dt = @time.unix(seconds, nanosecond=nanos, zone=@time.utc_zone) catch {
-    _ => panic()
-  }
-  dt.to_string()
+/// Returns the current UTC time.
+fn now() -> @time.Datetime {
+  @time.now()
 }
 
 ///|
 /// Generates a new unique identifier as a UUID string.
 /// Currently derived from the current timestamp plus an in-memory counter.
 fn new_uuid() -> String {
-  let millis = @runtime_time.now_mill()
+  let millis = @time.now().to_unix_millis()
   let count = uuid_counter.val
   uuid_counter.val = count + 1L
   let hex = millis.to_string(radix=16).pad_start(16, '0') +
@@ -121,7 +115,7 @@ pub fn Storage::create_bucket(
   if self.bucket_repo.get(id) is Some(_) {
     raise AlreadyExists("bucket '\{id}' already exists")
   }
-  let now = now_iso()
+  let now = now()
   let bucket = Bucket::{
     id,
     name: input.name,
@@ -175,7 +169,7 @@ pub fn Storage::update_bucket(
   self.check_and_authorize(Some(user), "UpdateBucket", "Bucket", id, None)
   match self.bucket_repo.get(id) {
     Some(b) => {
-      let updated_now = now_iso()
+      let updated_now = now()
       let updated = Bucket::{
         ..b,
         public: match input.public {
@@ -278,7 +272,7 @@ pub fn Storage::upload(
     e => raise from_backend_error(e)
   }
   let id = new_uuid()
-  let now = now_iso()
+  let now = now()
   let obj = Object::{
     id: Some(id),
     name,
@@ -388,7 +382,7 @@ pub fn Storage::update_object(
           Some(m) => m
           None => obj.user_metadata
         },
-        updated_at: Some(now_iso()),
+        updated_at: Some(now()),
       }
       self.object_repo.insert(updated)
       updated
@@ -477,7 +471,7 @@ pub fn Storage::copy_object(
         ..obj,
         id: Some(new_uuid()),
         name: to,
-        created_at: now_iso(),
+        created_at: now(),
       }
       self.object_repo.insert(copy)
     }

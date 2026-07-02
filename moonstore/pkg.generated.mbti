@@ -2,6 +2,7 @@
 package "jaredzhou/moonstore"
 
 import {
+  "jaredzhou/libs/time",
   "jaredzhou/mooncedar/ast",
   "jaredzhou/mooncedar/evaluator",
   "jaredzhou/moonstore/backend",
@@ -47,8 +48,8 @@ pub(all) struct Bucket {
   public : Bool
   file_size_limit : Int64?
   allowed_mime_types : Array[String]?
-  created_at : String
-  updated_at : String
+  created_at : @time.Datetime
+  updated_at : @time.Datetime
 } derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct CompositeEntityStore {
@@ -74,9 +75,9 @@ pub(all) struct Object {
   version : String
   metadata : StorageMetadata
   user_metadata : Json
-  created_at : String
-  updated_at : String?
-  last_accessed_at : String?
+  created_at : @time.Datetime
+  updated_at : @time.Datetime?
+  last_accessed_at : @time.Datetime?
 } derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct RequestEntityStore[B] {

@@ -1,8 +1,0 @@
-options(
-  "native-stub": [ "runtime_time_native.c" ],
-  targets: {
-    "runtime_time_js.mbt": [ "js" ],
-    "runtime_time_native.mbt": [ "native" ],
-    "runtime_time_wasm.mbt": [ "wasm", "wasm-gc" ],
-  },
-)

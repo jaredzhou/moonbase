@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/x/time" @xtime,
+}
+
+options(
+  "native-stub": [ "time_native.c" ],
+  targets: {
+    "time_js.mbt": [ "js" ],
+    "time_native.mbt": [ "native" ],
+    "time_wasm.mbt": [ "wasm", "wasm-gc" ],
+  },
+)

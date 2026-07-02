@@ -36,8 +36,8 @@ pub(all) struct Bucket {
   pub public : Bool
   pub file_size_limit : Int64?
   pub allowed_mime_types : Array[String]?
-  pub created_at : String
-  pub updated_at : String
+  pub created_at : @time.Datetime
+  pub updated_at : @time.Datetime
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -59,9 +59,9 @@ pub(all) struct Object {
   pub version : String
   pub metadata : StorageMetadata
   pub user_metadata : Json
-  pub created_at : String
-  pub updated_at : String?
-  pub last_accessed_at : String?
+  pub created_at : @time.Datetime
+  pub updated_at : @time.Datetime?
+  pub last_accessed_at : @time.Datetime?
 } derive(Debug, Eq, ToJson)
 
 // ---------------------------------------------------------------------------

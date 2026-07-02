@@ -3,10 +3,9 @@ import {
   "jaredzhou/mooncedar/evaluator",
   "jaredzhou/mooncedar/ast",
   "jaredzhou/mooncedar/parser",
-  "jaredzhou/libs/runtime_time",
+  "jaredzhou/libs/time",
   "jaredzhou/moonstore/backend",
   "moonbitlang/core/json",
   "moonbitlang/core/debug",
-  "moonbitlang/x/time",
   "moonbitlang/x/uuid",
 }

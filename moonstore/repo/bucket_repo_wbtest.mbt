@@ -11,8 +11,8 @@ test "MemoryBucketRepo insert and get" {
     public: false,
     file_size_limit: None,
     allowed_mime_types: None,
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
+    created_at: @time.Datetime::from_unix_millis(1704067200000L),
+    updated_at: @time.Datetime::from_unix_millis(1704067200000L),
   }
   repo.insert(bucket)
   let found = repo.get("avatars")
@@ -31,8 +31,8 @@ test "MemoryBucketRepo list" {
     public: false,
     file_size_limit: None,
     allowed_mime_types: None,
-    created_at: "",
-    updated_at: "",
+    created_at: @time.Datetime::from_unix_millis(0L),
+    updated_at: @time.Datetime::from_unix_millis(0L),
   }
   let b2 = @moonstore.Bucket::{
     id: "b",
@@ -42,8 +42,8 @@ test "MemoryBucketRepo list" {
     public: false,
     file_size_limit: None,
     allowed_mime_types: None,
-    created_at: "",
-    updated_at: "",
+    created_at: @time.Datetime::from_unix_millis(0L),
+    updated_at: @time.Datetime::from_unix_millis(0L),
   }
   repo.insert(b1)
   repo.insert(b2)
@@ -62,8 +62,8 @@ test "MemoryBucketRepo update and delete" {
     public: false,
     file_size_limit: None,
     allowed_mime_types: None,
-    created_at: "",
-    updated_at: "",
+    created_at: @time.Datetime::from_unix_millis(0L),
+    updated_at: @time.Datetime::from_unix_millis(0L),
   }
   repo.insert(bucket)
   let updated = @moonstore.Bucket::{ ..bucket, public: true }
