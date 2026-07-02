@@ -16,4 +16,5 @@ import {
   "jaredzhou/libs@0.1.1",
   "moonbitlang/async@0.19.4",
   "moonbitlang/x@0.4.45",
+  "mattn/postgres@0.10.4",
 }
