@@ -7,7 +7,7 @@ pub(all) struct LocalFSBackend {
 
 ///|
 /// Create a new LocalFS backend rooted at the given directory.
-pub fn new(base_path : String) -> LocalFSBackend {
+pub fn LocalFSBackend::new(base_path : String) -> LocalFSBackend {
   LocalFSBackend::{ base_path, }
 }
 

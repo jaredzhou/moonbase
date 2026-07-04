@@ -3,7 +3,7 @@
 ///|
 test "LocalFS backend upload and get" {
   let base = "/tmp/moonbase_test/"
-  let backend = new(base)
+  let backend = LocalFSBackend::new(base)
   let _ = backend.uploadObject(
     "test-bucket", "data.txt", b"hello fs", "application/octet-stream", "no-cache",
   ) catch {
@@ -19,7 +19,7 @@ test "LocalFS backend upload and get" {
 ///|
 test "LocalFS backend delete" {
   let base = "/tmp/moonbase_test/"
-  let backend = new(base)
+  let backend = LocalFSBackend::new(base)
   let _ = backend.uploadObject(
     "test", "tmp.txt", b"x", "application/octet-stream", "no-cache",
   ) catch {
@@ -34,7 +34,7 @@ test "LocalFS backend delete" {
 ///|
 test "LocalFS backend nested path" {
   let base = "/tmp/moonbase_test/"
-  let backend = new(base)
+  let backend = LocalFSBackend::new(base)
   let _ = backend.uploadObject(
     "avatars", "public/img.png", b"png data", "image/png", "no-cache",
   ) catch {

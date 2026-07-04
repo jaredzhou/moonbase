@@ -21,7 +21,7 @@ pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn get(
   self : MemoryObjectRepo,
   bucket_id : String,
   name : String,
-) -> @moonstore.Object? {
+) -> @moonstore.Object? raise Error {
   self.objects.get(obj_key(bucket_id, name))
 }
 
@@ -32,7 +32,7 @@ pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn list(
   prefix : String?,
   limit : Int?,
   offset : Int?,
-) -> Array[@moonstore.Object] {
+) -> Array[@moonstore.Object] raise Error {
   let result : Array[@moonstore.Object] = []
   let mut skipped = 0
   for _, obj in self.objects {
@@ -63,7 +63,7 @@ pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn list(
 pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn insert(
   self : MemoryObjectRepo,
   obj : @moonstore.Object,
-) -> Unit {
+) -> Unit raise Error {
   self.objects.set(obj_key(obj.bucket_id, obj.name), obj)
 }
 
@@ -72,7 +72,7 @@ pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn delete(
   self : MemoryObjectRepo,
   bucket_id : String,
   name : String,
-) -> Unit {
+) -> Unit raise Error {
   self.objects.remove(obj_key(bucket_id, name))
 }
 
@@ -81,7 +81,7 @@ pub impl @moonstore.ObjectRepo for MemoryObjectRepo with fn delete_batch(
   self : MemoryObjectRepo,
   bucket_id : String,
   names : Array[String],
-) -> Unit {
+) -> Unit raise Error {
   for name in names {
     self.objects.remove(obj_key(bucket_id, name))
   }

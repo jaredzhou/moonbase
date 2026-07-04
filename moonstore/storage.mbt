@@ -88,7 +88,8 @@ fn Storage::check_and_authorize(
 
 ///|
 fn Storage::is_public(self : Storage, bucket_id : String) -> Bool {
-  match self.bucket_repo.get(bucket_id) {
+  let maybe = self.bucket_repo.get(bucket_id) catch { _ => None }
+  match maybe {
     Some(b) => b.public
     None => false
   }
@@ -112,7 +113,10 @@ pub fn Storage::create_bucket(
     None,
   )
   let id = input.name
-  if self.bucket_repo.get(id) is Some(_) {
+  let existing = self.bucket_repo.get(id) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  if existing is Some(_) {
     raise AlreadyExists("bucket '\{id}' already exists")
   }
   let now = now()
@@ -127,7 +131,9 @@ pub fn Storage::create_bucket(
     created_at: now,
     updated_at: now,
   }
-  self.bucket_repo.insert(bucket)
+  self.bucket_repo.insert(bucket) catch {
+    e => raise RepoError("insert: " + e.to_string())
+  }
   bucket
 }
 
@@ -143,7 +149,9 @@ pub fn Storage::list_buckets(
     "Storage",
     None,
   )
-  self.bucket_repo.list()
+  self.bucket_repo.list() catch {
+    e => raise RepoError("list: " + e.to_string())
+  }
 }
 
 ///|
@@ -153,7 +161,10 @@ pub fn Storage::get_bucket(
   id : String,
 ) -> Bucket raise StorageError {
   self.check_and_authorize(Some(user), "GetBucket", "Bucket", id, None)
-  match self.bucket_repo.get(id) {
+  let bucket = self.bucket_repo.get(id) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match bucket {
     Some(b) => b
     None => raise NotFound("bucket not found: \{id}")
   }
@@ -167,7 +178,10 @@ pub fn Storage::update_bucket(
   input : UpdateBucketInput,
 ) -> Bucket raise StorageError {
   self.check_and_authorize(Some(user), "UpdateBucket", "Bucket", id, None)
-  match self.bucket_repo.get(id) {
+  let bucket = self.bucket_repo.get(id) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match bucket {
     Some(b) => {
       let updated_now = now()
       let updated = Bucket::{
@@ -186,7 +200,9 @@ pub fn Storage::update_bucket(
         },
         updated_at: updated_now,
       }
-      self.bucket_repo.update(id, updated)
+      self.bucket_repo.update(id, updated) catch {
+        e => raise RepoError("update: " + e.to_string())
+      }
       updated
     }
     None => raise NotFound("bucket not found: \{id}")
@@ -200,11 +216,15 @@ pub fn Storage::delete_bucket(
   id : String,
 ) -> Unit raise StorageError {
   self.check_and_authorize(Some(user), "DeleteBucket", "Bucket", id, None)
-  let objects = self.object_repo.list(id, None, Some(1), None)
+  let objects = self.object_repo.list(id, None, Some(1), None) catch {
+    e => raise RepoError("list: " + e.to_string())
+  }
   if objects.length() > 0 {
     raise NotEmpty("bucket '\{id}' is not empty")
   }
-  self.bucket_repo.delete(id)
+  self.bucket_repo.delete(id) catch {
+    e => raise RepoError("delete: " + e.to_string())
+  }
 }
 
 ///|
@@ -214,12 +234,16 @@ pub fn Storage::empty_bucket(
   id : String,
 ) -> Unit raise StorageError {
   self.check_and_authorize(Some(user), "EmptyBucket", "Bucket", id, None)
-  let objects = self.object_repo.list(id, None, None, None)
+  let objects = self.object_repo.list(id, None, None, None) catch {
+    e => raise RepoError("list: " + e.to_string())
+  }
   for obj in objects {
     self.backend.deleteObject(id, obj.name) catch {
       _ => continue
     }
-    self.object_repo.delete(id, obj.name)
+    self.object_repo.delete(id, obj.name) catch {
+      e => raise RepoError("delete: " + e.to_string())
+    }
   }
 }
 
@@ -243,7 +267,10 @@ pub fn Storage::upload(
     bucket_id,
     None,
   )
-  match self.bucket_repo.get(bucket_id) {
+  let bucket = self.bucket_repo.get(bucket_id) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match bucket {
     None => raise NotFound("bucket not found: \{bucket_id}")
     Some(b) => {
       match b.allowed_mime_types {
@@ -264,7 +291,10 @@ pub fn Storage::upload(
       }
     }
   }
-  if self.object_repo.get(bucket_id, name) is Some(_) {
+  let existing = self.object_repo.get(bucket_id, name) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  if existing is Some(_) {
     raise AlreadyExists("object '\{name}' already exists in '\{bucket_id}'")
   }
   let mime = mimetype_from_data(data)
@@ -290,7 +320,9 @@ pub fn Storage::upload(
     updated_at: None,
     last_accessed_at: None,
   }
-  self.object_repo.insert(obj)
+  self.object_repo.insert(obj) catch {
+    e => raise RepoError("insert: " + e.to_string())
+  }
   obj
 }
 
@@ -301,7 +333,10 @@ pub fn Storage::download(
   bucket_id : String,
   name : String,
 ) -> (Object, Bytes) raise StorageError {
-  match self.object_repo.get(bucket_id, name) {
+  let obj = self.object_repo.get(bucket_id, name) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match obj {
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       if self.is_public(bucket_id) {
@@ -335,7 +370,10 @@ pub fn Storage::get_object_info(
   bucket_id : String,
   name : String,
 ) -> Object raise StorageError {
-  match self.object_repo.get(bucket_id, name) {
+  let obj = self.object_repo.get(bucket_id, name) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match obj {
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       if !self.is_public(bucket_id) {
@@ -363,7 +401,10 @@ pub fn Storage::update_object(
   name : String,
   input : UpdateObjectInput,
 ) -> Object raise StorageError {
-  match self.object_repo.get(bucket_id, name) {
+  let obj = self.object_repo.get(bucket_id, name) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match obj {
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       self.check_and_authorize(
@@ -384,7 +425,9 @@ pub fn Storage::update_object(
         },
         updated_at: Some(now()),
       }
-      self.object_repo.insert(updated)
+      self.object_repo.insert(updated) catch {
+        e => raise RepoError("insert: " + e.to_string())
+      }
       updated
     }
   }
@@ -401,7 +444,9 @@ pub fn Storage::list_objects(
   sort_by : String?,
 ) -> Array[Object] raise StorageError {
   self.check_and_authorize(Some(user), "ListObjects", "Bucket", bucket_id, None)
-  self.object_repo.list(bucket_id, prefix, limit, offset)
+  self.object_repo.list(bucket_id, prefix, limit, offset) catch {
+    e => raise RepoError("list: " + e.to_string())
+  }
 }
 
 ///|
@@ -412,7 +457,10 @@ pub fn Storage::move_object(
   from : String,
   to : String,
 ) -> Unit raise StorageError {
-  match self.object_repo.get(bucket_id, from) {
+  let obj = self.object_repo.get(bucket_id, from) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match obj {
     None => raise NotFound("source not found: \{bucket_id}/\{from}")
     Some(obj) => {
       self.check_and_authorize(
@@ -436,9 +484,13 @@ pub fn Storage::move_object(
       self.backend.deleteObject(bucket_id, from) catch {
         e => raise from_backend_error(e)
       }
-      self.object_repo.delete(bucket_id, from)
+      self.object_repo.delete(bucket_id, from) catch {
+        e => raise RepoError("delete: " + e.to_string())
+      }
       let moved = Object::{ ..obj, name: to }
-      self.object_repo.insert(moved)
+      self.object_repo.insert(moved) catch {
+        e => raise RepoError("insert: " + e.to_string())
+      }
     }
   }
 }
@@ -451,7 +503,10 @@ pub fn Storage::copy_object(
   from : String,
   to : String,
 ) -> Unit raise StorageError {
-  match self.object_repo.get(bucket_id, from) {
+  let obj = self.object_repo.get(bucket_id, from) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match obj {
     None => raise NotFound("source not found: \{bucket_id}/\{from}")
     Some(obj) => {
       self.check_and_authorize(
@@ -473,7 +528,9 @@ pub fn Storage::copy_object(
         name: to,
         created_at: now(),
       }
-      self.object_repo.insert(copy)
+      self.object_repo.insert(copy) catch {
+        e => raise RepoError("insert: " + e.to_string())
+      }
     }
   }
 }
@@ -485,7 +542,10 @@ pub fn Storage::delete_object(
   bucket_id : String,
   name : String,
 ) -> Unit raise StorageError {
-  match self.object_repo.get(bucket_id, name) {
+  let obj = self.object_repo.get(bucket_id, name) catch {
+    e => raise RepoError("get: " + e.to_string())
+  }
+  match obj {
     None => raise NotFound("object not found: \{bucket_id}/\{name}")
     Some(obj) => {
       self.check_and_authorize(
@@ -501,7 +561,9 @@ pub fn Storage::delete_object(
       self.backend.deleteObject(bucket_id, name) catch {
         e => raise from_backend_error(e)
       }
-      self.object_repo.delete(bucket_id, name)
+      self.object_repo.delete(bucket_id, name) catch {
+        e => raise RepoError("delete: " + e.to_string())
+      }
     }
   }
 }
@@ -525,7 +587,9 @@ pub fn Storage::delete_objects(
       _ => continue
     }
   }
-  self.object_repo.delete_batch(bucket_id, prefixes)
+  self.object_repo.delete_batch(bucket_id, prefixes) catch {
+    e => raise RepoError("delete_batch: " + e.to_string())
+  }
 }
 
 // ---------------------------------------------------------------------------

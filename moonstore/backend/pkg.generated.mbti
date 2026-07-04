@@ -12,8 +12,6 @@ pub fn[T : StorageBackend] exists(T, String, String) -> Bool
 
 pub fn full_path(String, String, String) -> String
 
-pub fn new(String) -> LocalFSBackend
-
 pub fn parent_dir(String) -> String
 
 // Errors
@@ -58,6 +56,7 @@ pub(all) struct ListObjectsResult {
 pub(all) struct LocalFSBackend {
   base_path : String
 }
+pub fn LocalFSBackend::new(String) -> Self
 pub impl StorageBackend for LocalFSBackend
 
 pub(all) struct MemoryBackend {

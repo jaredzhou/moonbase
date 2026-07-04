@@ -4,6 +4,12 @@ import {
   "jaredzhou/mooncedar",
   "jaredzhou/mooncedar/parser",
   "jaredzhou/libs/time",
+  "moonbitlang/x/time" @xtime,
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonbitlang/core/debug",
 }
+
+options(
+  supported_targets: [ "native" ],
+)

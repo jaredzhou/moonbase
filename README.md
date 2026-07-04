@@ -84,6 +84,17 @@ let (token, claims) = parser.parse("eyJhbG...", method)
 assert_eq!(claims.subject?, "user123")
 ```
 
+#### time
+
+A `Datetime` wrapper around `moonbitlang/x/time` (`ZonedDateTime`) with ISO 8601 serialization and PostgreSQL `timestamptz` compatibility.
+
+```moonbit
+let dt = @time.now()
+let s = dt.to_iso8601()   // "2026-07-03T12:34:56.123Z"
+let parsed = @time.Datetime::from_iso8601(s).unwrap()
+assert_eq!(dt, parsed)
+```
+
 ### mooncedar
 
 A full [Cedar](https://www.cedarpolicy.com/) policy engine implemented in MoonBit, featuring:
@@ -117,6 +128,33 @@ match result.decision {
   @mooncedar.Decision::Allow => println("allowed!")
   _ => println("denied!")
 }
+```
+
+### moonstore
+
+An object storage service with a REST-ish HTTP API, inspired by S3-style buckets and objects.
+
+- **Buckets & objects** — create buckets, upload/download objects, list with prefixes, copy/move/delete
+- **Storage backends** — `MemoryBackend` for tests, `LocalFSBackend` for filesystem persistence
+- **Metadata repos** — in-memory (`MemoryBucketRepo`/`MemoryObjectRepo`) or PostgreSQL (`PGRepo`) via `mattn/postgres`
+- **Authorization** — Cedar policy engine integration through `mooncedar`
+- **HTTP API** — bucket and object routes built on `pony`
+
+```moonbit
+// In-memory server (moonstore/cmd/storage)
+let storage = @repo.new_storage()
+let router = @pony.Router::Router()
+@api.build_bucket_routes(router, storage) catch { _ => panic() }
+@api.build_object_routes(router, storage) catch { _ => panic() }
+@pony.start("0.0.0.0:3000", router)
+```
+
+```moonbit
+// PostgreSQL-backed metadata with local filesystem object storage
+let storage = @repo.new_postgres_storage(
+  "postgres://postgres:111111@localhost:5432/postgres",
+)
+// Tables are created automatically by migrate().
 ```
 
 ### todo (TinyTodo)
