@@ -247,7 +247,7 @@ fn Node::dfs(
       return RouteResult::Found(ep, param_values)
     }
     // Path matches but wrong method
-    if not(self.endpoints.is_empty()) {
+    if !self.endpoints.is_empty() {
       return RouteResult::MethodNotAllowed
     }
     if self.child_wildcard is Some(wildcard_node) &&

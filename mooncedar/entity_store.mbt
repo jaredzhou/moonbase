@@ -286,7 +286,7 @@ fn parc_parse_euid(s : String) -> @ast.EntityUID? {
   if sep < 0 {
     return None
   }
-  let type_ = s.substring(start=0, end=sep)
+  let type_ = s[:sep].to_owned()
   let id_start = sep + 3
   let mut id_len = 0
   for i = id_start; i < len; i = i + 1 {
@@ -298,7 +298,7 @@ fn parc_parse_euid(s : String) -> @ast.EntityUID? {
   if id_len == 0 {
     return None
   }
-  let id = s.substring(start=id_start, end=id_start + id_len)
+  let id = s[id_start:id_start + id_len].to_owned()
   Some(@ast.EntityUID::{ type_, id })
 }
 
@@ -436,7 +436,7 @@ pub impl FromJson for RequestJSON with fn from_json(
           match j {
             Json::Null => None
             Json::Object(inner) =>
-              if inner.size() == 0 {
+              if inner.length() == 0 {
                 None
               } else {
                 Some(cedar_value_from_json(j, path.add_key("context")))

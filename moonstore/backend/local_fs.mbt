@@ -86,7 +86,7 @@ pub impl StorageBackend for LocalFSBackend with fn getObject(
   self : LocalFSBackend,
   bucket : String,
   key : String,
-  headers : CacheHeaders?,
+  _headers : CacheHeaders?,
 ) -> GetObjectResult raise BackendError {
   let path = full_path(self.base_path, bucket, key)
   if !is_regular_file(path) {
@@ -182,22 +182,22 @@ pub impl StorageBackend for LocalFSBackend with fn copyObject(
 
 ///|
 pub impl StorageBackend for LocalFSBackend with fn listObjects(
-  self : LocalFSBackend,
-  bucket : String,
-  prefix : String?,
-  limit : Int?,
-  nextToken : String?,
+  _self : LocalFSBackend,
+  _bucket : String,
+  _prefix : String?,
+  _limit : Int?,
+  _nextToken : String?,
 ) -> ListObjectsResult raise BackendError {
   ListObjectsResult::{ keys: [], nextToken: None }
 }
 
 ///|
 pub impl StorageBackend for LocalFSBackend with fn createMultiPartUpload(
-  self : LocalFSBackend,
+  _self : LocalFSBackend,
   bucket : String,
   key : String,
   contentType : String,
-  cacheControl : String,
+  _cacheControl : String,
 ) -> String raise BackendError {
   bucket + "/" + key + "/upload-" + contentType
 }
@@ -205,8 +205,8 @@ pub impl StorageBackend for LocalFSBackend with fn createMultiPartUpload(
 ///|
 pub impl StorageBackend for LocalFSBackend with fn uploadPart(
   self : LocalFSBackend,
-  bucket : String,
-  key : String,
+  _bucket : String,
+  _key : String,
   uploadId : String,
   partNumber : Int,
   body : Bytes,
@@ -257,8 +257,8 @@ pub impl StorageBackend for LocalFSBackend with fn completeMultipartUpload(
 ///|
 pub impl StorageBackend for LocalFSBackend with fn abortMultipartUpload(
   self : LocalFSBackend,
-  bucket : String,
-  key : String,
+  _bucket : String,
+  _key : String,
   uploadId : String,
 ) -> Unit raise BackendError {
   let multipart_dir = self.base_path + "/multiparts/" + uploadId
@@ -268,6 +268,6 @@ pub impl StorageBackend for LocalFSBackend with fn abortMultipartUpload(
 }
 
 ///|
-pub impl StorageBackend for LocalFSBackend with fn close(self : LocalFSBackend) -> Unit {
+pub impl StorageBackend for LocalFSBackend with fn close(_self : LocalFSBackend) -> Unit {
 
 }

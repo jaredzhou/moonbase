@@ -3,7 +3,7 @@
 ///|
 /// In-memory bucket metadata store for testing.
 pub(all) struct MemoryBucketRepo {
-  pub mut buckets : Map[String, @moonstore.Bucket]
+  mut buckets : Map[String, @moonstore.Bucket]
 }
 
 ///|

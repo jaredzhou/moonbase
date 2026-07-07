@@ -3,8 +3,8 @@
 ///|
 /// Authorize store operations via Cedar policies.
 pub(all) struct Authorizer {
-  pub entities : CompositeEntityStore
-  pub policies : Array[@ast.Policy]
+  entities : CompositeEntityStore
+  policies : Array[@ast.Policy]
 }
 
 ///|

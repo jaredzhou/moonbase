@@ -3,7 +3,7 @@
 ///|
 /// In-memory object metadata store for testing. Key is "bucket_id/name".
 pub(all) struct MemoryObjectRepo {
-  pub mut objects : Map[String, @moonstore.Object]
+  mut objects : Map[String, @moonstore.Object]
 }
 
 ///|

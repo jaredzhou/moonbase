@@ -29,39 +29,39 @@ pub fn StorageError::to_http_status(self : StorageError) -> Int {
 ///|
 /// A storage bucket — independent container for objects.
 pub(all) struct Bucket {
-  pub id : String
-  pub name : String
-  pub owner : String
-  pub owner_id : String
-  pub public : Bool
-  pub file_size_limit : Int64?
-  pub allowed_mime_types : Array[String]?
-  pub created_at : @time.Datetime
-  pub updated_at : @time.Datetime
+  id : String
+  name : String
+  owner : String
+  owner_id : String
+  public : Bool
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
+  created_at : @time.Datetime
+  updated_at : @time.Datetime
 } derive(Debug, Eq, ToJson)
 
 ///|
 /// Typed system metadata for a stored object.
 pub(all) struct StorageMetadata {
-  pub size : Int64
-  pub mimetype : String
-  pub cache_control : String?
+  size : Int64
+  mimetype : String
+  cache_control : String?
 } derive(Debug, Eq, ToJson)
 
 ///|
 /// A stored object (file) within a bucket.
 pub(all) struct Object {
-  pub id : String?
-  pub name : String
-  pub bucket_id : String
-  pub owner : String
-  pub owner_id : String
-  pub version : String
-  pub metadata : StorageMetadata
-  pub user_metadata : Json
-  pub created_at : @time.Datetime
-  pub updated_at : @time.Datetime?
-  pub last_accessed_at : @time.Datetime?
+  id : String?
+  name : String
+  bucket_id : String
+  owner : String
+  owner_id : String
+  version : String
+  metadata : StorageMetadata
+  user_metadata : Json
+  created_at : @time.Datetime
+  updated_at : @time.Datetime?
+  last_accessed_at : @time.Datetime?
 } derive(Debug, Eq, ToJson)
 
 // ---------------------------------------------------------------------------

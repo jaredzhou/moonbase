@@ -1,0 +1,148 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/moonstore"
+
+import {
+  "jaredzhou/libs/time",
+  "jaredzhou/mooncedar/ast",
+  "jaredzhou/mooncedar/evaluator",
+  "jaredzhou/moonstore/backend",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn bucket_to_entity(Bucket) -> (@ast.EntityUID, @ast.Entity)
+
+pub fn[T : BucketRepo] insert(T, Bucket) -> Unit raise
+
+pub fn[T : BucketRepo] list(T) -> Array[Bucket] raise
+
+pub fn object_to_entity(Object) -> (@ast.EntityUID, @ast.Entity)
+
+pub fn[T : BucketRepo] update(T, String, Bucket) -> Unit raise
+
+// Errors
+pub(all) suberror StorageError {
+  NotFound(String)
+  AlreadyExists(String)
+  NotEmpty(String)
+  Forbidden(String)
+  BackendError(String)
+  RepoError(String)
+  InvalidInput(String)
+} derive(@debug.Debug)
+pub fn StorageError::to_http_status(Self) -> Int
+
+// Types and methods
+pub(all) struct Authorizer {
+  entities : CompositeEntityStore
+  policies : Array[@ast.Policy]
+}
+pub fn Authorizer::new(CompositeEntityStore, Array[@ast.Policy]) -> Self
+pub fn Authorizer::try_authorize(Self, String, String, String, String, Map[@ast.EntityUID, @ast.Entity]?) -> Bool
+
+pub(all) struct Bucket {
+  id : String
+  name : String
+  owner : String
+  owner_id : String
+  public : Bool
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
+  created_at : @time.Datetime
+  updated_at : @time.Datetime
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct CompositeEntityStore {
+  memory : Map[@ast.EntityUID, @ast.Entity]
+  persisted : Map[@ast.EntityUID, @ast.Entity]
+}
+pub fn CompositeEntityStore::new(Map[@ast.EntityUID, @ast.Entity], Map[@ast.EntityUID, @ast.Entity]) -> Self
+pub impl @evaluator.EntityStore for CompositeEntityStore
+
+pub(all) struct CreateBucketInput {
+  name : String
+  public : Bool?
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
+}
+
+pub(all) struct Object {
+  id : String?
+  name : String
+  bucket_id : String
+  owner : String
+  owner_id : String
+  version : String
+  metadata : StorageMetadata
+  user_metadata : Json
+  created_at : @time.Datetime
+  updated_at : @time.Datetime?
+  last_accessed_at : @time.Datetime?
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct RequestEntityStore[B] {
+  mut overlay : Map[@ast.EntityUID, @ast.Entity]
+  backing : B
+}
+pub fn[B] RequestEntityStore::add_entity(Self[B], @ast.EntityUID, @ast.Entity) -> Unit
+pub fn[B] RequestEntityStore::new(B) -> Self[B]
+pub impl[B : @evaluator.EntityStore] @evaluator.EntityStore for RequestEntityStore[B]
+
+pub(all) struct Storage {
+  backend : &@backend.StorageBackend
+  bucket_repo : &BucketRepo
+  object_repo : &ObjectRepo
+  authorizer : Authorizer
+}
+pub fn Storage::copy_object(Self, String, String, String, String) -> Unit raise StorageError
+pub fn Storage::create_bucket(Self, String, CreateBucketInput) -> Bucket raise StorageError
+pub fn Storage::delete_bucket(Self, String, String) -> Unit raise StorageError
+pub fn Storage::delete_object(Self, String, String, String) -> Unit raise StorageError
+pub fn Storage::delete_objects(Self, String, String, Array[String]) -> Unit raise StorageError
+pub fn Storage::download(Self, String?, String, String) -> (Object, Bytes) raise StorageError
+pub fn Storage::empty_bucket(Self, String, String) -> Unit raise StorageError
+pub fn Storage::get_bucket(Self, String, String) -> Bucket raise StorageError
+pub fn Storage::get_object_info(Self, String?, String, String) -> Object raise StorageError
+pub fn Storage::list_buckets(Self, String) -> Array[Bucket] raise StorageError
+pub fn Storage::list_objects(Self, String, String, String?, Int?, Int?, String?) -> Array[Object] raise StorageError
+pub fn Storage::move_object(Self, String, String, String, String) -> Unit raise StorageError
+pub fn Storage::new(&@backend.StorageBackend, &BucketRepo, &ObjectRepo, Authorizer) -> Self
+pub fn Storage::update_bucket(Self, String, String, UpdateBucketInput) -> Bucket raise StorageError
+pub fn Storage::update_object(Self, String, String, String, UpdateObjectInput) -> Object raise StorageError
+pub fn Storage::upload(Self, String, String, String, Bytes, Json) -> Object raise StorageError
+
+pub(all) struct StorageMetadata {
+  size : Int64
+  mimetype : String
+  cache_control : String?
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct UpdateBucketInput {
+  public : Bool?
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
+}
+
+pub(all) struct UpdateObjectInput {
+  user_metadata : Json?
+}
+
+// Type aliases
+
+// Traits
+pub(open) trait BucketRepo {
+  fn get(Self, String) -> Bucket? raise
+  fn list(Self) -> Array[Bucket] raise
+  fn insert(Self, Bucket) -> Unit raise
+  fn update(Self, String, Bucket) -> Unit raise
+  fn delete(Self, String) -> Unit raise
+}
+
+pub(open) trait ObjectRepo {
+  fn get(Self, String, String) -> Object? raise
+  fn list(Self, String, String?, Int?, Int?) -> Array[Object] raise
+  fn insert(Self, Object) -> Unit raise
+  fn delete(Self, String, String) -> Unit raise
+  fn delete_batch(Self, String, Array[String]) -> Unit raise
+}
+

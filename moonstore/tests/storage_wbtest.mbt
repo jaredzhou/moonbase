@@ -9,7 +9,7 @@ test "create and get bucket" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
   @debug.assert_eq(bucket.name, "avatars")
   @debug.assert_eq(bucket.owner, "alice")
@@ -27,7 +27,7 @@ test "public bucket download skips auth" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -37,11 +37,11 @@ test "public bucket download skips auth" {
     b"hello",
     Json::object(Map([])),
   ) catch {
-    e => panic()
+    _ => panic()
   }
 
   let (dl_obj, data) = storage.download(None, bucket.id, "hello.txt") catch {
-    e => panic()
+    _ => panic()
   }
   @debug.assert_eq(data, b"hello")
   @debug.assert_eq(dl_obj.name, "hello.txt")
@@ -56,7 +56,7 @@ test "private bucket download requires user" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -66,12 +66,12 @@ test "private bucket download requires user" {
     b"secret",
     Json::object(Map([])),
   ) catch {
-    e => panic()
+    _ => panic()
   }
 
   // alice should be allowed (policy is permissive)
   let (_, data) = storage.download(Some("alice"), bucket.id, "secret.txt") catch {
-    e => panic()
+    _ => panic()
   }
   @debug.assert_eq(data, b"secret")
 
@@ -91,7 +91,7 @@ test "move object" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -101,11 +101,11 @@ test "move object" {
     b"data",
     Json::object(Map([])),
   ) catch {
-    e => panic()
+    _ => panic()
   }
 
   storage.move_object("alice", bucket.id, "old.txt", "new.txt") catch {
-    e => panic()
+    _ => panic()
   }
 
   let (obj, _) = storage.download(Some("alice"), bucket.id, "new.txt") catch {
@@ -123,7 +123,7 @@ test "copy object" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -133,11 +133,11 @@ test "copy object" {
     b"data",
     Json::object(Map([])),
   ) catch {
-    e => panic()
+    _ => panic()
   }
 
   storage.copy_object("alice", bucket.id, "original.txt", "copy.txt") catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.download(Some("alice"), bucket.id, "original.txt") catch {
@@ -157,7 +157,7 @@ test "list objects with prefix" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -210,7 +210,7 @@ test "delete single and batch objects" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -256,7 +256,7 @@ test "empty bucket" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(
@@ -297,7 +297,7 @@ test "get object info" {
     file_size_limit: None,
     allowed_mime_types: None,
   }) catch {
-    e => panic()
+    _ => panic()
   }
 
   let _ = storage.upload(

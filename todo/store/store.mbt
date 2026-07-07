@@ -8,19 +8,19 @@ pub(all) enum TaskState {
 
 ///|
 pub(all) struct TaskData {
-  pub id : Int
-  pub mut name : String
-  pub mut state : TaskState
+  id : Int
+  mut name : String
+  mut state : TaskState
 } derive(Debug, Eq)
 
 ///|
 pub(all) struct ListData {
-  pub id : Int
-  pub mut name : String
-  pub mut owner : String
-  pub mut readers : Array[String]
-  pub mut editors : Array[String]
-  pub mut tasks : Array[TaskData]
+  id : Int
+  mut name : String
+  mut owner : String
+  mut readers : Array[String]
+  mut editors : Array[String]
+  mut tasks : Array[TaskData]
 } derive(Debug)
 
 ///|
@@ -30,9 +30,9 @@ pub fn new_list(id : Int, name : String, owner : String) -> ListData {
 
 ///|
 pub(all) struct ServerState {
-  pub mut lists : Array[ListData]
-  pub entities : @mooncedar.MapEntityStore
-  pub policies : Array[@ast.Policy]
+  mut lists : Array[ListData]
+  entities : @mooncedar.MapEntityStore
+  policies : Array[@ast.Policy]
 }
 
 ///|

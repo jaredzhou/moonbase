@@ -13,12 +13,12 @@ test "init loads base entities" {
     type_: "Application",
     id: "TinyTodo",
   })
-  @debug.assert_eq(true, app.is_some())
+  @debug.assert_eq(true, app is Some(_))
   let user = state.entities.get_entity(@ast.EntityUID::{
     type_: "User",
     id: "emina",
   })
-  @debug.assert_eq(true, user.is_some())
+  @debug.assert_eq(true, user is Some(_))
 }
 
 ///|
@@ -32,7 +32,7 @@ test "init loads team hierarchy" {
     type_: "Team",
     id: "interns",
   })
-  @debug.assert_eq(true, interns.is_some())
+  @debug.assert_eq(true, interns is Some(_))
   @debug.assert_eq(2, interns.unwrap().parents.length())
 }
 
@@ -52,7 +52,7 @@ test "add_list updates entity store" {
     type_: "List",
     id: "0",
   })
-  @debug.assert_eq(true, entity.is_some())
+  @debug.assert_eq(true, entity is Some(_))
   let e = entity.unwrap()
   @debug.assert_eq(
     "Shopping",

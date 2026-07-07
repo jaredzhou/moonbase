@@ -161,9 +161,10 @@ async test "test_query" {
       let tags = ctx.queries.get_all("tag")
       let has_flag = ctx.query("flag") is Some(_)
       let flag_val = ctx.query("flag").unwrap_or("none")
+      let tags_str = "[" + tags.iter().join(", ") + "]"
       ctx.write_text(
         200,
-        "q=\{"\{q}"} page=\{"\{page}"} has_flag=\{"\{has_flag}"} flag_val=\{"\{flag_val}"} tags=\{"\{tags}"}",
+        "q=\{q} page=\{page} has_flag=\{has_flag} flag_val=\{flag_val} tags=\{tags_str}",
       )
     },
     name="search",

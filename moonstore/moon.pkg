@@ -9,3 +9,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/x/uuid",
 }
+
+import {
+  "jaredzhou/mooncedar/parser",
+} for "test"

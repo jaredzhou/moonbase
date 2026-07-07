@@ -28,7 +28,7 @@ pub fn MemoryBackend::new() -> MemoryBackend {
 
 ///|
 fn MemoryBackend::file_key(
-  self : MemoryBackend,
+  _self : MemoryBackend,
   bucket : String,
   key : String,
 ) -> String {
@@ -37,7 +37,7 @@ fn MemoryBackend::file_key(
 
 ///|
 fn MemoryBackend::check_key(
-  self : MemoryBackend,
+  _self : MemoryBackend,
   key : String,
 ) -> Unit raise BackendError {
   if key.length() > 1024 {
@@ -82,7 +82,7 @@ pub impl StorageBackend for MemoryBackend with fn getObject(
   self : MemoryBackend,
   bucket : String,
   key : String,
-  headers : CacheHeaders?,
+  _headers : CacheHeaders?,
 ) -> GetObjectResult raise BackendError {
   self.check_key(key)
   let fk = self.file_key(bucket, key)
@@ -204,8 +204,7 @@ pub impl StorageBackend for MemoryBackend with fn listObjects(
     if !k.has_prefix(bucket_prefix) {
       continue
     }
-    let key_len = k.length() - bucket_prefix.length()
-    let key = k.substring(start=bucket_prefix.length(), end=k.length())
+    let key = k[bucket_prefix.length():].to_owned()
     match prefix {
       Some(p) => if !key.has_prefix(p) { continue }
       None => ()
@@ -252,8 +251,8 @@ pub impl StorageBackend for MemoryBackend with fn createMultiPartUpload(
 ///|
 pub impl StorageBackend for MemoryBackend with fn uploadPart(
   self : MemoryBackend,
-  bucket : String,
-  key : String,
+  _bucket : String,
+  _key : String,
   uploadId : String,
   partNumber : Int,
   body : Bytes,
@@ -300,8 +299,8 @@ pub impl StorageBackend for MemoryBackend with fn completeMultipartUpload(
 ///|
 pub impl StorageBackend for MemoryBackend with fn abortMultipartUpload(
   self : MemoryBackend,
-  bucket : String,
-  key : String,
+  _bucket : String,
+  _key : String,
   uploadId : String,
 ) -> Unit raise BackendError {
   self.multiparts.remove(uploadId)
@@ -315,7 +314,6 @@ pub impl StorageBackend for MemoryBackend with fn close(self : MemoryBackend) ->
 ///|
 /// Concatenate parts into a single Bytes.
 fn merge_parts(state : MultiPartState, part_list : Array[UploadPart]) -> Bytes {
-  let total = sum_part_sizes(state, 0)
   let buf = @buffer.Buffer::Buffer()
   for p in part_list {
     match state.parts.get(p.part_number) {
@@ -324,13 +322,4 @@ fn merge_parts(state : MultiPartState, part_list : Array[UploadPart]) -> Bytes {
     }
   }
   buf.to_bytes()
-}
-
-///|
-fn sum_part_sizes(state : MultiPartState, acc : Int) -> Int {
-  let mut total = acc
-  for _, data in state.parts {
-    total = total + data.length()
-  }
-  total
 }

@@ -4,34 +4,34 @@
 ///|
 /// Input for creating a bucket.
 pub(all) struct CreateBucketInput {
-  pub name : String
-  pub public : Bool?
-  pub file_size_limit : Int64?
-  pub allowed_mime_types : Array[String]?
+  name : String
+  public : Bool?
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
 }
 
 ///|
 /// Input for updating a bucket.
 pub(all) struct UpdateBucketInput {
-  pub public : Bool?
-  pub file_size_limit : Int64?
-  pub allowed_mime_types : Array[String]?
+  public : Bool?
+  file_size_limit : Int64?
+  allowed_mime_types : Array[String]?
 }
 
 ///|
 /// Input for updating object metadata.
 pub(all) struct UpdateObjectInput {
-  pub user_metadata : Json?
+  user_metadata : Json?
 }
 
 ///|
 /// Core storage state -- holds repos, backend, and authorizer.
 /// Uses trait references (&StorageBackend, &BucketRepo, &ObjectRepo) for pluggable implementations.
 pub(all) struct Storage {
-  pub backend : &@backend.StorageBackend
-  pub bucket_repo : &BucketRepo
-  pub object_repo : &ObjectRepo
-  pub authorizer : Authorizer
+  backend : &@backend.StorageBackend
+  bucket_repo : &BucketRepo
+  object_repo : &ObjectRepo
+  authorizer : Authorizer
 }
 
 ///|
@@ -441,7 +441,7 @@ pub fn Storage::list_objects(
   prefix : String?,
   limit : Int?,
   offset : Int?,
-  sort_by : String?,
+  _sort_by : String?,
 ) -> Array[Object] raise StorageError {
   self.check_and_authorize(Some(user), "ListObjects", "Bucket", bucket_id, None)
   self.object_repo.list(bucket_id, prefix, limit, offset) catch {

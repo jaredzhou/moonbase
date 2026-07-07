@@ -199,7 +199,7 @@ pub fn PartHeaders::has(self : PartHeaders, key : String) -> Bool {
 /// Return true if there are no entries.
 pub fn PartHeaders::is_empty(self : PartHeaders) -> Bool {
   let PartHeaders(m) = self
-  m.size() == 0
+  m.length() == 0
 }
 
 // ============================================================================
@@ -320,10 +320,11 @@ async fn Part::read_chunk(
 
 ///|
 /// Internal helper: retry boundary scan after reading more data.
-async fn Part::read_chunk_retry(
+fn Part::read_chunk_retry(
   self : Part,
   max_len? : Int = stream_chunk_size,
 ) -> Bytes? {
+  ignore(max_len)
   let data = self.buf.to_bytes()
   match data[:].find(self.delimiter[:]) {
     Some(pos) => {
@@ -477,33 +478,6 @@ fn MultipartForm::files_of(
 }
 
 ///|
-/// Walk every file field and, when its size exceeds `max_memory`,
-/// write it to a unique temp file under `temp_dir`.
-///
-/// Must be called from an `async` context (typically inside
-/// `Context::parse_multipart_form`).
-async fn MultipartForm::spill_large_files_to_disk(
-  self : MultipartForm,
-  max_memory : Int64,
-  temp_dir : String,
-) -> Unit {
-  for field_name, file_arr in self.files {
-    for file in file_arr {
-      match file.backend {
-        Memory(b) if b.length().to_int64() > max_memory => {
-          let path = "\{temp_dir}/pony-multipart-\{random_hex(8)}"
-          @fs.write_file(path, b, create_mode=CreateNew) catch {
-            _ => ()
-          }
-          file.backend = Disk(path)
-        }
-        _ => ()
-      }
-    }
-  }
-}
-
-///|
 /// Remove every temporary disk file held by this form.
 /// Safe to call when no disk files exist (no-op).
 /// Does NOT remove External files (belong to the caller).
@@ -652,48 +626,7 @@ fn unquote_mime_value(raw : String) -> String {
   }
   s[1:s.length() - 1].to_owned()
 }
-
-// -- part decoding -----------------------------------------------------
-
-///|
-/// Decode one multipart part (headers + body) and add it to `form`.
-fn next_part(part_data : BytesView, form : MultipartForm) -> Unit raise {
-  let (part_headers, body) = read_part_headers(part_data)
-
-  let cd = match part_headers.get("Content-Disposition") {
-    Some(v) => v
-    None => raise MultipartError::MalformedBody("missing Content-Disposition")
-  }
-
-  let (name, filename) = split_content_disposition(cd)
-
-  guard name.length() > 0 else { raise MultipartError::MissingName }
-
-  let content_type = part_headers.get("Content-Type")
-
-  match filename {
-    Some(fname) if fname.length() > 0 => {
-      let file_body = body.to_owned()
-      let file_size = file_body.length().to_int64()
-      let file_header = FileHeader::{
-        filename: fname,
-        size: file_size,
-        content_type,
-        header: part_headers,
-        backend: Memory(file_body),
-      }
-
-      // Always buffer in memory first.
-      // Large files are spilled to disk later via spill_large_files_to_disk().
-      form.files.get_or_init(name, () => []).push(file_header)
-    }
-    _ => {
-      // Regular form field (no filename)
-      let field_text = to_utf8_string(body)
-      form.values.0.get_or_init(name, () => []).push(field_text)
-    }
-  }
-}
+// -- random helpers ----------------------------------------------------
 
 ///|
 /// Generate a random hex string of `n` digits.
@@ -711,88 +644,6 @@ fn random_hex(n : Int) -> String {
 // Main entry point
 // ============================================================================
 
-///|
-/// Parse a `multipart/form-data` request body.
-///
-/// * `body`       — raw request body bytes.
-/// * `content_type` — `Content-Type` header value (determines the boundary).
-///
-/// Returns a `MultipartForm` with all parsed fields and files.
-/// All file content is held **in memory** at this stage.
-/// Callers should subsequently invoke `MultipartForm::spill_large_files_to_disk`
-/// (from an `async` context) to move large files to temporary disk storage.
-///
-/// ## Panics / errors
-/// Raises `MultipartError` when the body is malformed, the boundary is
-/// missing, or a part is missing a required `name`.
-fn parse_multipart(body : Bytes, content_type : String) -> MultipartForm raise {
-  let boundary = boundary_from(content_type)
-  let delimiter = (b"--" + @utf8.encode(boundary))[:]
-  let final_delimiter = (b"--" + @utf8.encode(boundary) + b"--")[:]
-  let form = MultipartForm::new()
-
-  // Skip preamble — seek to the first `--boundary`
-  let rest = match body[:].find(delimiter) {
-    Some(pos) => body[pos:]
-    None => raise MultipartError::MalformedBody("boundary not found")
-  }
-
-  for rest = rest {
-    let (delim, rest) = next_boundary(rest)
-    match delim {
-      d if d == final_delimiter => break
-      d if d == delimiter => {
-        let (part, rest) = cut_part(rest, delimiter)
-        next_part(part, form)
-        continue rest
-      }
-      _ => raise MultipartError::MalformedBody("missing boundary")
-    }
-  }
-
-  form
-}
-
-///|
-/// Extract the boundary line from the front of `data` and skip its CRLF.
-fn next_boundary(data : BytesView) -> (BytesView, BytesView) {
-  let line_end = match data.find(b"\r\n") {
-    Some(pos) => pos
-    None => data.length()
-  }
-  let delim = data[:line_end]
-  let after = if data[line_end:].has_prefix(b"\r\n") {
-    data[line_end + 2:]
-  } else if data[line_end:].has_prefix(b"\n") {
-    data[line_end + 1:]
-  } else {
-    data[line_end:]
-  }
-  (delim, after)
-}
-
-///|
-/// Cut the part content from `data` up to the next `marker`.
-fn cut_part(
-  data : BytesView,
-  marker : BytesView,
-) -> (BytesView, BytesView) raise {
-  match data.find(marker) {
-    Some(pos) => {
-      let content = data[:pos]
-      let part = if content.has_suffix(b"\r\n") {
-        content[:content.length() - 2]
-      } else if content.has_suffix(b"\n") {
-        content[:content.length() - 1]
-      } else {
-        content
-      }
-      (part, data[pos:])
-    }
-    None => raise MultipartError::MalformedBody("missing boundary")
-  }
-}
-
 // ============================================================================
 // Streaming multipart reader
 // ============================================================================
@@ -807,7 +658,7 @@ let stream_chunk_size : Int = 8192
 /// The caller passes leftover bytes from each Part back via
 /// `store_remaining` so the reader can find the next boundary line
 /// and part headers.
-struct MultipartReader {
+priv struct MultipartReader {
   source : &@io.Reader
   delimiter : Bytes // "--boundary"
   final_delimiter : Bytes // "--boundary--"
@@ -966,7 +817,7 @@ async fn MultipartReader::read_form(
         guard name.length() > 0 else { continue }
         match filename {
           Some(fname) if fname.length() > 0 => {
-            let (file_header, backend) = match writers.get(name) {
+            let (file_header, _backend) = match writers.get(name) {
               Some(writer) => {
                 // Stream directly to the custom writer — no buffering.
                 let mut total : Int64 = 0
@@ -1097,7 +948,7 @@ async fn MultipartReader::skip_boundary_line(
 /// `max_memory`.  Stream chunks via `write()`, then call `close()`.
 /// Implements `WriterCloser` so it can be used both as default writer
 /// and as a custom writer target.
-struct BodyWriter {
+priv struct BodyWriter {
   mut buf : @buffer.Buffer
   mut total : Int64
   mut disk_path : String

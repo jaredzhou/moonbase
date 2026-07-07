@@ -205,8 +205,6 @@ type ApiError derive(ToJson, @debug.Debug)
 pub fn ApiError::new(Int, String) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
 
-type BodyWriter
-
 pub(all) struct Context {
   http_method : HttpMethod
   url_str : String
@@ -308,8 +306,6 @@ pub impl Show for HttpMethod
 pub(all) struct Middleware((Handler) -> Handler) derive(@debug.Debug)
 
 type MultipartForm
-
-type MultipartReader
 
 type Node derive(@debug.Debug)
 pub impl Show for Node

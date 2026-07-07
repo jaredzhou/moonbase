@@ -1,5 +1,5 @@
 ///|
-async test "tree" {
+test "tree" {
   let r = Router::Router()
   let h = Handler(ctx => println(ctx))
   let h2 = Handler(ctx => println(ctx))

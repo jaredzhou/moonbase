@@ -125,7 +125,7 @@ test "Part form_name extracts name and filename" {
     "Content-Disposition", "form-data; name=\"file1\"; filename=\"test.txt\"",
   )
   headers.set("Content-Type", "text/plain")
-  let reader = @io.MemoryReader() <| w => {  }
+  let reader = @io.MemoryReader() <| _ => {  }
   let part = Part::{
     source: reader,
     delimiter: b"--boundary",
@@ -146,7 +146,7 @@ test "Part form_name extracts name and filename" {
 test "Part content_type" {
   let headers = PartHeaders::new()
   headers.set("Content-Type", "image/png")
-  let reader = @io.MemoryReader() <| w => {  }
+  let reader = @io.MemoryReader() <| _ => {  }
   let part = Part::{
     source: reader,
     delimiter: b"--boundary",
@@ -161,7 +161,7 @@ test "Part content_type" {
 /// Verify Part::content_type returns None when no Content-Type header.
 test "Part content_type none" {
   let headers = PartHeaders::new()
-  let reader = @io.MemoryReader() <| w => {  }
+  let reader = @io.MemoryReader() <| _ => {  }
   let part = Part::{
     source: reader,
     delimiter: b"--boundary",
@@ -177,7 +177,7 @@ test "Part content_type none" {
 test "Part headers" {
   let headers = PartHeaders::new()
   headers.set("X-Custom", "value")
-  let reader = @io.MemoryReader() <| w => {  }
+  let reader = @io.MemoryReader() <| _ => {  }
   let part = Part::{
     source: reader,
     delimiter: b"--boundary",

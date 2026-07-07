@@ -1,16 +1,6 @@
 // Authorizer whitebox tests — evaluate, reauthorize, concretize, is_authorized.
 
 ///|
-fn entity(
-  uid : EntityUID,
-  attrs : Map[String, Value],
-  tags : Map[String, Value],
-  parents : Array[EntityUID],
-) -> Entity {
-  Entity::{ uid, attrs, tags, parents }
-}
-
-///|
 fn empty_store() -> MapEntityStore {
   MapEntityStore::{ entities: Map([]) }
 }
@@ -599,7 +589,7 @@ test "reauthorize cat4: satisfied carries forward" {
   }
 
   // First eval: one satisfied (no conditions), one residual (entity missing)
-  let answer1 = evaluate(req, [p_sat, p_res], empty_store())
+  let answer1 = evaluate(req, [|p_sat, p_res|], empty_store())
   assert_true(answer1.satisfied is [s] && s.policy_id == "sat")
   guard answer1.residuals is [r1] else { return }
   assert_true(
@@ -644,7 +634,7 @@ test "reauthorize combined: mapping + entity expansion" {
   }
 
   // First eval: policy unknown("x") + entity missing → two residuals
-  let answer1 = evaluate(req, [p1, p2], empty_store())
+  let answer1 = evaluate(req, [|p1, p2|], empty_store())
   guard answer1.residuals is [r1, r2] else { return }
   // r1: category 3 — unknown("x") from policy condition
   assert_true(r1.expr is Expr::Unknown("x", None))

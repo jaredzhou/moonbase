@@ -4,68 +4,68 @@
 ///|
 /// Object metadata returned by head / upload operations.
 pub(all) struct ObjectMetadata {
-  pub cacheControl : String
-  pub contentLength : Int64
-  pub size : Int64
-  pub mimetype : String
-  pub eTag : String
+  cacheControl : String
+  contentLength : Int64
+  size : Int64
+  mimetype : String
+  eTag : String
 }
 
 ///|
 /// Full object response (metadata + body).
 pub(all) struct GetObjectResult {
-  pub metadata : ObjectMetadata
-  pub body : Bytes
+  metadata : ObjectMetadata
+  body : Bytes
 }
 
 ///|
 /// Conditional cache headers for getObject.
 pub(all) struct CacheHeaders {
-  pub ifModifiedSince : String?
-  pub ifNoneMatch : String?
-  pub range : String?
+  ifModifiedSince : String?
+  ifNoneMatch : String?
+  range : String?
 }
 
 ///|
 /// Single entry in a listObjects response.
 pub(all) struct ObjectKey {
-  pub name : String
-  pub size : Int64
+  name : String
+  size : Int64
 }
 
 ///|
 /// Result of a listObjects call.
 pub(all) struct ListObjectsResult {
-  pub keys : Array[ObjectKey]
-  pub nextToken : String?
+  keys : Array[ObjectKey]
+  nextToken : String?
 }
 
 ///|
 /// Result of a copyObject call.
 pub(all) struct CopyObjectResult {
-  pub eTag : String
+  eTag : String
 }
 
 ///|
 /// A part descriptor for multipart completion.
 pub(all) struct UploadPart {
-  pub e_tag : String?
-  pub part_number : Int
+  e_tag : String?
+  part_number : Int
 }
 
 ///|
 /// Result of a single part upload.
 pub(all) struct UploadPartResult {
-  pub e_tag : String?
+  e_tag : String?
 }
 
 ///|
 /// Result of completing a multipart upload.
 pub(all) struct CompleteUploadResult {
-  pub e_tag : String?
-  pub location : String
-  pub bucket : String
-  pub version : String
+  e_tag : String?
+  location : String
+  bucket : String
+  version : String
 }
 
 ///|

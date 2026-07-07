@@ -13,7 +13,7 @@ async test "integration: list and get bucket via HTTP" {
       file_size_limit: None,
       allowed_mime_types: None,
     }
-    let _bucket = storage.create_bucket("alice", input) catch { e => panic() }
+    let _bucket = storage.create_bucket("alice", input) catch { _ => panic() }
     let r = @pony.Router::Router()
     let _ = @api.build_bucket_routes(r, storage)
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
@@ -45,7 +45,7 @@ async test "integration: upload and download object via HTTP" {
       allowed_mime_types: None,
     }
     let _bucket = storage.create_bucket("alice", bucket_input) catch {
-      e => panic()
+      _ => panic()
     }
     let r = @pony.Router::Router()
     let _ = @api.build_bucket_routes(r, storage)
@@ -81,7 +81,7 @@ async test "integration: move and delete object via HTTP" {
       allowed_mime_types: None,
     }
     let _bucket = storage.create_bucket("alice", bucket_input) catch {
-      e => panic()
+      _ => panic()
     }
     let r = @pony.Router::Router()
     let _ = @api.build_bucket_routes(r, storage)
@@ -92,7 +92,7 @@ async test "integration: move and delete object via HTTP" {
     @async.sleep(500)
 
     // Upload
-    let (resp2, body2) = @http.post(
+    let (resp2, _body2) = @http.post(
       "http://127.0.0.1:\{port}/object/ops/old.txt",
       "test data",
       headers={ "x-user": "alice" },
@@ -111,7 +111,7 @@ async test "integration: move and delete object via HTTP" {
     })
     mclient.write(move_body)
     let resp3 = mclient.end_request()
-    let body3 = mclient.read_all()
+    let _body3 = mclient.read_all()
     @debug.assert_eq(resp3.code, 204)
 
     // Delete
