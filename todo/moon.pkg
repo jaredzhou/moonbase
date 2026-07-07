@@ -1,16 +1,15 @@
 import {
   "jaredzhou/pony",
   "jaredzhou/todo/store",
-  "jaredzhou/todo/auth",
   "jaredzhou/todo/handler",
-  "jaredzhou/mooncedar",
-  "jaredzhou/mooncedar/evaluator",
-  "jaredzhou/mooncedar/ast",
-  "jaredzhou/mooncedar/parser",
   "moonbitlang/core/json",
-  "moonbitlang/core/debug",
   "moonbitlang/async",
 }
+
+import {
+  "jaredzhou/todo/auth",
+  "moonbitlang/core/debug",
+} for "test"
 
 options(
   "is-main": true,

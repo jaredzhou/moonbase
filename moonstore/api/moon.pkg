@@ -1,11 +1,11 @@
 import {
   "jaredzhou/moonstore",
-  "jaredzhou/moonstore/repo",
-  "jaredzhou/moonstore/backend",
   "jaredzhou/pony",
-  "jaredzhou/mooncedar",
-  "jaredzhou/mooncedar/evaluator",
-  "jaredzhou/mooncedar/ast",
   "moonbitlang/core/json",
   "moonbitlang/core/debug",
 }
+
+import {
+  "jaredzhou/moonstore/repo",
+  "jaredzhou/moonstore/backend",
+} for "test"

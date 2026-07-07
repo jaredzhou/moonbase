@@ -13,7 +13,7 @@ async test "integration: list and get bucket via HTTP" {
       file_size_limit: None,
       allowed_mime_types: None,
     }
-    let _bucket = storage.create_bucket("alice", input) catch { _ => panic() }
+    let _bucket = storage.create_bucket("alice", input)
     let r = @pony.Router::Router()
     let _ = @api.build_bucket_routes(r, storage)
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
@@ -44,9 +44,7 @@ async test "integration: upload and download object via HTTP" {
       file_size_limit: None,
       allowed_mime_types: None,
     }
-    let _bucket = storage.create_bucket("alice", bucket_input) catch {
-      _ => panic()
-    }
+    let _bucket = storage.create_bucket("alice", bucket_input)
     let r = @pony.Router::Router()
     let _ = @api.build_bucket_routes(r, storage)
     let _ = @api.build_object_routes(r, storage)
@@ -80,9 +78,7 @@ async test "integration: move and delete object via HTTP" {
       file_size_limit: None,
       allowed_mime_types: None,
     }
-    let _bucket = storage.create_bucket("alice", bucket_input) catch {
-      _ => panic()
-    }
+    let _bucket = storage.create_bucket("alice", bucket_input)
     let r = @pony.Router::Router()
     let _ = @api.build_bucket_routes(r, storage)
     let _ = @api.build_object_routes(r, storage)

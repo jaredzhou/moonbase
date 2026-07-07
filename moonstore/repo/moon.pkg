@@ -1,15 +1,16 @@
 import {
   "jaredzhou/moonstore",
   "jaredzhou/moonstore/backend",
-  "jaredzhou/mooncedar",
   "jaredzhou/mooncedar/parser",
-  "jaredzhou/libs/time",
-  "moonbitlang/x/time" @xtime,
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/core/buffer",
   "moonbitlang/core/debug",
 }
+
+import {
+  "jaredzhou/libs/time",
+} for "wbtest"
 
 options(
   supported_targets: [ "native" ],

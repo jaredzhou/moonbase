@@ -1,15 +1,12 @@
 import {
   "jaredzhou/moonstore",
   "jaredzhou/moonstore/repo",
-  "jaredzhou/moonstore/api",
-  "jaredzhou/libs/time",
-  "jaredzhou/pony",
-  "moonbitlang/async",
-  "moonbitlang/async/http",
-  "moonbitlang/core/json",
   "moonbitlang/core/debug",
 }
 
-options(
-  link: { "native": { "cc-link-flags": "-lpq" } },
-)
+import {
+  "jaredzhou/moonstore/api",
+  "jaredzhou/pony",
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+} for "test"

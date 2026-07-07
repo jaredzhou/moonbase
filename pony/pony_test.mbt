@@ -1,4 +1,23 @@
 ///|
+/// Build a small but realistic-looking JPEG byte sequence for multipart
+/// upload tests. The tests do not validate image content — they only
+/// care that binary bytes round-trip through the upload pipeline — so any
+/// blob with a JPEG-shaped header works.
+fn fixture_image_bytes() -> Bytes {
+  let buf = @buffer.Buffer::Buffer()
+  // Minimal JFIF: SOI, APP0 (JFIF marker), DQT (quantization table),
+  // SOF0 (1x1 frame), DHT (Huffman tables), SOS + payload, EOI.
+  buf.write_bytes(b"\xff\xd8\xff\xe0\x00\x10\x4a\x46\x49\x46\x00\x01")
+  buf.write_bytes(b"\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00\x43\x00")
+  // Fill the rest with deterministic padding so size is non-trivial.
+  for i in 0..<512 {
+    buf.write_byte(((i * 17 + 13) % 256).to_byte())
+  }
+  buf.write_bytes(b"\xff\xd9")
+  buf.to_bytes()
+}
+
+///|
 /// Combined test: tree structure, middleware, HTTP integration,
 /// not-found, method-not-allowed, and mount.
 async test "test_pony" {
@@ -557,8 +576,8 @@ async test "test_multipart_upload_disk_spill" {
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(1000)
 
-    // Read the actual image file to upload.
-    let image_bytes = @fs.read_file("data/1.jpg").binary()
+    // Use an in-memory fixture instead of relying on a checked-in file.
+    let image_bytes = fixture_image_bytes()
     let image_size = image_bytes.length()
     let boundary = "----spillboundary"
 
@@ -643,7 +662,7 @@ async test "test_multipart_upload_custom_writer" {
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(1000)
 
-    let image_bytes = @fs.read_file("data/1.jpg").binary()
+    let image_bytes = fixture_image_bytes()
     let image_size = image_bytes.length()
     let boundary = "----writerboundary"
 
