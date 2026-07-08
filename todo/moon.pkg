@@ -6,11 +6,6 @@ import {
   "moonbitlang/async",
 }
 
-import {
-  "jaredzhou/todo/auth",
-  "moonbitlang/core/debug",
-} for "test"
-
 options(
   "is-main": true,
 )
