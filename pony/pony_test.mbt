@@ -535,6 +535,10 @@ async test "test_multipart_upload" {
 ///|
 /// Integration: force disk spill with max_memory=1, upload real image.
 async test "test_multipart_upload_disk_spill" {
+  // Ensure the data dir exists in a fresh checkout.
+  @fs.mkdir("data", recursive=true) catch {
+    _ => ()
+  }
   let r = Router::Router()
   r.add(
     HttpMethod::Post,
@@ -619,6 +623,9 @@ async test "test_multipart_upload_disk_spill" {
 /// Integration: custom `FileWriter` streams file directly to a target,
 /// bypassing memory buffer and temp files entirely.
 async test "test_multipart_upload_custom_writer" {
+  @fs.mkdir("data", recursive=true) catch {
+    _ => ()
+  }
   let target = "data/uploaded_by_writer.jpg"
   @fs.remove(target) catch {
     _ => ()
