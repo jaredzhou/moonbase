@@ -1,10 +1,15 @@
 import {
-  "jaredzhou/moonstore",
-  "jaredzhou/moonstore/repo",
   "moonbitlang/core/debug",
 }
 
 import {
+  "jaredzhou/moonstore",
+  "jaredzhou/moonstore/repo",
+} for "wbtest"
+
+import {
+  "jaredzhou/moonstore",
+  "jaredzhou/moonstore/repo",
   "jaredzhou/moonstore/api",
   "jaredzhou/pony",
   "moonbitlang/async",

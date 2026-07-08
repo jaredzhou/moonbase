@@ -1,6 +1,5 @@
 import {
   "jaredzhou/libs/url",
-  "moonbitlang/async",
   "moonbitlang/core/json",
   "moonbitlang/async/http",
   "moonbitlang/async/io",
@@ -14,6 +13,11 @@ import {
 }
 
 import {
+  "moonbitlang/async",
   "jaredzhou/libs/jwt",
   "jaredzhou/pony/mw",
 } for "test"
+
+import {
+  "moonbitlang/async",
+} for "wbtest"

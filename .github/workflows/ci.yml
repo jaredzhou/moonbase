@@ -28,11 +28,9 @@ jobs:
           moon version --all
           moon update
 
-      # Type-check the workspace. The unused_package suppression covers two
-      # packages imported only for whitebox tests (parser, async) that the
-      # compiler flags as false positives on production-only phases.
+      # Type-check the workspace with all warnings treated as errors.
       - name: Check
-        run: moon check --deny-warn --warn-list=-unused_package
+        run: moon check --deny-warn
 
       # Format check — no-op if `moon fmt` would produce no diff.
       - name: Format check
