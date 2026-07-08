@@ -9,3 +9,7 @@ import {
   "jaredzhou/moonstore/repo",
   "jaredzhou/moonstore/backend",
 } for "test"
+
+options(
+  supported_targets: "native",
+)

@@ -10,3 +10,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/http",
 } for "test"
+
+options(
+  supported_targets: "native",
+)
