@@ -68,10 +68,10 @@ api.add(HttpMethod::Get, "/status", status_handler)
 r.mount("/api/v1", api)
 
 // Custom 404 / 405 handlers
-r.set_not_found((ctx) => {
+r.set_not_found(ctx => {
   ctx.reply_error(ApiError::new(not_found, "page not found"))
 })
-r.set_method_not_allowed((ctx) => {
+r.set_method_not_allowed(ctx => {
   ctx.reply_error(ApiError::new(method_not_allowed, "method not allowed"))
 })
 ```
@@ -93,6 +93,14 @@ r.set_method_not_allowed((ctx) => {
 | Param `{name}` | `/users/{id}` | `/users/42`, `/users/alice` |
 | Wildcard `*` | `/static/*` | `/static/css/app.css`, `/static/js/main.js` |
 
+### Server
+
+```moonbit nocheck
+let server = @pony.Server::new("127.0.0.1:3000", router)
+  .with_timeout(read=5000, write=10000)
+server.start()!
+```
+
 ### Middleware
 
 Built-in via `jaredzhou/pony/mw`:
@@ -112,9 +120,11 @@ r.use_mw(@mw.jwt(new_hmac_sha256(secret)))
 | `cors()` | CORS headers with configurable origins, methods, headers, max-age |
 | `jwt(signing_method)` | JWT bearer token auth, stores `sub` claim via `set_ext(UserId, …)` |
 
-### Auth
+### Extension Store
 
-Use the extension store to pass request-scoped data from middleware to handlers:
+Type-safe key-value store for passing request-scoped data between middleware and handlers. Keys are marker types (empty structs), values are inferred from usage.
+
+**Custom auth middleware example:**
 
 ```moonbit nocheck
 ///|
@@ -124,7 +134,7 @@ struct UserId {}
 ///|
 // Middleware: extract user_id from header and store in context
 fn auth_middleware(next : Handler) -> Handler {
-  (ctx) => {
+  ctx => {
     match ctx.try_header("X-User-Id") {
       Some(user_id) => ctx.set_ext(UserId{}, user_id)
       None => {
@@ -141,8 +151,7 @@ fn main {
   let r = Router::Router()
   r.use_mw(auth_middleware)
 
-  // Handler reads user_id from ext store — raises PonyError::MissingExt if not set
-  r.add(HttpMethod::Get, "/me", (ctx) => {
+  r.add(HttpMethod::Get, "/me", ctx => {
     let user_id : String = ctx.get_ext(UserId{}) catch {
       e => {
         ctx.reply_error(e)
@@ -156,77 +165,13 @@ fn main {
 }
 ```
 
-### File Upload
-
-Handle multipart file uploads with `parse_multipart_form`, then access files via `form_file` and fields via `form`:
+**Built-in markers** (from `@pony`):
 
 ```moonbit nocheck
-///|
-r.add(HttpMethod::Post, "/upload", async (ctx) => {
-  // Parse the multipart body (call once per request)
-  ctx.parse_multipart_form()!
+ctx.set_ext(@pony.RequestId{}, "req-abc")
+ctx.set_ext(@pony.UserId{}, "user-42")
 
-  // Read regular form fields
-  let title : String = ctx.form("title") catch {
-    e => {
-      ctx.reply_error(e)
-      return
-    }
-  }
-
-  // Access uploaded files
-  let file = ctx.form_file("avatar") catch {
-    e => {
-      ctx.reply_error(e)
-      return
-    }
-  }
-
-  // File metadata available immediately
-  println("received: \{file.filename} (\{file.size} bytes, \{file.content_type})")
-
-  // Read file content (async)
-  let data = file.bytes()
-
-  ctx.reply_ok({
-    "title": title,
-    "filename": file.filename,
-    "size": file.size,
-  })
-})
-```
-
-| Method | Returns | Description |
-|---|---|---|
-| `ctx.parse_multipart_form()` | `Unit` | Parse multipart body (call before accessing files/fields) |
-| `ctx.form("key")` | `String raise PonyError` | Form field value (use `try_form` for `Option`) |
-| `ctx.form_file("key")` | `FileHeader raise PonyError` | Single uploaded file (use `try_form_file` for `Option`) |
-| `ctx.form_files("key")` | `Array[FileHeader]` | All files for a multi-file field |
-| `file.bytes()` | `Bytes` | Read full file content |
-| `file.filename` | `String` | Original filename |
-| `file.size` | `Int64` | Uncompressed file size |
-| `file.content_type` | `String?` | MIME type (e.g. `"image/png"`) |
-| `file.path()` | `String?` | Temp file path if spilled to disk |
-
-### Request Context (`Context`)
-
-Every accessor comes in two forms:
-
-| Raising version | Option version (`try_*`) | Description |
-|---|---|---|
-| `ctx.param("id")` | `ctx.try_param("id")` | Path parameter (raises `PonyError::MissingParam`) |
-| `ctx.query("search")` | `ctx.try_query("search")` | Query string value (raises `PonyError::MissingQuery`) |
-| `ctx.header("Accept")` | `ctx.try_header("Accept")` | Request header (raises `PonyError::MissingHeader`) |
-| `ctx.form("name")` | `ctx.try_form("name")` | Form field — async (raises `PonyError::MissingForm`) |
-| `ctx.wildcard()` | `ctx.try_wildcard()` | Wildcard path capture (raises `PonyError::MissingParam`) |
-| `ctx.json[T]()` | (catch pattern) | JSON body deserialization |
-| `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header (raises `PonyError::MissingFormFile`) |
-
-**Standard error handling pattern** — raising methods produce `PonyError`, which implements `ToApiError` and can be passed directly to `reply_error`:
-
-```moonbit nocheck
-///|
-let user = ctx.header("X-User") catch {
+let uid = ctx.get_ext(@pony.UserId{}) catch {
   e => {
     ctx.reply_error(e)
     return
@@ -234,14 +179,82 @@ let user = ctx.header("X-User") catch {
 }
 ```
 
-For cases where a missing value should fall back to a default, use the `try_` variant:
+| Method | Description |
+|---|---|
+| `ctx.set_ext(marker, value)` | Store a typed value |
+| `ctx.get_ext(marker)` | Retrieve, raises `PonyError::MissingExt` if absent |
+| `ctx.try_get_ext(marker)` | Retrieve, returns `Option` |
+| `ctx.remove_ext(marker)` | Remove a stored value |
+
+### Request Context
+
+Every accessor comes in two forms: a raising version and a `try_` variant that returns `Option`.
+
+| Raising version | Option version | Description |
+|---|---|---|
+| `ctx.param("id")` | `ctx.try_param("id")` | Path parameter |
+| `ctx.query("q")` | `ctx.try_query("q")` | Query string value |
+| `ctx.header("Accept")` | `ctx.try_header("Accept")` | Request header |
+| `ctx.form("name")` | `ctx.try_form("name")` | Form field (async) |
+| `ctx.wildcard()` | `ctx.try_wildcard()` | Wildcard path capture |
+| `ctx.json[T]()` | — | JSON body deserialization |
+| `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header |
+
+**Path parameters:**
 
 ```moonbit nocheck
 ///|
-let q = ctx.try_query("search").unwrap_or("")
+let id = ctx.param("id") catch {
+  e => {
+    ctx.reply_error(e)
+    return
+  }
+}
+
+// Or with a default:
+
+///|
+let page = ctx.try_param("page").unwrap_or("1")
+```
+
+**Query strings:**
+
+```moonbit nocheck
+///|
+let q = ctx.try_query("q").unwrap_or("")
 
 ///|
 let page = ctx.try_query("page").unwrap_or("1")
+```
+
+**Headers:**
+
+```moonbit nocheck
+///|
+let token = ctx.header("Authorization") catch {
+  e => {
+    ctx.reply_error(e)
+    return
+  }
+}
+```
+
+**JSON body:**
+
+```moonbit nocheck
+///|
+struct LoginReq {
+  username : String
+  password : String
+} derive(FromJson)
+
+///|
+let req : LoginReq = ctx.json() catch {
+  _ => {
+    ctx.reply_error(PonyError::InvalidArgument("invalid JSON body"))
+    return
+  }
+}
 ```
 
 **Response helpers:**
@@ -278,7 +291,7 @@ pub suberror PonyError {
 }
 ```
 
-For non-context errors (e.g. failed auth checks, invalid IDs), construct a `PonyError` variant and pass directly to `reply_error`:
+For non-context errors, construct a `PonyError` variant and pass directly to `reply_error`:
 
 ```moonbit nocheck
 ctx.reply_error(PonyError::InvalidArgument("invalid id"))
@@ -286,19 +299,7 @@ ctx.reply_error(PonyError::NotFound("list not found"))
 ctx.reply_error(PonyError::PermissionDenied("access denied"))
 ```
 
-For `ctx.json()` parse failures, capture the error and wrap it:
-
-```moonbit nocheck
-///|
-let req : MyBody = ctx.json() catch {
-  e => {
-    ctx.reply_error(PonyError::InvalidArgument(e.to_string()))
-    return
-  }
-}
-```
-
-**Custom error types** — implement `ToApiError` for your own error types to use them directly with `reply_error`:
+**Custom error types** — implement `ToApiError` for your own error types:
 
 ```moonbit nocheck
 ///|
@@ -313,40 +314,51 @@ pub impl @pony.ToApiError for MyError with fn to_api_error(self : MyError) -> @p
 ctx.reply_error(my_error)
 ```
 
-### Extension Store
+### File Upload
 
-Type-safe key-value store for request-scoped data:
+Handle multipart file uploads with `parse_multipart_form`, then access files via `form_file` and fields via `form`:
 
 ```moonbit nocheck
-ctx.set_ext(@pony.RequestId{}, "req-abc")
-ctx.set_ext(@pony.UserId{}, "user-42")
+///|
+r.add(HttpMethod::Post, "/upload", async ctx => {
+  // Parse the multipart body (call once per request)
+  ctx.parse_multipart_form()!
 
-let uid = ctx.get_ext(@pony.UserId{}) catch {
-  e => {
-    ctx.reply_error(e)
-    return
+  // Read regular form fields
+  let title : String = ctx.form("title") catch {
+    e => { ctx.reply_error(e); return }
   }
-}
+
+  // Access uploaded files
+  let file = ctx.form_file("avatar") catch {
+    e => { ctx.reply_error(e); return }
+  }
+
+  // File metadata available immediately
+  println("received: \{file.filename} (\{file.size} bytes, \{file.content_type})")
+
+  // Read file content (async)
+  let data = file.bytes()
+
+  ctx.reply_ok({
+    "title": title,
+    "filename": file.filename,
+    "size": file.size,
+  })
+})
 ```
 
-### Header
-
-Full HTTP header management with canonical keys and multi-value support:
-
-```moonbit nocheck
-let h = @pony.new()
-h.set("Content-Type", "application/json")
-h.add("Set-Cookie", "session=abc")
-let ct = h.get("Content-Type")  // "application/json"
-```
-
-### Server
-
-```moonbit nocheck
-let server = @pony.Server::new("127.0.0.1:3000", router)
-  .with_timeout(read=5000, write=10000)
-server.start()!
-```
+| Method | Returns | Description |
+|---|---|---|
+| `ctx.parse_multipart_form()` | `Unit` | Parse multipart body (call before accessing files/fields) |
+| `ctx.form("key")` | `String raise PonyError` | Form field value (use `try_form` for `Option`) |
+| `ctx.form_file("key")` | `FileHeader raise PonyError` | Single uploaded file (use `try_form_file` for `Option`) |
+| `ctx.form_files("key")` | `Array[FileHeader]` | All files for a multi-file field |
+| `file.bytes()` | `Bytes` | Read full file content |
+| `file.filename` | `String` | Original filename |
+| `file.size` | `Int64` | Uncompressed file size |
+| `file.content_type` | `String?` | MIME type (e.g. `"image/png"`) |
+| `file.path()` | `String?` | Temp file path if spilled to disk |
 
 ## License
 
