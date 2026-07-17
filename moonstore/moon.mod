@@ -1,6 +1,6 @@
 name = "jaredzhou/moonstore"
 
-version = "0.1.0"
+version = "0.1.1"
 
 license = "Apache-2.0"
 
@@ -11,7 +11,7 @@ repository = "https://github.com/jaredzhou/moonbase"
 preferred_target = "native"
 
 import {
-  "jaredzhou/pony@0.1.1",
+  "jaredzhou/pony@0.2.0",
   "jaredzhou/mooncedar@0.1.1",
   "jaredzhou/libs@0.1.1",
   "moonbitlang/async@0.19.4",
