@@ -98,8 +98,6 @@ pub fn register(code : Int, http_status : Int) -> Unit {
   codes[code] = http_status
 }
 
-
-
 ///|
 /// Convert a `PonyError` to an `ApiError` suitable for `reply_error`.
 pub fn to_api_error(e : PonyError) -> ApiError {
@@ -118,11 +116,8 @@ pub fn to_api_error(e : PonyError) -> ApiError {
       ApiError::new(internal, "extension decode error: \{key} - \{msg}")
     PonyError::MissingFormFile(key) =>
       ApiError::new(invalid_argument, "missing form file: \{key}")
-    PonyError::InvalidArgument(msg) =>
-      ApiError::new(invalid_argument, msg)
-    PonyError::NotFound(msg) =>
-      ApiError::new(not_found, msg)
-    PonyError::PermissionDenied(msg) =>
-      ApiError::new(permission_denied, msg)
+    PonyError::InvalidArgument(msg) => ApiError::new(invalid_argument, msg)
+    PonyError::NotFound(msg) => ApiError::new(not_found, msg)
+    PonyError::PermissionDenied(msg) => ApiError::new(permission_denied, msg)
   }
 }

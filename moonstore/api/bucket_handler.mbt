@@ -72,7 +72,9 @@ fn create_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let body : CreateBucketBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
+        ctx.reply_error(
+          @pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"),
+        )
         return
       }
     }
@@ -155,7 +157,9 @@ fn update_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let body : UpdateBucketBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
+        ctx.reply_error(
+          @pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"),
+        )
         return
       }
     }

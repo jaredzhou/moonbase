@@ -56,24 +56,34 @@ fn create_task(state : @store.ServerState) -> @pony.Handler {
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")),
+        )
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::NotFound("list not found")),
+        )
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "CreateTask", "List", id_str, state) {
-      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
+      ctx.reply_error(
+        @pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")),
+      )
       return
     }
     let req : CreateTaskReq = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid JSON body")))
+        ctx.reply_error(
+          @pony.to_api_error(
+            @pony.PonyError::InvalidArgument("invalid JSON body"),
+          ),
+        )
         return
       }
     }
@@ -107,7 +117,9 @@ fn update_task(state : @store.ServerState) -> @pony.Handler {
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")),
+        )
         return
       }
     }
@@ -120,28 +132,40 @@ fn update_task(state : @store.ServerState) -> @pony.Handler {
     let pos = match parse_int(pos_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid pos")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::InvalidArgument("invalid pos")),
+        )
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::NotFound("list not found")),
+        )
         return
       }
     }
     if pos < 0 || pos >= state.lists[idx].tasks.length() {
-      ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("task not found")))
+      ctx.reply_error(
+        @pony.to_api_error(@pony.PonyError::NotFound("task not found")),
+      )
       return
     }
     if !@auth.try_authorize(user, "Action", "UpdateTask", "List", id_str, state) {
-      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
+      ctx.reply_error(
+        @pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")),
+      )
       return
     }
     let req : UpdateTaskReq = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid JSON body")))
+        ctx.reply_error(
+          @pony.to_api_error(
+            @pony.PonyError::InvalidArgument("invalid JSON body"),
+          ),
+        )
         return
       }
     }
@@ -182,7 +206,9 @@ fn delete_task(state : @store.ServerState) -> @pony.Handler {
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")),
+        )
         return
       }
     }
@@ -195,23 +221,31 @@ fn delete_task(state : @store.ServerState) -> @pony.Handler {
     let pos = match parse_int(pos_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid pos")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::InvalidArgument("invalid pos")),
+        )
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
+        ctx.reply_error(
+          @pony.to_api_error(@pony.PonyError::NotFound("list not found")),
+        )
         return
       }
     }
     if pos < 0 || pos >= state.lists[idx].tasks.length() {
-      ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("task not found")))
+      ctx.reply_error(
+        @pony.to_api_error(@pony.PonyError::NotFound("task not found")),
+      )
       return
     }
     if !@auth.try_authorize(user, "Action", "DeleteTask", "List", id_str, state) {
-      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
+      ctx.reply_error(
+        @pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")),
+      )
       return
     }
     state.lists[idx].tasks.remove(pos) |> ignore

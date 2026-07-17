@@ -116,6 +116,7 @@ Every accessor comes in two forms:
 **Standard error handling pattern** — the raising methods work with `to_api_error`:
 
 ```moonbit nocheck
+///|
 let user = ctx.header("X-User") catch {
   e => {
     ctx.reply_error(to_api_error(e))
@@ -127,7 +128,10 @@ let user = ctx.header("X-User") catch {
 For cases where a missing value should fall back to a default, use the `try_` variant:
 
 ```moonbit nocheck
+///|
 let q = ctx.try_query("search").unwrap_or("")
+
+///|
 let page = ctx.try_query("page").unwrap_or("1")
 ```
 
@@ -149,6 +153,7 @@ ctx.no_content()                                               // 204
 `PonyError` is the unified error type for context accessors. Use `to_api_error` to convert it:
 
 ```moonbit nocheck
+///|
 pub suberror PonyError {
   MissingParam(String)
   MissingQuery(String)
@@ -157,9 +162,9 @@ pub suberror PonyError {
   MissingExt(String)
   ExtDecodeError(String, String)
   MissingFormFile(String)
-  InvalidArgument(String)       // generic 400
-  NotFound(String)               // generic 404
-  PermissionDenied(String)       // generic 403
+  InvalidArgument(String) // generic 400
+  NotFound(String) // generic 404
+  PermissionDenied(String) // generic 403
 }
 ```
 
@@ -173,6 +178,7 @@ ctx.reply_error(to_api_error(PonyError::NotFound("list not found")))
 For `ctx.json()` parse failures, capture the error and wrap it:
 
 ```moonbit nocheck
+///|
 let req : MyBody = ctx.json() catch {
   e => {
     ctx.reply_error(to_api_error(PonyError::InvalidArgument(e.to_string())))

@@ -266,9 +266,8 @@ pub fn[K, V] Context::try_get_ext(self : Context, _marker : K) -> V? {
 ///|
 pub fn[K, V] Context::get_ext(self : Context, _marker : K) -> V raise PonyError {
   self.exts.get(_marker) catch {
-    ExtError::Missing => raise PonyError::MissingExt(
-      @any.Any::of(_marker).type_name(),
-    )
+    ExtError::Missing =>
+      raise PonyError::MissingExt(@any.Any::of(_marker).type_name())
     ExtError::DecodeError(key~, msg~) =>
       raise PonyError::ExtDecodeError(key, msg)
   }
@@ -336,10 +335,11 @@ pub async fn Context::try_form(self : Context, key : String) -> String? {
 }
 
 ///|
-pub async fn Context::form(self : Context, key : String) -> String raise PonyError {
-  match (self.try_form(key) catch {
-    _ => None
-  }) {
+pub async fn Context::form(
+  self : Context,
+  key : String,
+) -> String raise PonyError {
+  match (self.try_form(key) catch { _ => None }) {
     Some(v) => v
     None => raise PonyError::MissingForm(key)
   }
@@ -350,7 +350,7 @@ pub async fn Context::parse_multipart_form(
   self : Context,
   max_memory? : Int64 = default_max_memory,
   writers? : Map[String, FileWriter] = Map([]),
-) -> Unit raise{
+) -> Unit {
   let content_type = self.try_header("content-type").unwrap_or("")
   let boundary = boundary_from(content_type)
   let mr = MultipartReader::new(self.req_body, boundary)
@@ -368,7 +368,10 @@ pub fn Context::try_form_file(self : Context, key : String) -> FileHeader? {
 }
 
 ///|
-pub fn Context::form_file(self : Context, key : String) -> FileHeader raise PonyError {
+pub fn Context::form_file(
+  self : Context,
+  key : String,
+) -> FileHeader raise PonyError {
   match self.multipart_form {
     Some(mf) =>
       match mf.file_of(key) {
@@ -397,7 +400,7 @@ pub async fn Context::cleanup(self : Context) -> Unit {
 }
 
 ///|
-pub async fn[T : FromJson] Context::json(self : Context) -> T raise{
+pub async fn[T : FromJson] Context::json(self : Context) -> T {
   @json.from_json(self.req_body.read_all().json())
 }
 
@@ -459,10 +462,7 @@ pub async fn[T : ToJson] Context::reply_ok(self : Context, value : T) -> Unit {
 }
 
 ///|
-pub async fn Context::reply_error(
-  self : Context,
-  e : ApiError,
-) -> Unit {
+pub async fn Context::reply_error(self : Context, e : ApiError) -> Unit {
   self.reply((Err(e) : Result[Unit, ApiError]))
 }
 
