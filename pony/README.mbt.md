@@ -53,17 +53,6 @@ fn main {
     ctx.write_text(status_ok, "file: \(path)")
   })
 
-  // Handler with auth — ctx.header raises PonyError, caught and converted
-  r.add(HttpMethod::Get, "/me", async fn(ctx) {
-    let user = ctx.header("X-User") catch {
-      e => {
-        ctx.reply_error(to_api_error(e))
-        return
-      }
-    }
-    ctx.reply_ok({ "user": user })
-  })
-
   start("127.0.0.1:3000", r)
 }
 ```
@@ -96,6 +85,50 @@ r.use_mw(@mw.jwt(new_hmac_sha256(secret)))
 | `logger()` | Request logging (method, path, status, duration) |
 | `cors()` | CORS headers with configurable origins, methods, headers, max-age |
 | `jwt(signing_method)` | JWT bearer token auth, stores `sub` claim in context |
+
+### Auth
+
+Use the extension store to pass request-scoped data from middleware to handlers:
+
+```moonbit nocheck
+///|
+// Marker type — an empty struct used as a type-safe key
+struct UserId {}
+
+///|
+// Middleware: extract user_id from header and store in context
+fn auth_middleware(next : Handler) -> Handler {
+  fn(ctx) {
+    match ctx.try_header("X-User-Id") {
+      Some(user_id) => ctx.set_ext(UserId{}, user_id)
+      None => {
+        ctx.reply_error(ApiError::new(unauthenticated, "missing X-User-Id header"))
+        return
+      }
+    }
+    next(ctx)
+  }
+}
+
+///|
+fn main {
+  let r = Router::Router()
+  r.use_mw(auth_middleware)
+
+  // Handler reads user_id from ext store — raises PonyError::MissingExt if not set
+  r.add(HttpMethod::Get, "/me", fn(ctx) {
+    let user_id : String = ctx.get_ext(UserId{}) catch {
+      e => {
+        ctx.reply_error(to_api_error(e))
+        return
+      }
+    }
+    ctx.reply_ok({ "user_id": user_id })
+  })
+
+  start("127.0.0.1:3000", r)
+}
+```
 
 ### Request Context (`Context`)
 
