@@ -83,7 +83,7 @@ pub fn[C : Claims] parse_with(
 ///|
 /// Build the JWT header JSON map for a given algorithm.
 fn build_header(alg : String) -> Map[String, Json] {
-  let header : Map[String, Json] = {}
+  let header : Map[String, Json] = Map([])
   header["alg"] = Json::string(alg)
   header["typ"] = Json::string("JWT")
   header

@@ -65,7 +65,7 @@ pub(all) struct Values(Map[String, Array[String]])
 
 ///|
 pub fn Values::new() -> Values {
-  Values({})
+  Values(Map([]))
 }
 
 ///|
@@ -89,7 +89,7 @@ pub(all) struct HttpHeaders(Map[String, String])
 
 ///|
 pub fn HttpHeaders::new() -> HttpHeaders {
-  HttpHeaders({})
+  HttpHeaders(Map([]))
 }
 
 ///|
@@ -294,7 +294,7 @@ pub async fn Context::form(self : Context, key : String) -> String? {
 pub async fn Context::parse_multipart_form(
   self : Context,
   max_memory? : Int64 = default_max_memory,
-  writers? : Map[String, FileWriter] = {},
+  writers? : Map[String, FileWriter] = Map([]),
 ) -> Unit {
   let content_type = self.header("content-type").unwrap_or("")
   let boundary = boundary_from(content_type)
@@ -558,7 +558,7 @@ pub fn Router::Router() -> Router {
       children_static: [],
       children_param: [],
       child_wildcard: None,
-      endpoints: {},
+      endpoints: Map([]),
     },
     middlewares: [],
     not_found_handler: None,
@@ -675,7 +675,7 @@ pub async fn start(addr : String, router : Router) -> Unit {
 
 ///|
 fn parse_query(q : String) -> Values {
-  let m : Map[String, Array[String]] = {}
+  let m : Map[String, Array[String]] = Map([])
   for pair in q.split("&") {
     if pair == "" {
       continue

@@ -62,7 +62,7 @@ pub fn ApiError::new(code : Int, message : String) -> ApiError {
 }
 
 ///|
-let codes : Map[Int, Int] = {}
+let codes : Map[Int, Int] = Map([])
 
 ///|
 fn init {

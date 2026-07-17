@@ -11,7 +11,7 @@ A JWT (JSON Web Token) library for MoonBit, providing HMAC-SHA256 signing, claim
 test {
   let jwt_string = @jwt.sign(
     @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
-    Json::object({}),
+    Json::empty_object(),
   )
   let parts_iter = jwt_string.split(".")
   let parts : Array[String] = []
@@ -29,7 +29,7 @@ test {
 test {
   let jwt_string = @jwt.sign(
     @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
-    Json::object({}),
+    Json::empty_object(),
   )
   let (parsed, _) : (@jwt.Token, @jwt.RegisteredClaims) = @jwt.parse(
     jwt_string,
@@ -72,7 +72,7 @@ test {
 test {
   let jwt_string = @jwt.sign(
     @jwt.new_hmac_sha256(b"my-secret-key-for-testing-32b"),
-    Json::object({}),
+    Json::empty_object(),
   )
   let parsed = @jwt.parse_unverified(jwt_string)
   match parsed.header.get("alg") {

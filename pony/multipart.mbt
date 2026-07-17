@@ -171,7 +171,7 @@ pub(all) struct PartHeaders(Map[String, String])
 
 ///|
 pub fn PartHeaders::new() -> PartHeaders {
-  PartHeaders({})
+  PartHeaders(Map([]))
 }
 
 ///|
@@ -453,7 +453,7 @@ struct MultipartForm {
 
 ///|
 fn MultipartForm::new() -> MultipartForm {
-  { values: Values::new(), files: {} }
+  { values: Values::new(), files: Map([]) }
 }
 
 ///|
@@ -807,7 +807,7 @@ async fn MultipartReader::read_form(
   self : MultipartReader,
   max_memory : Int64,
   temp_dir : String,
-  writers? : Map[String, FileWriter] = {},
+  writers? : Map[String, FileWriter] = Map([]),
 ) -> MultipartForm {
   let form = MultipartForm::new()
   while true {
@@ -825,12 +825,12 @@ async fn MultipartReader::read_form(
                   match part.read_chunk() {
                     Some(chunk) => {
                       total = total + chunk.length().to_int64()
-                      writer.write(chunk)
+                      @io.Writer::write(writer, chunk)
                     }
                     None => break
                   }
                 }
-                writer.close()
+                Closer::close(writer)
                 let fh = FileHeader::{
                   filename: fname,
                   size: total,
@@ -845,11 +845,11 @@ async fn MultipartReader::read_form(
                 let bodyWriter = BodyWriter::new(max_memory, temp_dir)
                 while true {
                   match part.read_chunk() {
-                    Some(chunk) => bodyWriter.write(chunk)
+                    Some(chunk) => @io.Writer::write(bodyWriter, chunk)
                     None => break
                   }
                 }
-                bodyWriter.close()
+                Closer::close(bodyWriter)
                 let backend = if bodyWriter.disk_path.length() > 0 {
                   Disk(bodyWriter.disk_path)
                 } else {

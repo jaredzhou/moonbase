@@ -9,7 +9,7 @@ pub(all) struct Parser {
 ///|
 /// Create a new Parser with default settings.
 pub fn Parser::Parser() -> Parser {
-  { methods: {}, leeway: 0L, skip_claims_validation: false }
+  { methods: Map([]), leeway: 0L, skip_claims_validation: false }
 }
 
 ///|

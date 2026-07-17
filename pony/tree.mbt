@@ -151,7 +151,7 @@ fn Node::insert(
             children_static: [],
             children_param: [],
             child_wildcard: None,
-            endpoints: {},
+            endpoints: Map([]),
           }
           if tail == '/' {
             node.children_param.push(new_node)
@@ -179,7 +179,7 @@ fn Node::insert(
             children_static: [],
             children_param: [],
             child_wildcard: None,
-            endpoints: {},
+            endpoints: Map([]),
           }
           node.child_wildcard = Some(new_node)
           new_node
@@ -206,7 +206,7 @@ fn Node::insert(
             child.children_static = [suffix_node]
             child.children_param = []
             child.child_wildcard = None
-            child.endpoints = {}
+            child.endpoints = Map([])
             continue child, rest[common:]
           } else {
             // Fully matched child prefix, move into it
@@ -223,7 +223,7 @@ fn Node::insert(
             children_static: [],
             children_param: [],
             child_wildcard: None,
-            endpoints: {},
+            endpoints: Map([]),
           }
           node.children_static.push(new_node)
           continue new_node, rest[static_len:]

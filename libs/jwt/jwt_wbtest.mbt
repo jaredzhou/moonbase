@@ -46,7 +46,7 @@ test "registered claims to_json round trip" {
 
 ///|
 test "registered claims from_json empty" {
-  let json = Json::object({})
+  let json = Json::empty_object()
   let parsed : RegisteredClaims = @json.from_json(json)
   match parsed.iss {
     None => ()
@@ -64,7 +64,7 @@ test "registered claims from_json empty" {
 
 ///|
 test "registered claims aud array" {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   let aud_arr : Array[Json] = [Json::string("aud1"), Json::string("aud2")]
   obj["aud"] = Json::array(aud_arr)
   let json = Json::object(obj)
@@ -121,7 +121,7 @@ test "valid token passes validation" {
 test "signed string is deterministic for same input" {
   let key = b"deterministic-key-for-testing-x"
   let sig_method = HMACSHA256(key)
-  let claims = Json::object({})
+  let claims = Json::empty_object()
   let token1 = Token::Token(sig_method, claims)
   let token2 = Token::Token(sig_method, claims)
   let signed1 = signed_string(token1)

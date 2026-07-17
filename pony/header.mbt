@@ -7,7 +7,7 @@ pub struct Header(Map[String, Array[String]])
 
 ///|
 pub fn new() -> Header {
-  Header({})
+  Header(Map([]))
 }
 
 // CanonicalHeaderKey: roughly mimics Go's textproto.CanonicalMIMEHeaderKey.
