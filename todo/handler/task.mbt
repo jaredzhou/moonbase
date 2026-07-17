@@ -164,7 +164,7 @@ fn update_task(state : @store.ServerState) -> @pony.Handler {
       None => ()
     }
     @store.update_list_entity(state, state.lists[idx])
-    ctx.reply_ok(({} : Json))
+    ctx.reply_ok(Json::empty_object())
   })
 }
 
@@ -224,6 +224,6 @@ fn delete_task(state : @store.ServerState) -> @pony.Handler {
     }
     state.lists[idx].tasks.remove(pos) |> ignore
     @store.update_list_entity(state, state.lists[idx])
-    ctx.reply_ok(({} : Json))
+    ctx.reply_ok(Json::empty_object())
   })
 }

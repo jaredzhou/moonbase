@@ -55,7 +55,7 @@ pub(all) struct URL {
   path : String?
   query : String?
   fragment : String?
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 pub impl Show for URL with fn to_string(self : URL) -> String {
@@ -109,7 +109,7 @@ pub let empty_url : URL = URL::{
 pub(all) struct UserInfo {
   username : String
   password : String?
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 pub impl Show for UserInfo with fn to_string(self : UserInfo) -> String {
