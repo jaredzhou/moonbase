@@ -103,17 +103,7 @@ server.start()!
 
 ### Request Context
 
-Every accessor has two forms:
-
-| Raising version | Option version | Description |
-|---|---|---|
-| `ctx.param("id")` | `ctx.try_param("id")` | Path parameter |
-| `ctx.query("q")` | `ctx.try_query("q")` | Query string value |
-| `ctx.header("Accept")` | `ctx.try_header("Accept")` | Request header |
-| `ctx.form("name")` | `ctx.try_form("name")` | Form field (async) |
-| `ctx.wildcard()` | `ctx.try_wildcard()` | Wildcard path capture |
-| `ctx.json[T]()` | — | JSON body deserialization |
-| `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header |
+Every accessor comes in two forms: a raising version and a `try_` variant that returns `Option`.
 
 Raising methods produce `PonyError` — catch and pass directly to `reply_error`:
 
@@ -179,6 +169,16 @@ ctx.reply_error(ApiError::new(invalid_argument, "bad input"))   // direct ApiErr
 ctx.redirect("/login")                                             // 302
 ctx.no_content()                                                   // 204
 ```
+
+| Raising version | Option version | Description |
+|---|---|---|
+| `ctx.param("id")` | `ctx.try_param("id")` | Path parameter |
+| `ctx.query("q")` | `ctx.try_query("q")` | Query string value |
+| `ctx.header("Accept")` | `ctx.try_header("Accept")` | Request header |
+| `ctx.form("name")` | `ctx.try_form("name")` | Form field (async) |
+| `ctx.wildcard()` | `ctx.try_wildcard()` | Wildcard path capture |
+| `ctx.json[T]()` | — | JSON body deserialization |
+| `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header |
 
 ### Extension Store
 
