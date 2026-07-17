@@ -101,91 +101,6 @@ let server = @pony.Server::new("127.0.0.1:3000", router)
 server.start()!
 ```
 
-### Middleware
-
-Built-in via `jaredzhou/pony/mw`:
-
-```moonbit nocheck
-r.use_mw(@mw.logger())
-r.use_mw(@mw.cors(
-  allow_origins=["*"],
-  allow_methods=["GET", "POST"],
-))
-r.use_mw(@mw.jwt(new_hmac_sha256(secret)))
-```
-
-| Middleware | Description |
-|-----------|-------------|
-| `logger()` | Request logging (method, path, status, duration) |
-| `cors()` | CORS headers with configurable origins, methods, headers, max-age |
-| `jwt(signing_method)` | JWT bearer token auth, stores `sub` claim via `set_ext(UserId, …)` |
-
-### Extension Store
-
-Type-safe key-value store for passing request-scoped data between middleware and handlers. Keys are marker types (empty structs), values are inferred from usage.
-
-**Custom auth middleware example:**
-
-```moonbit nocheck
-///|
-// Marker type — an empty struct used as a type-safe key
-struct UserId {}
-
-///|
-// Middleware: extract user_id from header and store in context
-fn auth_middleware(next : Handler) -> Handler {
-  ctx => {
-    match ctx.try_header("X-User-Id") {
-      Some(user_id) => ctx.set_ext(UserId{}, user_id)
-      None => {
-        ctx.reply_error(ApiError::new(unauthenticated, "missing X-User-Id header"))
-        return
-      }
-    }
-    next(ctx)
-  }
-}
-
-///|
-fn main {
-  let r = Router::Router()
-  r.use_mw(auth_middleware)
-
-  r.add(HttpMethod::Get, "/me", ctx => {
-    let user_id : String = ctx.get_ext(UserId{}) catch {
-      e => {
-        ctx.reply_error(e)
-        return
-      }
-    }
-    ctx.reply_ok({ "user_id": user_id })
-  })
-
-  start("127.0.0.1:3000", r)
-}
-```
-
-**Built-in markers** (from `@pony`):
-
-```moonbit nocheck
-ctx.set_ext(@pony.RequestId{}, "req-abc")
-ctx.set_ext(@pony.UserId{}, "user-42")
-
-let uid = ctx.get_ext(@pony.UserId{}) catch {
-  e => {
-    ctx.reply_error(e)
-    return
-  }
-}
-```
-
-| Method | Description |
-|---|---|
-| `ctx.set_ext(marker, value)` | Store a typed value |
-| `ctx.get_ext(marker)` | Retrieve, raises `PonyError::MissingExt` if absent |
-| `ctx.try_get_ext(marker)` | Retrieve, returns `Option` |
-| `ctx.remove_ext(marker)` | Remove a stored value |
-
 ### Request Context
 
 Every accessor comes in two forms: a raising version and a `try_` variant that returns `Option`.
@@ -270,6 +185,91 @@ ctx.reply_error(ApiError::new(invalid_argument, "bad input"))    // direct ApiEr
 ctx.redirect("/login")                                              // 302 redirect
 ctx.no_content()                                                    // 204
 ```
+
+### Extension Store
+
+Type-safe key-value store for passing request-scoped data between middleware and handlers. Keys are marker types (empty structs), values are inferred from usage.
+
+**Custom auth middleware example:**
+
+```moonbit nocheck
+///|
+// Marker type — an empty struct used as a type-safe key
+struct UserId {}
+
+///|
+// Middleware: extract user_id from header and store in context
+fn auth_middleware(next : Handler) -> Handler {
+  ctx => {
+    match ctx.try_header("X-User-Id") {
+      Some(user_id) => ctx.set_ext(UserId{}, user_id)
+      None => {
+        ctx.reply_error(ApiError::new(unauthenticated, "missing X-User-Id header"))
+        return
+      }
+    }
+    next(ctx)
+  }
+}
+
+///|
+fn main {
+  let r = Router::Router()
+  r.use_mw(auth_middleware)
+
+  r.add(HttpMethod::Get, "/me", ctx => {
+    let user_id : String = ctx.get_ext(UserId{}) catch {
+      e => {
+        ctx.reply_error(e)
+        return
+      }
+    }
+    ctx.reply_ok({ "user_id": user_id })
+  })
+
+  start("127.0.0.1:3000", r)
+}
+```
+
+**Built-in markers** (from `@pony`):
+
+```moonbit nocheck
+ctx.set_ext(@pony.RequestId{}, "req-abc")
+ctx.set_ext(@pony.UserId{}, "user-42")
+
+let uid = ctx.get_ext(@pony.UserId{}) catch {
+  e => {
+    ctx.reply_error(e)
+    return
+  }
+}
+```
+
+| Method | Description |
+|---|---|
+| `ctx.set_ext(marker, value)` | Store a typed value |
+| `ctx.get_ext(marker)` | Retrieve, raises `PonyError::MissingExt` if absent |
+| `ctx.try_get_ext(marker)` | Retrieve, returns `Option` |
+| `ctx.remove_ext(marker)` | Remove a stored value |
+
+### Middleware
+
+Built-in via `jaredzhou/pony/mw`:
+
+```moonbit nocheck
+r.use_mw(@mw.logger())
+r.use_mw(@mw.cors(
+  allow_origins=["*"],
+  allow_methods=["GET", "POST"],
+))
+r.use_mw(@mw.jwt(new_hmac_sha256(secret)))
+```
+
+| Middleware | Description |
+|-----------|-------------|
+| `logger()` | Request logging (method, path, status, duration) |
+| `cors()` | CORS headers with configurable origins, methods, headers, max-age |
+| `jwt(signing_method)` | JWT bearer token auth, stores `sub` claim via `set_ext(UserId, …)` |
 
 ### Error handling
 
