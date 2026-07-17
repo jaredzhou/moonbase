@@ -103,7 +103,7 @@ server.start()!
 
 ### Request Context
 
-Every accessor comes in two forms: a raising version and a `try_` variant that returns `Option`.
+Every accessor has two forms:
 
 | Raising version | Option version | Description |
 |---|---|---|
@@ -115,7 +115,7 @@ Every accessor comes in two forms: a raising version and a `try_` variant that r
 | `ctx.json[T]()` | — | JSON body deserialization |
 | `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header |
 
-**Path parameters:**
+Raising methods produce `PonyError` — catch and pass directly to `reply_error`:
 
 ```moonbit nocheck
 ///|
@@ -126,25 +126,6 @@ let id = ctx.param("id") catch {
   }
 }
 
-// Or with a default:
-
-///|
-let page = ctx.try_param("page").unwrap_or("1")
-```
-
-**Query strings:**
-
-```moonbit nocheck
-///|
-let q = ctx.try_query("q").unwrap_or("")
-
-///|
-let page = ctx.try_query("page").unwrap_or("1")
-```
-
-**Headers:**
-
-```moonbit nocheck
 ///|
 let token = ctx.header("Authorization") catch {
   e => {
@@ -152,6 +133,19 @@ let token = ctx.header("Authorization") catch {
     return
   }
 }
+```
+
+Use the `try_` variant when a default fallback makes sense:
+
+```moonbit nocheck
+///|
+let page = ctx.try_param("page").unwrap_or("1")
+
+///|
+let q = ctx.try_query("q").unwrap_or("")
+
+///|
+let name = ctx.try_form("name").unwrap_or("")
 ```
 
 **JSON body:**
@@ -176,14 +170,14 @@ let req : LoginReq = ctx.json() catch {
 
 ```moonbit nocheck
 ctx.set_content_type("application/json")
-ctx.write_text(200, "Hello")
-ctx.write_json(200, {"key": "value"})
-ctx.reply_ok({"status": "ok"})                                   // 200 JSON
-ctx.reply_error(PonyError::InvalidArgument("bad input"))          // 400 JSON
-ctx.reply_error(PonyError::NotFound("not found"))                // 404 JSON
-ctx.reply_error(ApiError::new(invalid_argument, "bad input"))    // direct ApiError
-ctx.redirect("/login")                                              // 302 redirect
-ctx.no_content()                                                    // 204
+ctx.write_text(status_ok, "Hello")
+ctx.write_json(status_ok, {"key": "value"})
+ctx.reply_ok({"status": "ok"})                                  // 200 JSON
+ctx.reply_error(PonyError::InvalidArgument("bad input"))         // 400 JSON
+ctx.reply_error(PonyError::NotFound("not found"))               // 404 JSON
+ctx.reply_error(ApiError::new(invalid_argument, "bad input"))   // direct ApiError
+ctx.redirect("/login")                                             // 302
+ctx.no_content()                                                   // 204
 ```
 
 ### Extension Store
