@@ -1,7 +1,5 @@
 members = [
-  "./pony",
   "./libs",
   "./mooncedar",
-  "./todo",
   "./moonstore",
 ]
