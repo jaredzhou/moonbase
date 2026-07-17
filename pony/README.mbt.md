@@ -4,10 +4,8 @@ A lightweight HTTP web framework for MoonBit, inspired by Go's [Chi](https://git
 
 ## Installation
 
-Add to your `moon.mod`:
-
-```json
-{ "deps": { "jaredzhou/pony": "0.1.0" } }
+```bash
+moon add jaredzhou/pony
 ```
 
 ## Quick Start
