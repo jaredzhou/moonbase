@@ -6,6 +6,7 @@ import {
   "jaredzhou/mooncedar/ast",
   "jaredzhou/mooncedar/evaluator",
   "jaredzhou/moonstore/backend",
+  "jaredzhou/pony",
   "moonbitlang/core/debug",
 }
 
@@ -17,6 +18,8 @@ pub fn[T : BucketRepo] insert(T, Bucket) -> Unit raise
 pub fn[T : BucketRepo] list(T) -> Array[Bucket] raise
 
 pub fn object_to_entity(Object) -> (@ast.EntityUID, @ast.Entity)
+
+pub fn to_api_error(StorageError) -> @pony.ApiError
 
 pub fn[T : BucketRepo] update(T, String, Bucket) -> Unit raise
 

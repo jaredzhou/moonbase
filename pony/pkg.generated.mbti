@@ -173,6 +173,8 @@ pub let status_use_proxy : Int
 
 pub let status_variant_also_negotiates : Int
 
+pub fn to_api_error(PonyError) -> ApiError
+
 pub let unauthenticated : Int
 
 pub let unavailable : Int
@@ -195,13 +197,30 @@ pub(all) suberror MultipartError {
   FileIOError(String)
 } derive(@debug.Debug)
 
+pub(all) suberror PonyError {
+  MissingParam(String)
+  MissingQuery(String)
+  MissingForm(String)
+  MissingHeader(String)
+  MissingExt(String)
+  ExtDecodeError(String, String)
+  MissingFormFile(String)
+  InvalidArgument(String)
+  NotFound(String)
+  PermissionDenied(String)
+} derive(ToJson, @debug.Debug)
+
 pub suberror RouterError {
   InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
 } derive(ToJson, @debug.Debug)
 pub impl Show for RouterError
 
 // Types and methods
-type ApiError derive(ToJson, @debug.Debug)
+pub(all) struct ApiError {
+  code : Int
+  message : String
+  details : Array[Map[String, String]]?
+} derive(ToJson, @debug.Debug)
 pub fn ApiError::new(Int, String) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
 
@@ -221,25 +240,31 @@ pub(all) struct Context {
   resp_writer : @http.ServerConnection
 }
 pub async fn Context::cleanup(Self) -> Unit
-pub async fn Context::form(Self, String) -> String?
-pub fn Context::form_file(Self, String) -> FileHeader?
+pub async fn Context::form(Self, String) -> String raise PonyError
+pub fn Context::form_file(Self, String) -> FileHeader raise PonyError
 pub fn Context::form_files(Self, String) -> Array[FileHeader]
-pub fn[K, V] Context::get_ext(Self, K) -> V raise ExtError
-pub fn Context::header(Self, String) -> String?
+pub fn[K, V] Context::get_ext(Self, K) -> V raise PonyError
+pub fn Context::header(Self, String) -> String raise PonyError
 pub async fn[T : @json.FromJson] Context::json(Self) -> T
 pub async fn Context::no_content(Self) -> Unit
-pub fn Context::param(Self, String) -> String?
+pub fn Context::param(Self, String) -> String raise PonyError
 pub async fn Context::parse_multipart_form(Self, max_memory? : Int64, writers? : Map[String, FileWriter]) -> Unit
-pub fn Context::query(Self, String) -> String?
+pub fn Context::query(Self, String) -> String raise PonyError
 pub async fn Context::redirect(Self, String, http_status? : Int, msg? : String) -> Unit
 pub fn[K] Context::remove_ext(Self, K) -> Unit
-pub async fn Context::reply_error(Self, Int, String) -> Unit
+pub async fn Context::reply_error(Self, ApiError) -> Unit
 pub async fn[T : ToJson] Context::reply_ok(Self, T) -> Unit
 pub fn Context::set_content_type(Self, String) -> Unit
 pub fn[K, V] Context::set_ext(Self, K, V) -> Unit
 pub fn Context::set_header(Self, String, String) -> Unit
+pub async fn Context::try_form(Self, String) -> String?
+pub fn Context::try_form_file(Self, String) -> FileHeader?
 pub fn[K, V] Context::try_get_ext(Self, K) -> V?
-pub fn Context::wildcard(Self) -> String?
+pub fn Context::try_header(Self, String) -> String?
+pub fn Context::try_param(Self, String) -> String?
+pub fn Context::try_query(Self, String) -> String?
+pub fn Context::try_wildcard(Self) -> String?
+pub fn Context::wildcard(Self) -> String raise PonyError
 pub async fn Context::write_bytes(Self, Int, msg? : String, Bytes) -> Unit
 pub async fn[T : ToJson] Context::write_json(Self, Int, msg? : String, T) -> Unit
 pub async fn Context::write_text(Self, Int, msg? : String, String) -> Unit
