@@ -34,6 +34,7 @@ pub(all) suberror StorageError {
   InvalidInput(String)
 } derive(@debug.Debug)
 pub fn StorageError::to_http_status(Self) -> Int
+pub impl @pony.ToApiError for StorageError
 
 // Types and methods
 pub(all) struct Authorizer {

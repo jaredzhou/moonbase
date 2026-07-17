@@ -57,7 +57,7 @@ fn extract_user(ctx : @pony.Context) -> String raise @moonstore.StorageError {
 ///|
 /// Convert StorageError to an HTTP error response.
 async fn error_to_ctx(ctx : @pony.Context, e : @moonstore.StorageError) -> Unit {
-  ctx.reply_error(@moonstore.to_api_error(e))
+  ctx.reply_error(e)
 }
 
 ///|
@@ -125,7 +125,7 @@ fn get_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let id = ctx.param("bucketId") catch {
       e => {
-        ctx.reply_error(@pony.to_api_error(e))
+        ctx.reply_error(e)
         return
       }
     }
@@ -151,7 +151,7 @@ fn update_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let id = ctx.param("bucketId") catch {
       e => {
-        ctx.reply_error(@pony.to_api_error(e))
+        ctx.reply_error(e)
         return
       }
     }
@@ -189,7 +189,7 @@ fn delete_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let id = ctx.param("bucketId") catch {
       e => {
-        ctx.reply_error(@pony.to_api_error(e))
+        ctx.reply_error(e)
         return
       }
     }
@@ -215,7 +215,7 @@ fn empty_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let id = ctx.param("bucketId") catch {
       e => {
-        ctx.reply_error(@pony.to_api_error(e))
+        ctx.reply_error(e)
         return
       }
     }

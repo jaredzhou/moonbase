@@ -209,6 +209,7 @@ pub(all) suberror PonyError {
   NotFound(String)
   PermissionDenied(String)
 } derive(ToJson, @debug.Debug)
+pub impl ToApiError for PonyError
 
 pub suberror RouterError {
   InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
@@ -223,6 +224,7 @@ pub(all) struct ApiError {
 } derive(ToJson, @debug.Debug)
 pub fn ApiError::new(Int, String) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
+pub impl ToApiError for ApiError
 
 pub(all) struct Context {
   http_method : HttpMethod
@@ -252,7 +254,7 @@ pub async fn Context::parse_multipart_form(Self, max_memory? : Int64, writers? :
 pub fn Context::query(Self, String) -> String raise PonyError
 pub async fn Context::redirect(Self, String, http_status? : Int, msg? : String) -> Unit
 pub fn[K] Context::remove_ext(Self, K) -> Unit
-pub async fn Context::reply_error(Self, ApiError) -> Unit
+pub async fn[T : ToApiError] Context::reply_error(Self, T) -> Unit
 pub async fn[T : ToJson] Context::reply_ok(Self, T) -> Unit
 pub fn Context::set_content_type(Self, String) -> Unit
 pub fn[K, V] Context::set_ext(Self, K, V) -> Unit
@@ -411,6 +413,10 @@ pub trait Closer {
 }
 
 pub trait ReaderCloser : @io.Reader + Closer {
+}
+
+pub(open) trait ToApiError {
+  fn to_api_error(Self) -> ApiError
 }
 
 pub trait WriterCloser : @io.Writer + Closer {

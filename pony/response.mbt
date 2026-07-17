@@ -99,25 +99,21 @@ pub fn register(code : Int, http_status : Int) -> Unit {
 }
 
 ///|
-/// Convert a `PonyError` to an `ApiError` suitable for `reply_error`.
+/// Types that can be converted to an `ApiError` for use with `reply_error`.
+/// `reply_error` accepts any `T : ToApiError`, so you can pass `PonyError`,
+/// `ApiError`, or your own error types directly.
+pub(open) trait ToApiError {
+  fn to_api_error(Self) -> ApiError
+}
+
+///|
+pub impl ToApiError for ApiError with fn to_api_error(self : ApiError) -> ApiError {
+  self
+}
+
+///|
+/// Convert a `PonyError` to an `ApiError`.
+/// Kept for backward compatibility — delegates to the `ToApiError` trait.
 pub fn to_api_error(e : PonyError) -> ApiError {
-  match e {
-    PonyError::MissingParam(name) =>
-      ApiError::new(invalid_argument, "missing param: \{name}")
-    PonyError::MissingQuery(key) =>
-      ApiError::new(invalid_argument, "missing query: \{key}")
-    PonyError::MissingForm(key) =>
-      ApiError::new(invalid_argument, "missing form field: \{key}")
-    PonyError::MissingHeader(key) =>
-      ApiError::new(unauthenticated, "missing header: \{key}")
-    PonyError::MissingExt(key) =>
-      ApiError::new(internal, "missing extension: \{key}")
-    PonyError::ExtDecodeError(key, msg) =>
-      ApiError::new(internal, "extension decode error: \{key} - \{msg}")
-    PonyError::MissingFormFile(key) =>
-      ApiError::new(invalid_argument, "missing form file: \{key}")
-    PonyError::InvalidArgument(msg) => ApiError::new(invalid_argument, msg)
-    PonyError::NotFound(msg) => ApiError::new(not_found, msg)
-    PonyError::PermissionDenied(msg) => ApiError::new(permission_denied, msg)
-  }
+  ToApiError::to_api_error(e)
 }

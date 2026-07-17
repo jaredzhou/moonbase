@@ -27,9 +27,10 @@ pub fn StorageError::to_http_status(self : StorageError) -> Int {
 }
 
 ///|
-/// Convert a `StorageError` to a pony `ApiError` for use with `reply_error`.
-pub fn to_api_error(e : StorageError) -> @pony.ApiError {
-  match e {
+pub impl @pony.ToApiError for StorageError with fn to_api_error(
+  self : StorageError,
+) -> @pony.ApiError {
+  match self {
     NotFound(m) => @pony.ApiError::new(@pony.not_found, m)
     AlreadyExists(m) => @pony.ApiError::new(@pony.already_exists, m)
     NotEmpty(m) => @pony.ApiError::new(@pony.failed_precondition, m)
@@ -38,6 +39,13 @@ pub fn to_api_error(e : StorageError) -> @pony.ApiError {
     BackendError(m) => @pony.ApiError::new(@pony.internal, m)
     RepoError(m) => @pony.ApiError::new(@pony.internal, m)
   }
+}
+
+///|
+/// Convert a `StorageError` to a pony `ApiError`.
+/// Kept for backward compatibility — delegates to the `ToApiError` trait.
+pub fn to_api_error(e : StorageError) -> @pony.ApiError {
+  @pony.ToApiError::to_api_error(e)
 }
 
 ///|

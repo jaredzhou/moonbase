@@ -15,42 +15,15 @@ moon add jaredzhou/pony
 fn main {
   let r = Router::Router()
 
-  // GET /ping => 200 "pong"
-  r.add(HttpMethod::Get, "/ping", fn(ctx) { ctx.write_text(status_ok, "pong") })
-
-  // GET /users/{id}  => 200 "user: 42"
-  // ctx.param raises PonyError if missing — use try_param for Option
-  r.add(HttpMethod::Get, "/users/{id}", fn(ctx) {
-    let id = ctx.try_param("id").unwrap_or("")
-    ctx.write_text(status_ok, "user: \(id)")
+  // GET /hello  => 200 "Hello, world!"
+  r.add(HttpMethod::Get, "/hello", ctx => {
+    ctx.write_text(status_ok, "Hello, world!")
   })
 
-  // GET /search?q=pony  => 200 "searching: pony"
-  r.add(HttpMethod::Get, "/search", fn(ctx) {
-    let q = ctx.try_query("q").unwrap_or("")
-    ctx.write_text(status_ok, "searching: \(q)")
-  })
-
-  // GET /api/status  => 200 {"status":"ok"}
-  r.add(HttpMethod::Get, "/api/status", fn(ctx) {
-    ctx.reply_ok({ "status": "ok" })
-  })
-
-  // POST /api/items — standard error pattern with to_api_error
-  r.add(HttpMethod::Post, "/api/items", async fn(ctx) {
-    let req : ItemReq = ctx.json() catch {
-      e => {
-        ctx.reply_error(to_api_error(PonyError::InvalidArgument(e.to_string())))
-        return
-      }
-    }
-    ctx.reply_ok({ "created": true })
-  })
-
-  // GET /static/css/app.css  => 200 "file: css/app.css"
-  r.add(HttpMethod::Get, "/static/*", fn(ctx) {
-    let path = ctx.try_wildcard().unwrap_or("")
-    ctx.write_text(status_ok, "file: \(path)")
+  // GET /greet/pony  => 200 "Hello, pony!"
+  r.add(HttpMethod::Get, "/greet/{name}", ctx => {
+    let name = ctx.try_param("name").unwrap_or("stranger")
+    ctx.write_text(status_ok, "Hello, \(name)!")
   })
 
   start("127.0.0.1:3000", r)
@@ -61,11 +34,64 @@ fn main {
 
 ### Router
 
-- **Radix tree** with priority matching for static, parameter, and wildcard routes
-- `{param}` path parameters and `*` wildcard capture
-- Route-specific middleware per endpoint
-- Sub-router mounting with `mount()`
-- Custom 404 and 405 handlers
+The router is a radix tree with priority matching. Routes can be registered for specific HTTP methods or all methods via `any()`.
+
+```moonbit nocheck
+let r = Router::Router()
+
+// Static route — exact path match
+r.add(HttpMethod::Get, "/ping", pong_handler)
+
+// Path parameter {param} — matches a single segment
+r.add(HttpMethod::Get, "/users/{id}", user_handler)
+
+// Wildcard * — matches everything after the prefix
+r.add(HttpMethod::Get, "/static/*", static_handler)
+
+// Multiple parameters in one pattern
+r.add(HttpMethod::Get, "/users/{userId}/posts/{postId}", post_handler)
+
+// Match all HTTP methods
+r.any("/health", health_handler)
+
+// Route-specific middleware (applied before the handler)
+r.add(
+  HttpMethod::Get,
+  "/admin",
+  mws=[admin_auth],
+  admin_handler,
+)
+
+// Sub-router mounting — all routes under /api/v1
+let api = Router::Router()
+api.add(HttpMethod::Get, "/status", status_handler)
+r.mount("/api/v1", api)
+
+// Custom 404 / 405 handlers
+r.set_not_found((ctx) => {
+  ctx.reply_error(ApiError::new(not_found, "page not found"))
+})
+r.set_method_not_allowed((ctx) => {
+  ctx.reply_error(ApiError::new(method_not_allowed, "method not allowed"))
+})
+```
+
+| Method | Description |
+|---|---|
+| `r.add(method, pattern, handler)` | Add a route for a specific HTTP method |
+| `r.any(pattern, handler)` | Match all HTTP methods |
+| `r.mount(prefix, sub_router)` | Mount a sub-router under a prefix |
+| `r.use_mw(middleware)` | Add global middleware |
+| `r.set_not_found(handler)` | Custom 404 handler |
+| `r.set_method_not_allowed(handler)` | Custom 405 handler |
+
+**Route patterns:**
+
+| Pattern | Example | Matches |
+|---|---|---|
+| Static | `/ping` | `/ping` only |
+| Param `{name}` | `/users/{id}` | `/users/42`, `/users/alice` |
+| Wildcard `*` | `/static/*` | `/static/css/app.css`, `/static/js/main.js` |
 
 ### Middleware
 
@@ -84,7 +110,7 @@ r.use_mw(@mw.jwt(new_hmac_sha256(secret)))
 |-----------|-------------|
 | `logger()` | Request logging (method, path, status, duration) |
 | `cors()` | CORS headers with configurable origins, methods, headers, max-age |
-| `jwt(signing_method)` | JWT bearer token auth, stores `sub` claim in context |
+| `jwt(signing_method)` | JWT bearer token auth, stores `sub` claim via `set_ext(UserId, …)` |
 
 ### Auth
 
@@ -119,7 +145,7 @@ fn main {
   r.add(HttpMethod::Get, "/me", (ctx) => {
     let user_id : String = ctx.get_ext(UserId{}) catch {
       e => {
-        ctx.reply_error(to_api_error(e))
+        ctx.reply_error(e)
         return
       }
     }
@@ -143,7 +169,7 @@ r.add(HttpMethod::Post, "/upload", async (ctx) => {
   // Read regular form fields
   let title : String = ctx.form("title") catch {
     e => {
-      ctx.reply_error(to_api_error(e))
+      ctx.reply_error(e)
       return
     }
   }
@@ -151,7 +177,7 @@ r.add(HttpMethod::Post, "/upload", async (ctx) => {
   // Access uploaded files
   let file = ctx.form_file("avatar") catch {
     e => {
-      ctx.reply_error(to_api_error(e))
+      ctx.reply_error(e)
       return
     }
   }
@@ -186,7 +212,7 @@ r.add(HttpMethod::Post, "/upload", async (ctx) => {
 
 Every accessor comes in two forms:
 
-| Raising version (new) | Option version (try_*) | Description |
+| Raising version | Option version (`try_*`) | Description |
 |---|---|---|
 | `ctx.param("id")` | `ctx.try_param("id")` | Path parameter (raises `PonyError::MissingParam`) |
 | `ctx.query("search")` | `ctx.try_query("search")` | Query string value (raises `PonyError::MissingQuery`) |
@@ -196,13 +222,13 @@ Every accessor comes in two forms:
 | `ctx.json[T]()` | (catch pattern) | JSON body deserialization |
 | `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header (raises `PonyError::MissingFormFile`) |
 
-**Standard error handling pattern** — the raising methods work with `to_api_error`:
+**Standard error handling pattern** — raising methods produce `PonyError`, which implements `ToApiError` and can be passed directly to `reply_error`:
 
 ```moonbit nocheck
 ///|
 let user = ctx.header("X-User") catch {
   e => {
-    ctx.reply_error(to_api_error(e))
+    ctx.reply_error(e)
     return
   }
 }
@@ -224,16 +250,17 @@ let page = ctx.try_query("page").unwrap_or("1")
 ctx.set_content_type("application/json")
 ctx.write_text(200, "Hello")
 ctx.write_json(200, {"key": "value"})
-ctx.reply_ok({"status": "ok"})                              // 200 JSON
-ctx.reply_error(to_api_error(PonyError::InvalidArgument("bad input"))) // error JSON
-ctx.reply_error(ApiError::new(invalid_argument, "bad input"))          // direct ApiError
-ctx.redirect("/login")                                         // 302 redirect
-ctx.no_content()                                               // 204
+ctx.reply_ok({"status": "ok"})                                   // 200 JSON
+ctx.reply_error(PonyError::InvalidArgument("bad input"))          // 400 JSON
+ctx.reply_error(PonyError::NotFound("not found"))                // 404 JSON
+ctx.reply_error(ApiError::new(invalid_argument, "bad input"))    // direct ApiError
+ctx.redirect("/login")                                              // 302 redirect
+ctx.no_content()                                                    // 204
 ```
 
 ### Error handling
 
-`PonyError` is the unified error type for context accessors. Use `to_api_error` to convert it:
+`PonyError` is the unified error type for context accessors. It implements `ToApiError`, so you can pass it directly to `reply_error`:
 
 ```moonbit nocheck
 ///|
@@ -251,11 +278,12 @@ pub suberror PonyError {
 }
 ```
 
-For non-context errors (e.g. failed auth checks, invalid IDs from `parse_int`), construct a `PonyError` variant and pass to `to_api_error`:
+For non-context errors (e.g. failed auth checks, invalid IDs), construct a `PonyError` variant and pass directly to `reply_error`:
 
 ```moonbit nocheck
-ctx.reply_error(to_api_error(PonyError::InvalidArgument("invalid id")))
-ctx.reply_error(to_api_error(PonyError::NotFound("list not found")))
+ctx.reply_error(PonyError::InvalidArgument("invalid id"))
+ctx.reply_error(PonyError::NotFound("list not found"))
+ctx.reply_error(PonyError::PermissionDenied("access denied"))
 ```
 
 For `ctx.json()` parse failures, capture the error and wrap it:
@@ -264,10 +292,25 @@ For `ctx.json()` parse failures, capture the error and wrap it:
 ///|
 let req : MyBody = ctx.json() catch {
   e => {
-    ctx.reply_error(to_api_error(PonyError::InvalidArgument(e.to_string())))
+    ctx.reply_error(PonyError::InvalidArgument(e.to_string()))
     return
   }
 }
+```
+
+**Custom error types** — implement `ToApiError` for your own error types to use them directly with `reply_error`:
+
+```moonbit nocheck
+///|
+pub impl @pony.ToApiError for MyError with fn to_api_error(self : MyError) -> @pony.ApiError {
+  match self {
+    MyError::NotFound(m) => @pony.ApiError::new(@pony.not_found, m)
+    MyError::Forbidden(m) => @pony.ApiError::new(@pony.permission_denied, m)
+  }
+}
+
+// Now you can pass MyError directly:
+ctx.reply_error(my_error)
 ```
 
 ### Extension Store
@@ -278,7 +321,12 @@ Type-safe key-value store for request-scoped data:
 ctx.set_ext(@pony.RequestId{}, "req-abc")
 ctx.set_ext(@pony.UserId{}, "user-42")
 
-let uid = ctx.get_ext(@pony.UserId{})
+let uid = ctx.get_ext(@pony.UserId{}) catch {
+  e => {
+    ctx.reply_error(e)
+    return
+  }
+}
 ```
 
 ### Header

@@ -30,6 +30,29 @@ pub(all) suberror PonyError {
 } derive(Debug, ToJson)
 
 ///|
+pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiError {
+  match self {
+    PonyError::MissingParam(name) =>
+      ApiError::new(invalid_argument, "missing param: \{name}")
+    PonyError::MissingQuery(key) =>
+      ApiError::new(invalid_argument, "missing query: \{key}")
+    PonyError::MissingForm(key) =>
+      ApiError::new(invalid_argument, "missing form field: \{key}")
+    PonyError::MissingHeader(key) =>
+      ApiError::new(unauthenticated, "missing header: \{key}")
+    PonyError::MissingExt(key) =>
+      ApiError::new(internal, "missing extension: \{key}")
+    PonyError::ExtDecodeError(key, msg) =>
+      ApiError::new(internal, "extension decode error: \{key} - \{msg}")
+    PonyError::MissingFormFile(key) =>
+      ApiError::new(invalid_argument, "missing form file: \{key}")
+    PonyError::InvalidArgument(msg) => ApiError::new(invalid_argument, msg)
+    PonyError::NotFound(msg) => ApiError::new(not_found, msg)
+    PonyError::PermissionDenied(msg) => ApiError::new(permission_denied, msg)
+  }
+}
+
+///|
 pub(all) enum HttpMethod {
   Get
   Head
@@ -462,8 +485,11 @@ pub async fn[T : ToJson] Context::reply_ok(self : Context, value : T) -> Unit {
 }
 
 ///|
-pub async fn Context::reply_error(self : Context, e : ApiError) -> Unit {
-  self.reply((Err(e) : Result[Unit, ApiError]))
+pub async fn[T : ToApiError] Context::reply_error(
+  self : Context,
+  e : T,
+) -> Unit {
+  self.reply((Err(e.to_api_error()) : Result[Unit, ApiError]))
 }
 
 ///|
