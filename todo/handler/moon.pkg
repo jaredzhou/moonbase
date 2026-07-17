@@ -1,9 +1,0 @@
-import {
-  "jaredzhou/pony",
-  "jaredzhou/todo/store",
-  "jaredzhou/todo/auth",
-  "jaredzhou/mooncedar",
-  "jaredzhou/mooncedar/ast",
-  "moonbitlang/core/debug",
-  "moonbitlang/core/json",
-}
