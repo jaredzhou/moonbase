@@ -1,6 +1,6 @@
 name = "jaredzhou/pony"
 
-version = "0.2.1"
+version = "0.2.2"
 
 readme = "README.mbt.md"
 
@@ -8,9 +8,22 @@ repository = "github.com/jaredzhou/moonbase"
 
 license = "Apache-2.0"
 
-keywords = [ "web", "framework", "auth" ]
+keywords = [
+  "web",
+  "framework",
+  "http",
+  "router",
+  "server",
+  "middleware",
+  "rest",
+  "api",
+  "json",
+  "auth",
+  "jwt",
+  "cors",
+]
 
-description = ""
+description = "Lightweight HTTP web framework and router for MoonBit, inspired by Chi"
 
 preferred_target = "native"
 
