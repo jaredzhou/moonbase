@@ -98,7 +98,7 @@ struct UserId {}
 ///|
 // Middleware: extract user_id from header and store in context
 fn auth_middleware(next : Handler) -> Handler {
-  fn(ctx) {
+  (ctx) => {
     match ctx.try_header("X-User-Id") {
       Some(user_id) => ctx.set_ext(UserId{}, user_id)
       None => {
@@ -116,7 +116,7 @@ fn main {
   r.use_mw(auth_middleware)
 
   // Handler reads user_id from ext store — raises PonyError::MissingExt if not set
-  r.add(HttpMethod::Get, "/me", fn(ctx) {
+  r.add(HttpMethod::Get, "/me", (ctx) => {
     let user_id : String = ctx.get_ext(UserId{}) catch {
       e => {
         ctx.reply_error(to_api_error(e))
@@ -129,6 +129,58 @@ fn main {
   start("127.0.0.1:3000", r)
 }
 ```
+
+### File Upload
+
+Handle multipart file uploads with `parse_multipart_form`, then access files via `form_file` and fields via `form`:
+
+```moonbit nocheck
+///|
+r.add(HttpMethod::Post, "/upload", async (ctx) => {
+  // Parse the multipart body (call once per request)
+  ctx.parse_multipart_form()!
+
+  // Read regular form fields
+  let title : String = ctx.form("title") catch {
+    e => {
+      ctx.reply_error(to_api_error(e))
+      return
+    }
+  }
+
+  // Access uploaded files
+  let file = ctx.form_file("avatar") catch {
+    e => {
+      ctx.reply_error(to_api_error(e))
+      return
+    }
+  }
+
+  // File metadata available immediately
+  println("received: \{file.filename} (\{file.size} bytes, \{file.content_type})")
+
+  // Read file content (async)
+  let data = file.bytes()
+
+  ctx.reply_ok({
+    "title": title,
+    "filename": file.filename,
+    "size": file.size,
+  })
+})
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `ctx.parse_multipart_form()` | `Unit` | Parse multipart body (call before accessing files/fields) |
+| `ctx.form("key")` | `String raise PonyError` | Form field value (use `try_form` for `Option`) |
+| `ctx.form_file("key")` | `FileHeader raise PonyError` | Single uploaded file (use `try_form_file` for `Option`) |
+| `ctx.form_files("key")` | `Array[FileHeader]` | All files for a multi-file field |
+| `file.bytes()` | `Bytes` | Read full file content |
+| `file.filename` | `String` | Original filename |
+| `file.size` | `Int64` | Uncompressed file size |
+| `file.content_type` | `String?` | MIME type (e.g. `"image/png"`) |
+| `file.path()` | `String?` | Temp file path if spilled to disk |
 
 ### Request Context (`Context`)
 
