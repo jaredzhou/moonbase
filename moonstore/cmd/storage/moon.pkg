@@ -8,7 +8,8 @@ import {
   "moonbitlang/async",
 }
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   supported_targets: "native",
 )
