@@ -73,22 +73,21 @@ pub fn build_list_routes(
 /// POST /lists — create a new list
 fn create_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") {
-      Some(u) => u
-      None => {
-        ctx.reply_error(401, "missing X-User header")
+    let user = ctx.header("X-User") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     if !@auth.try_authorize(
         user, "Action", "CreateList", "Application", "TinyTodo", state,
       ) {
-      ctx.reply_error(403, "access denied")
+      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
       return
     }
     let req : CreateListReq = ctx.json() catch {
       _ => {
-        ctx.reply_error(400, "invalid JSON body")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid JSON body")))
         return
       }
     }
@@ -103,17 +102,16 @@ fn create_list(state : @store.ServerState) -> @pony.Handler {
 /// GET /lists — list all lists visible to the current user
 fn get_lists(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") {
-      Some(u) => u
-      None => {
-        ctx.reply_error(401, "missing X-User header")
+    let user = ctx.header("X-User") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     if !@auth.try_authorize(
         user, "Action", "GetLists", "Application", "TinyTodo", state,
       ) {
-      ctx.reply_error(403, "access denied")
+      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
       return
     }
     let items : Array[ListItem] = []
@@ -142,37 +140,35 @@ fn get_lists(state : @store.ServerState) -> @pony.Handler {
 /// GET /lists/:id — get a single list with tasks
 fn get_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") {
-      Some(u) => u
-      None => {
-        ctx.reply_error(401, "missing X-User header")
+    let user = ctx.header("X-User") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
-    let id_str = match ctx.param("id") {
-      Some(s) => s
-      None => {
-        ctx.reply_error(400, "missing id")
+    let id_str = ctx.param("id") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(400, "invalid id")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(404, "list not found")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
         return
       }
     }
     let list = state.lists[idx]
     if !@auth.try_authorize(user, "Action", "GetList", "List", id_str, state) {
-      ctx.reply_error(403, "access denied")
+      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
       return
     }
     let tasks : Array[TaskItem] = []
@@ -198,36 +194,34 @@ fn get_list(state : @store.ServerState) -> @pony.Handler {
 /// DELETE /lists/:id — delete a list (owner only, per Cedar policy)
 fn delete_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") {
-      Some(u) => u
-      None => {
-        ctx.reply_error(401, "missing X-User header")
+    let user = ctx.header("X-User") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
-    let id_str = match ctx.param("id") {
-      Some(s) => s
-      None => {
-        ctx.reply_error(400, "missing id")
+    let id_str = ctx.param("id") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(400, "invalid id")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(404, "list not found")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "DeleteList", "List", id_str, state) {
-      ctx.reply_error(403, "access denied")
+      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
       return
     }
     state.lists.remove(idx) |> ignore
@@ -241,41 +235,39 @@ fn delete_list(state : @store.ServerState) -> @pony.Handler {
 /// POST /lists/:id/share — share a list with a user
 fn share_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") {
-      Some(u) => u
-      None => {
-        ctx.reply_error(401, "missing X-User header")
+    let user = ctx.header("X-User") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
-    let id_str = match ctx.param("id") {
-      Some(s) => s
-      None => {
-        ctx.reply_error(400, "missing id")
+    let id_str = ctx.param("id") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(400, "invalid id")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(404, "list not found")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "EditShare", "List", id_str, state) {
-      ctx.reply_error(403, "access denied")
+      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
       return
     }
     let req : ShareReq = ctx.json() catch {
       _ => {
-        ctx.reply_error(400, "invalid JSON body")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid JSON body")))
         return
       }
     }
@@ -299,41 +291,39 @@ fn share_list(state : @store.ServerState) -> @pony.Handler {
 /// DELETE /lists/:id/share — unshare a list from a user
 fn unshare_list(state : @store.ServerState) -> @pony.Handler {
   @pony.Handler(async fn(ctx) {
-    let user = match ctx.header("X-User") {
-      Some(u) => u
-      None => {
-        ctx.reply_error(401, "missing X-User header")
+    let user = ctx.header("X-User") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
-    let id_str = match ctx.param("id") {
-      Some(s) => s
-      None => {
-        ctx.reply_error(400, "missing id")
+    let id_str = ctx.param("id") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     let id = match parse_int(id_str) {
       Some(n) => n
       None => {
-        ctx.reply_error(400, "invalid id")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid id")))
         return
       }
     }
     let idx = match find_list_index(state, id) {
       Some(i) => i
       None => {
-        ctx.reply_error(404, "list not found")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::NotFound("list not found")))
         return
       }
     }
     if !@auth.try_authorize(user, "Action", "EditShare", "List", id_str, state) {
-      ctx.reply_error(403, "access denied")
+      ctx.reply_error(@pony.to_api_error(@pony.PonyError::PermissionDenied("access denied")))
       return
     }
     let req : ShareReq = ctx.json() catch {
       _ => {
-        ctx.reply_error(400, "invalid JSON body")
+        ctx.reply_error(@pony.to_api_error(@pony.PonyError::InvalidArgument("invalid JSON body")))
         return
       }
     }

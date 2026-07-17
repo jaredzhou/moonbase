@@ -12,6 +12,24 @@ pub impl Show for RouterError with fn to_string(self) {
 }
 
 ///|
+/// Unified error type for context accessor methods.
+/// Raised by `param`, `query`, `form`, `header`, `form_file`,
+/// `get_ext`, and `wildcard` when the requested value is missing.
+/// Also used for generic request-level errors in handlers.
+pub(all) suberror PonyError {
+  MissingParam(String)
+  MissingQuery(String)
+  MissingForm(String)
+  MissingHeader(String)
+  MissingExt(String)
+  ExtDecodeError(String, String)
+  MissingFormFile(String)
+  InvalidArgument(String)
+  NotFound(String)
+  PermissionDenied(String)
+} derive(Debug, ToJson)
+
+///|
 pub(all) enum HttpMethod {
   Get
   Head
@@ -246,8 +264,14 @@ pub fn[K, V] Context::try_get_ext(self : Context, _marker : K) -> V? {
 }
 
 ///|
-pub fn[K, V] Context::get_ext(self : Context, _marker : K) -> V raise ExtError {
-  self.exts.get(_marker)
+pub fn[K, V] Context::get_ext(self : Context, _marker : K) -> V raise PonyError {
+  self.exts.get(_marker) catch {
+    ExtError::Missing => raise PonyError::MissingExt(
+      @any.Any::of(_marker).type_name(),
+    )
+    ExtError::DecodeError(key~, msg~) =>
+      raise PonyError::ExtDecodeError(key, msg)
+  }
 }
 
 ///|
@@ -256,7 +280,7 @@ pub fn[K] Context::remove_ext(self : Context, _marker : K) -> Unit {
 }
 
 ///|
-pub fn Context::param(self : Context, name : String) -> String? {
+pub fn Context::try_param(self : Context, name : String) -> String? {
   for p in self.path_params {
     let ParamKV(k, v) = p
     if k == name {
@@ -267,17 +291,38 @@ pub fn Context::param(self : Context, name : String) -> String? {
 }
 
 ///|
-pub fn Context::wildcard(self : Context) -> String? {
+pub fn Context::param(self : Context, name : String) -> String raise PonyError {
+  match self.try_param(name) {
+    Some(v) => v
+    None => raise PonyError::MissingParam(name)
+  }
+}
+
+///|
+pub fn Context::try_wildcard(self : Context) -> String? {
+  self.try_param("*")
+}
+
+///|
+pub fn Context::wildcard(self : Context) -> String raise PonyError {
   self.param("*")
 }
 
 ///|
-pub fn Context::query(self : Context, key : String) -> String? {
+pub fn Context::try_query(self : Context, key : String) -> String? {
   self.queries.get(key)
 }
 
 ///|
-pub async fn Context::form(self : Context, key : String) -> String? {
+pub fn Context::query(self : Context, key : String) -> String raise PonyError {
+  match self.queries.get(key) {
+    Some(v) => v
+    None => raise PonyError::MissingQuery(key)
+  }
+}
+
+///|
+pub async fn Context::try_form(self : Context, key : String) -> String? {
   // If multipart form was parsed, read regular fields from it.
   if self.multipart_form is Some(mf) {
     return mf.field_value(key)
@@ -291,12 +336,22 @@ pub async fn Context::form(self : Context, key : String) -> String? {
 }
 
 ///|
+pub async fn Context::form(self : Context, key : String) -> String raise PonyError {
+  match (self.try_form(key) catch {
+    _ => None
+  }) {
+    Some(v) => v
+    None => raise PonyError::MissingForm(key)
+  }
+}
+
+///|
 pub async fn Context::parse_multipart_form(
   self : Context,
   max_memory? : Int64 = default_max_memory,
   writers? : Map[String, FileWriter] = Map([]),
-) -> Unit {
-  let content_type = self.header("content-type").unwrap_or("")
+) -> Unit raise{
+  let content_type = self.try_header("content-type").unwrap_or("")
   let boundary = boundary_from(content_type)
   let mr = MultipartReader::new(self.req_body, boundary)
   let temp_dir = @fs.tmpdir(prefix="pony_")
@@ -305,10 +360,22 @@ pub async fn Context::parse_multipart_form(
 }
 
 ///|
-pub fn Context::form_file(self : Context, key : String) -> FileHeader? {
+pub fn Context::try_form_file(self : Context, key : String) -> FileHeader? {
   match self.multipart_form {
     Some(mf) => mf.file_of(key)
     None => None
+  }
+}
+
+///|
+pub fn Context::form_file(self : Context, key : String) -> FileHeader raise PonyError {
+  match self.multipart_form {
+    Some(mf) =>
+      match mf.file_of(key) {
+        Some(fh) => fh
+        None => raise PonyError::MissingFormFile(key)
+      }
+    None => raise PonyError::MissingFormFile(key)
   }
 }
 
@@ -330,15 +397,23 @@ pub async fn Context::cleanup(self : Context) -> Unit {
 }
 
 ///|
-pub async fn[T : FromJson] Context::json(self : Context) -> T {
-  @json.from_json(@json.parse(self.req_body.read_all().text()))
+pub async fn[T : FromJson] Context::json(self : Context) -> T raise{
+  @json.from_json(self.req_body.read_all().json())
+}
+
+///
+
+///|
+pub fn Context::try_header(self : Context, key : String) -> String? {
+  self.req_headers.get(key)
 }
 
 ///|
-
-///|
-pub fn Context::header(self : Context, key : String) -> String? {
-  self.req_headers.get(key)
+pub fn Context::header(self : Context, key : String) -> String raise PonyError {
+  match self.req_headers.get(key) {
+    Some(v) => v
+    None => raise PonyError::MissingHeader(key)
+  }
 }
 
 ///|
@@ -386,10 +461,9 @@ pub async fn[T : ToJson] Context::reply_ok(self : Context, value : T) -> Unit {
 ///|
 pub async fn Context::reply_error(
   self : Context,
-  code : Int,
-  msg : String,
+  e : ApiError,
 ) -> Unit {
-  self.reply((Err(ApiError::new(code, msg)) : Result[Unit, ApiError]))
+  self.reply((Err(e) : Result[Unit, ApiError]))
 }
 
 ///|

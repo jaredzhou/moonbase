@@ -43,20 +43,20 @@ async test "test_pony" {
   let ping_all : Handler = ctx => ctx.write_text(200, "pong all")
   let ping_all2 : Handler = ctx => ctx.write_text(200, "pong all 2")
   let ping_one : Handler = ctx => {
-    let id = ctx.param("id").unwrap_or("")
+    let id = ctx.try_param("id").unwrap_or("")
     ctx.write_text(200, "pong " + id)
   }
   let ping_woop : Handler = ctx => {
-    let id = ctx.param("iidd").unwrap_or("")
+    let id = ctx.try_param("iidd").unwrap_or("")
     ctx.write_text(200, "pong woop " + id)
   }
   let catch_all : Handler = ctx => ctx.write_text(200, "caughtall")
   let echo_query : Handler = ctx => {
-    let name = ctx.query("name").unwrap_or("none")
+    let name = ctx.try_query("name").unwrap_or("none")
     ctx.write_text(200, "hello " + name)
   }
   let login : Handler = async fn(ctx) {
-    let user = ctx.form("user").unwrap_or("")
+    let user = ctx.try_form("user").unwrap_or("")
     ctx.write_text(200, "welcome " + user)
   }
 
@@ -175,11 +175,11 @@ async test "test_query" {
     HttpMethod::Get,
     "/search",
     ctx => {
-      let q = ctx.query("q").unwrap_or("")
-      let page = ctx.query("page").unwrap_or("1")
+      let q = ctx.try_query("q").unwrap_or("")
+      let page = ctx.try_query("page").unwrap_or("1")
       let tags = ctx.queries.get_all("tag")
-      let has_flag = ctx.query("flag") is Some(_)
-      let flag_val = ctx.query("flag").unwrap_or("none")
+      let has_flag = ctx.try_query("flag") is Some(_)
+      let flag_val = ctx.try_query("flag").unwrap_or("none")
       let tags_str = "[" + tags.iter().join(", ") + "]"
       ctx.write_text(
         200,
@@ -496,8 +496,8 @@ async test "test_multipart_upload" {
           return
         }
       }
-      let username = ctx.form("username").unwrap_or("")
-      match ctx.form_file("avatar") {
+      let username = ctx.try_form("username").unwrap_or("")
+      match ctx.try_form_file("avatar") {
         Some(file) => {
           let path = file.path().unwrap_or("memory")
           ctx.write_text(
@@ -550,8 +550,8 @@ async test "test_multipart_upload_disk_spill" {
           return
         }
       }
-      let username = ctx.form("username").unwrap_or("")
-      match ctx.form_file("avatar") {
+      let username = ctx.try_form("username").unwrap_or("")
+      match ctx.try_form_file("avatar") {
         Some(file) => {
           let data = file.bytes()
           let disk_path = file.path().unwrap_or("memory")
@@ -648,7 +648,7 @@ async test "test_multipart_upload_custom_writer" {
           return
         }
       }
-      match ctx.form_file("avatar") {
+      match ctx.try_form_file("avatar") {
         Some(fh) =>
           // Backend is External — no local temp copy, path() returns None.
           ctx.write_text(

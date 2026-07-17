@@ -49,25 +49,15 @@ pub fn build_bucket_routes(
 ///|
 /// Extract authenticated user from X-User header.
 fn extract_user(ctx : @pony.Context) -> String raise @moonstore.StorageError {
-  match ctx.header("X-User") {
-    Some(u) => u
-    None => raise @moonstore.Forbidden("missing X-User header")
+  ctx.header("X-User") catch {
+    _ => raise @moonstore.Forbidden("missing X-User header")
   }
 }
 
 ///|
 /// Convert StorageError to an HTTP error response.
 async fn error_to_ctx(ctx : @pony.Context, e : @moonstore.StorageError) -> Unit {
-  let (pony_code, msg) = match e {
-    @moonstore.NotFound(m) => (@pony.not_found, m)
-    @moonstore.AlreadyExists(m) => (@pony.already_exists, m)
-    @moonstore.NotEmpty(m) => (@pony.failed_precondition, m)
-    @moonstore.Forbidden(m) => (@pony.permission_denied, m)
-    @moonstore.InvalidInput(m) => (@pony.invalid_argument, m)
-    @moonstore.BackendError(m) => (@pony.internal, m)
-    @moonstore.RepoError(m) => (@pony.internal, m)
-  }
-  ctx.reply_error(pony_code, msg)
+  ctx.reply_error(@moonstore.to_api_error(e))
 }
 
 ///|
@@ -82,7 +72,7 @@ fn create_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
     }
     let body : CreateBucketBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.invalid_argument, "invalid JSON body")
+        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
         return
       }
     }
@@ -131,10 +121,9 @@ fn get_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = match ctx.param("bucketId") {
-      Some(id) => id
-      None => {
-        ctx.reply_error(@pony.invalid_argument, "missing bucketId")
+    let id = ctx.param("bucketId") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
@@ -158,16 +147,15 @@ fn update_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = match ctx.param("bucketId") {
-      Some(id) => id
-      None => {
-        ctx.reply_error(@pony.invalid_argument, "missing bucketId")
+    let id = ctx.param("bucketId") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
     let body : UpdateBucketBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.invalid_argument, "invalid JSON body")
+        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
         return
       }
     }
@@ -195,10 +183,9 @@ fn delete_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = match ctx.param("bucketId") {
-      Some(id) => id
-      None => {
-        ctx.reply_error(@pony.invalid_argument, "missing bucketId")
+    let id = ctx.param("bucketId") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }
@@ -222,10 +209,9 @@ fn empty_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = match ctx.param("bucketId") {
-      Some(id) => id
-      None => {
-        ctx.reply_error(@pony.invalid_argument, "missing bucketId")
+    let id = ctx.param("bucketId") catch {
+      e => {
+        ctx.reply_error(@pony.to_api_error(e))
         return
       }
     }

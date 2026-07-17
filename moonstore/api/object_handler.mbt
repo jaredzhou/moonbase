@@ -126,7 +126,7 @@ pub fn build_object_routes(
 
 ///|
 fn extract_bucket_name(ctx : @pony.Context) -> String {
-  match ctx.param("bucketName") {
+  match ctx.try_param("bucketName") {
     Some(n) => n
     None => "unknown"
   }
@@ -134,7 +134,7 @@ fn extract_bucket_name(ctx : @pony.Context) -> String {
 
 ///|
 fn extract_path(ctx : @pony.Context) -> String {
-  match ctx.wildcard() {
+  match ctx.try_wildcard() {
     Some(p) => p
     None => ""
   }
@@ -142,7 +142,7 @@ fn extract_path(ctx : @pony.Context) -> String {
 
 ///|
 fn extract_user_opt(ctx : @pony.Context) -> String? {
-  ctx.header("X-User")
+  ctx.try_header("X-User")
 }
 
 // ---------------------------------------------------------------------------
@@ -156,14 +156,14 @@ fn upload_object(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
     let bucket_name = extract_bucket_name(ctx)
     let name = extract_path(ctx)
     if name == "" {
-      ctx.reply_error(@pony.invalid_argument, "missing object path")
+      ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "missing object path"))
       return
     }
     // Read request body as raw bytes
@@ -211,7 +211,7 @@ fn authenticated_download(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
@@ -250,13 +250,13 @@ fn update_object(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
     let body : UpdateObjectBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.invalid_argument, "invalid JSON body")
+        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
         return
       }
     }
@@ -280,7 +280,7 @@ fn list_objects(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
@@ -317,13 +317,13 @@ fn move_object(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
     let body : MoveCopyBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.invalid_argument, "invalid JSON body")
+        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
         return
       }
     }
@@ -349,13 +349,13 @@ fn copy_object(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
     let body : MoveCopyBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.invalid_argument, "invalid JSON body")
+        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
         return
       }
     }
@@ -383,7 +383,7 @@ fn delete_object(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
@@ -405,13 +405,13 @@ fn delete_objects(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }
     let body : DeleteBatchBody = ctx.json() catch {
       _ => {
-        ctx.reply_error(@pony.invalid_argument, "invalid JSON body")
+        ctx.reply_error(@pony.ApiError::new(@pony.invalid_argument, "invalid JSON body"))
         return
       }
     }
@@ -434,7 +434,7 @@ fn object_info_auth(storage : @moonstore.Storage) -> @pony.Handler {
     let user = match extract_user_opt(ctx) {
       Some(u) => u
       None => {
-        ctx.reply_error(@pony.unauthenticated, "missing X-User header")
+        ctx.reply_error(@pony.ApiError::new(@pony.unauthenticated, "missing X-User header"))
         return
       }
     }

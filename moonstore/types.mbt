@@ -27,6 +27,20 @@ pub fn StorageError::to_http_status(self : StorageError) -> Int {
 }
 
 ///|
+/// Convert a `StorageError` to a pony `ApiError` for use with `reply_error`.
+pub fn to_api_error(e : StorageError) -> @pony.ApiError {
+  match e {
+    NotFound(m) => @pony.ApiError::new(@pony.not_found, m)
+    AlreadyExists(m) => @pony.ApiError::new(@pony.already_exists, m)
+    NotEmpty(m) => @pony.ApiError::new(@pony.failed_precondition, m)
+    Forbidden(m) => @pony.ApiError::new(@pony.permission_denied, m)
+    InvalidInput(m) => @pony.ApiError::new(@pony.invalid_argument, m)
+    BackendError(m) => @pony.ApiError::new(@pony.internal, m)
+    RepoError(m) => @pony.ApiError::new(@pony.internal, m)
+  }
+}
+
+///|
 /// A storage bucket — independent container for objects.
 pub(all) struct Bucket {
   id : String

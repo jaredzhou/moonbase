@@ -5,7 +5,7 @@
 pub fn jwt(sig_method : @jwt.SigningMethod) -> @pony.Middleware {
   next => {
     ctx => {
-      let token = match ctx.header("authorization") {
+      let token = match ctx.try_header("authorization") {
         Some(auth) if auth.has_prefix("Bearer ") => auth[7:].to_owned()
         _ => {
           next(ctx)

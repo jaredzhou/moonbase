@@ -4,6 +4,7 @@ import {
   "jaredzhou/mooncedar/ast",
   "jaredzhou/libs/time",
   "jaredzhou/moonstore/backend",
+  "jaredzhou/pony",
   "moonbitlang/core/json",
   "moonbitlang/core/debug",
   "moonbitlang/x/uuid",
