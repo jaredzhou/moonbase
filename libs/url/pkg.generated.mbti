@@ -38,13 +38,13 @@ pub(all) struct URL {
   path : String?
   query : String?
   fragment : String?
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub impl Show for URL
 
 pub(all) struct UserInfo {
   username : String
   password : String?
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub impl Show for UserInfo
 
 // Type aliases
