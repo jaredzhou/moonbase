@@ -13,7 +13,7 @@ MoonCedar is a Cedar policy engine for MoonBit. Integrate it to add policy-based
 
 | Step | File/Action | Key Types |
 |------|-----------|-----------|
-| 1. Dependency | `moon.mod.json` add `"jaredzhou/mooncedar"` | — |
+| 1. Dependency | `moon.mod` add `"jaredzhou/mooncedar"` | — |
 | 2. Define policies | In-code or `@parser.parse_policies(src)` | `@ast.Policy`, `@ast.ScopeConstraint` |
 | 3. Build entity store | `MapEntityStore` or `@json.from_json(@json.parse(json_str))` | `@evaluator.MapEntityStore`, `@evaluator.EntityStore` (trait) |
 | 4. Create request | PARC slots + context | `@evaluator.Request`, `@evaluator.concrete_uid()` |
@@ -22,7 +22,7 @@ MoonCedar is a Cedar policy engine for MoonBit. Integrate it to add policy-based
 
 ## 1. Dependency Setup
 
-Add to your module's `moon.mod.json`:
+Add to your module's `moon.mod`:
 
 ```json
 { "deps": { "jaredzhou/mooncedar": "0.1.0" } }

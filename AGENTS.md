@@ -1,25 +1,25 @@
 # MoonBase — Agent Guide
 
-A [MoonBit](https://www.moonbitlang.com/) workspace monorepo with three modules: `jaredzhou/libs`, `jaredzhou/pony`, and `jaredzhou/mooncedar`. All target `native`.
+A [MoonBit](https://www.moonbitlang.com/) workspace monorepo with three modules: `jaredzhou/libs`, `jaredzhou/mooncedar`, and `jaredzhou/moonstore`. All target `native`.
 
 ## Workspace Overview
 
 Defined in `moon.work`:
 
 ```
-members = ["./pony", "./libs", "./mooncedar"]
+members = ["./libs", "./mooncedar", "./moonstore"]
 ```
 
 Dependency graph:
 
 ```
 moonbitlang/x@0.4.45
-  ├── jaredzhou/libs      (url, jwt sub-packages)
-  ├── jaredzhou/pony       depends on jaredzhou/libs@0.1.0
-  └── jaredzhou/mooncedar  (ast, parser, evaluator sub-packages; independent)
+  ├── jaredzhou/libs         (url, jwt sub-packages)
+  ├── jaredzhou/mooncedar    (ast, parser, evaluator sub-packages; independent)
+  └── jaredzhou/moonstore    depends on jaredzhou/libs, jaredzhou/mooncedar, jaredzhou/pony (external)
 ```
 
-When you change `libs`, `pony` must be rechecked because it imports `jaredzhou/libs`. `mooncedar` has no internal workspace dependencies.
+When you change `libs`, `moonstore` must be rechecked because it imports `jaredzhou/libs`. `mooncedar` has no internal workspace dependencies.
 
 ## Workspace vs Module Commands
 
@@ -91,22 +91,6 @@ git config core.hooksPath .githooks
 moon test --package jaredzhou/libs
 ```
 
-### `jaredzhou/pony` — Web Framework
-
-**External deps:** `moonbitlang/async@0.19.4`, `tonyfettes/any@0.1.5`
-**Workspace deps:** `jaredzhou/libs@0.1.0`
-
-**Sub-packages:**
-
-| Package | Purpose |
-|---------|---------|
-| `pony/mw` | Middleware (CORS, JWT auth, request logging) |
-
-```bash
-# Run pony tests only
-moon test --package jaredzhou/pony
-```
-
 ### `jaredzhou/mooncedar` — Cedar Policy Engine
 
 **External deps:** `moonbitlang/x@0.4.45` (no workspace deps)
@@ -133,11 +117,22 @@ Active development area. See `mooncedar/checkpoint.md` for the feature tracker (
 **Development workflow for mooncedar:**
 
 1. Make changes to `ast/`, `parser/`, `evaluator/`, or `authorizer.mbt`
-2. Run `moon check` (catches type errors)
-3. Run `moon test --package jaredzhou/mooncedar` (verify all tests pass)
-4. Run `moon info` to regenerate `.mbti` interfaces
-5. Run `moon fmt` to format code
+2. Run `moon check --deny-warn` (catches type errors, fails on warnings)
+3. Run `moon fmt` (ensure clean formatting — CI runs `moon fmt --check`)
+4. Run `moon info` to regenerate `.mbti` interfaces (commit if changed)
+5. Run `moon test --package jaredzhou/mooncedar` (verify all tests pass)
 6. Update `mooncedar/checkpoint.md` to reflect new/changed items and updated test counts
+
+### `jaredzhou/moonstore` — Object Storage Service
+
+**External deps:** `jaredzhou/pony@0.2.4`, `jaredzhou/mooncedar@0.1.1`, `jaredzhou/libs@0.1.1`, `moonbitlang/async@0.19.4`, `moonbitlang/x@0.4.45`
+
+An object storage service with a REST-ish HTTP API (S3-style buckets and objects). Features pluggable storage backends (in-memory, local filesystem) and metadata repos (in-memory, PostgreSQL). Authorization via `mooncedar` Cedar policies; HTTP API built on the [pony](https://github.com/jaredzhou/pony) web framework (external dep).
+
+```bash
+# Run moonstore tests only
+moon test --package jaredzhou/moonstore
+```
 
 ## Publishing Packages
 
@@ -146,8 +141,8 @@ MoonBit packages are published to [mooncakes.io](https://mooncakes.io). The pack
 ### Publish Order (required by dependency chain)
 
 1. **`jaredzhou/libs`** — no workspace deps
-2. **`jaredzhou/pony`** — depends on `jaredzhou/libs`
-3. **`jaredzhou/mooncedar`** — independent, can be published anytime
+2. **`jaredzhou/mooncedar`** — independent, can be published anytime
+3. **`jaredzhou/moonstore`** — depends on `jaredzhou/libs`, `jaredzhou/mooncedar`
 
 ### Publish Steps
 
@@ -156,21 +151,20 @@ MoonBit packages are published to [mooncakes.io](https://mooncakes.io). The pack
 #    Edit each module's moon.mod:  version = "0.X.Y"
 
 # 2. Verify everything is clean
-moon check
-moon test --all
-
-# 3. Update .mbti interfaces
+moon check --deny-warn
+moon fmt
 moon info
+moon test --all
 
 # 4. Publish each module (moon publish is module-only, use -C from root)
 moon -C libs publish
-moon -C pony publish
 moon -C mooncedar publish
+moon -C moonstore publish
 ```
 
 ### Post-Publish: Update Downstream Dependents
 
-If you published a new version of `libs`, update `pony/moon.mod` to reference the new version:
+If you published a new version of `libs`, update `moonstore/moon.mod` to reference the new version:
 
 ```toml
 import {

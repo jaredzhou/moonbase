@@ -21,18 +21,19 @@ A [MoonBit](https://docs.moonbitlang.com) project implementing the [Cedar](https
 
 ## Tooling
 
-- `moon check` — type-check / lint.
-- `moon test` — run all tests. With `--update` to update snapshot tests when behaviour changes intentionally.
-- `moon info` — regenerate `.mbti` interface files. If `.mbti` has no diff, the change has no visible API impact (typically a safe refactoring).
-- `moon fmt` — format all source files.
+Run these steps in order before committing (mirrors CI):
+
+1. **`moon check --deny-warn`** — type-check and lint; fail on warnings.
+2. **`moon fmt`** — format all source files. CI runs `moon fmt --check`; ensure
+   no diff locally first.
+3. **`moon info`** — regenerate `.mbti` interface files. CI runs
+   `git diff --exit-code` after `moon info`; if `.mbti` files changed, commit
+   them. If nothing changed, the change has no visible API impact (typically a
+   safe refactoring).
+4. **`moon test`** — run all tests. When snapshot outputs change intentionally,
+   run `moon test --update` to refresh them and commit the updated snapshots.
+
 - `moon coverage analyze > uncovered.log` — find code not covered by tests.
-
-**After completing work, always run:**
-```bash
-moon info && moon fmt
-```
-
-Check `.mbti` diffs to verify API changes are expected.
 
 **Testing conventions:**
 - Prefer `inspect`-based snapshot tests. Run `moon test --update` to generate expected output, then verify with `moon test`.

@@ -4,54 +4,6 @@ A [MoonBit](https://www.moonbitlang.com/) workspace for building web application
 
 ## Modules
 
-### pony
-
-A web framework inspired by Go's [Chi](https://github.com/go-chi/chi), featuring:
-
-- **Radix tree router** — static, parameter, and wildcard routing with priority matching
-- **Middleware chaining** — composable middleware with CORS, JWT auth, and request logging built-in
-- **Type-safe context** — phantom-type extensions for request-scoped values (request ID, user ID)
-- **HTTP helpers** — header management, status codes, JSON/redirect/error responses
-
-```moonbit
-fn main {
-  let r = Router::Router()
-
-  // GET /ping => 200 "pong"
-  r.add(HttpMethod::Get, "/ping", ctx => ctx.write_text(status_ok, "pong"))
-
-  // GET /users/42  => 200 "user: 42"
-  r.add(HttpMethod::Get, "/users/{id}", ctx => {
-    let id = ctx.param("id").unwrap_or("")
-    ctx.write_text(status_ok, "user: \(id)")
-  })
-
-  // GET /search?q=pony  => 200 "searching: pony"
-  r.add(HttpMethod::Get, "/search", ctx => {
-    let q = ctx.query("q").unwrap_or("")
-    ctx.write_text(status_ok, "searching: \(q)")
-  })
-
-  // GET /api/status  => 200 {"status":"ok","version":"0.1.0"}
-  r.add(HttpMethod::Get, "/api/status", ctx => {
-    ctx.reply_ok(({ "status": "ok", "version": "0.1.0" } : Json))
-  })
-
-  // POST /api/items  => 400 {"code":3,"message":"name is required"}
-  r.add(HttpMethod::Post, "/api/items", ctx => {
-    ctx.reply_error(invalid_argument, "name is required")
-  })
-
-  // GET /static/css/app.css  => 200 "file: css/app.css"
-  r.add(HttpMethod::Get, "/static/*", ctx => {
-    let path = ctx.wildcard().unwrap_or("")
-    ctx.write_text(status_ok, "file: \(path)")
-  })
-
-  start("127.0.0.1:3000", r)
-}
-```
-
 ### libs
 
 Shared libraries used across the workspace.
@@ -138,7 +90,7 @@ An object storage service with a REST-ish HTTP API, inspired by S3-style buckets
 - **Storage backends** — `MemoryBackend` for tests, `LocalFSBackend` for filesystem persistence
 - **Metadata repos** — in-memory (`MemoryBucketRepo`/`MemoryObjectRepo`) or PostgreSQL (`PGRepo`) via `mattn/postgres`
 - **Authorization** — Cedar policy engine integration through `mooncedar`
-- **HTTP API** — bucket and object routes built on `pony`
+- **HTTP API** — bucket and object routes built on [pony](https://github.com/jaredzhou/pony)
 
 ```moonbit
 // In-memory server (moonstore/cmd/storage)
@@ -155,24 +107,6 @@ let storage = @repo.new_postgres_storage(
   "postgres://postgres:111111@localhost:5432/postgres",
 )
 // Tables are created automatically by migrate().
-```
-
-### todo (TinyTodo)
-
-A demo application showcasing Cedar policy-based authorization in a multi-user todo app. Built with `pony` for HTTP routing and `mooncedar` for policy evaluation.
-
-- **Authorization model** — role-based (Owner, Editor, Reader) with Cedar policies
-- **REST API** — CRUD for lists and tasks, share/unshare lists
-- **CLI client** — interactive command-line client
-
-```bash
-# Start the server
-moon run main
-
-# Use the CLI client
-moon run ./todo/client emina list
-moon run ./todo/client emina new "groceries"
-moon run ./todo/client emina share groceries aaron Editor
 ```
 
 ## Getting Started

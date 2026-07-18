@@ -11,7 +11,7 @@ repository = "https://github.com/jaredzhou/moonbase"
 preferred_target = "native"
 
 import {
-  "jaredzhou/pony@0.2.4",
+  "jaredzhou/pony@0.3.0",
   "jaredzhou/mooncedar@0.1.1",
   "jaredzhou/libs@0.1.1",
   "moonbitlang/async@0.19.4",

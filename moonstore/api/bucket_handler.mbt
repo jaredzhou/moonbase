@@ -49,7 +49,7 @@ pub fn build_bucket_routes(
 ///|
 /// Extract authenticated user from X-User header.
 fn extract_user(ctx : @pony.Context) -> String raise @moonstore.StorageError {
-  ctx.header("X-User") catch {
+  (ctx.header("X-User") : String) catch {
     _ => raise @moonstore.Forbidden("missing X-User header")
   }
 }
@@ -123,7 +123,7 @@ fn get_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = ctx.param("bucketId") catch {
+    let id : String = ctx.param("bucketId") catch {
       e => {
         ctx.reply_error(e)
         return
@@ -149,7 +149,7 @@ fn update_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = ctx.param("bucketId") catch {
+    let id : String = ctx.param("bucketId") catch {
       e => {
         ctx.reply_error(e)
         return
@@ -187,7 +187,7 @@ fn delete_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = ctx.param("bucketId") catch {
+    let id : String = ctx.param("bucketId") catch {
       e => {
         ctx.reply_error(e)
         return
@@ -213,7 +213,7 @@ fn empty_bucket_handler(storage : @moonstore.Storage) -> @pony.Handler {
         return
       }
     }
-    let id = ctx.param("bucketId") catch {
+    let id : String = ctx.param("bucketId") catch {
       e => {
         ctx.reply_error(e)
         return

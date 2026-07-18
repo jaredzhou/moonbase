@@ -4,10 +4,8 @@ A [Cedar](https://www.cedarpolicy.com) policy engine implemented in MoonBit — 
 
 ## Installation
 
-Add to your `moon.mod`:
-
-```json
-{ "deps": { "jaredzhou/mooncedar": "0.1.1" } }
+```bash
+moon add jaredzhou/mooncedar@0.1.1
 ```
 
 ## Quick Start
@@ -39,6 +37,8 @@ match result.decision {
 }
 // => permitted
 ```
+
+For a complete, runnable example (multi-user todo app with Cedar policies, pony HTTP routing, and a CLI client), see [moon-examples/todo](https://github.com/jaredzhou/moon-examples/tree/main/todo).
 
 ## Packages
 

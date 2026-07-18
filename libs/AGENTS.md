@@ -26,23 +26,20 @@ You can browse and install extra skills here:
 
 ## Tooling
 
-- `moon fmt` is used to format your code properly.
+Run these steps in order before committing (mirrors CI):
+
+1. **`moon check --deny-warn`** — type-check and lint; fail on warnings.
+2. **`moon fmt`** — format all source files. CI runs `moon fmt --check`; ensure
+   no diff locally first.
+3. **`moon info`** — regenerate `.mbti` interface files. CI runs
+   `git diff --exit-code` after `moon info`; if `.mbti` files changed, commit
+   them. If nothing changed, your change has no visible API impact (typically a
+   safe refactoring).
+4. **`moon test`** — run all tests. When snapshot outputs change intentionally,
+   run `moon test --update` to refresh them and commit the updated snapshots.
 
 - `moon ide` provides project navigation helpers like `peek-def`, `outline`, and
   `find-references`. See $moonbit-agent-guide for details.
-
-- `moon info` is used to update the generated interface of the package, each
-  package has a generated interface file `.mbti`, it is a brief formal
-  description of the package. If nothing in `.mbti` changes, this means your
-  change does not bring the visible changes to the external package users, it is
-  typically a safe refactoring.
-
-- In the last step, run `moon info && moon fmt` to update the interface and
-  format the code. Check the diffs of `.mbti` file to see if the changes are
-  expected.
-
-- Run `moon test` to check tests pass. MoonBit supports snapshot testing; when
-  changes affect outputs, run `moon test --update` to refresh snapshots.
 
 - Prefer `assert_eq` or `assert_true(pattern is Pattern(...))` for results that
   are stable or very unlikely to change. For snapshot tests that record
