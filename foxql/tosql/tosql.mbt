@@ -30,15 +30,39 @@ impl ToSql for @ast.Expr with fn to_sql(
 ///|
 /// Render a SelectStmt to parameterised SQL.
 pub fn select_stmt_to_sql(stmt : @ast.SelectStmt) -> (String, Array[@ast.Value]) {
+  let distinct_part = if stmt.distinct_on.length() > 0 {
+    "DISTINCT ON (" + render_columns(stmt.distinct_on) + ") "
+  } else if stmt.distinct {
+    "DISTINCT "
+  } else {
+    ""
+  }
   let columns_part = if stmt.columns.length() == 0 {
     "*"
   } else {
     render_columns(stmt.columns)
   }
-  let (where_part, args) = render_where(stmt.where_clause)
+  let (where_part, args0) = render_where(stmt.where_clause)
+  let order_part = render_order_by(stmt.order_by)
+  let (limit_part, limit_args) = render_limit(stmt.limit, args0.length())
+  for a in limit_args {
+    args0.push(a)
+  }
+  let (offset_part, offset_args) = render_offset(stmt.offset, args0.length())
+  for a in offset_args {
+    args0.push(a)
+  }
   (
-    "SELECT " + columns_part + " FROM " + stmt.table + where_part,
-    args,
+    "SELECT " +
+    distinct_part +
+    columns_part +
+    " FROM " +
+    stmt.table +
+    where_part +
+    order_part +
+    limit_part +
+    offset_part,
+    args0,
   )
 }
 
@@ -217,6 +241,47 @@ fn render_set_clauses_rec(
     let prefix = if i == 0 { "" } else { ", " }
     let next = c.column.table + "." + c.column.name + " = $" + n.to_string()
     render_set_clauses_rec(clauses, i + 1, param_offset, acc_sql + prefix + next, acc_args)
+  }
+}
+
+fn render_order_by(clauses : Array[@ast.OrderByClause]) -> String {
+  if clauses.length() == 0 {
+    ""
+  } else {
+    " ORDER BY " + render_order_by_rec(clauses, 0, "")
+  }
+}
+
+fn render_order_by_rec(
+  clauses : Array[@ast.OrderByClause],
+  i : Int,
+  acc : String,
+) -> String {
+  if i >= clauses.length() {
+    acc
+  } else {
+    let c = clauses[i]
+    let dir = match c.direction {
+      @ast.OrderDirection::Asc => " ASC"
+      @ast.OrderDirection::Desc => " DESC"
+    }
+    let prefix = if i == 0 { "" } else { ", " }
+    let next = c.column.table + "." + c.column.name + dir
+    render_order_by_rec(clauses, i + 1, acc + prefix + next)
+  }
+}
+
+fn render_limit(limit : Int?, param_offset : Int) -> (String, Array[@ast.Value]) {
+  match limit {
+    Some(n) => (" LIMIT $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
+    None => ("", [])
+  }
+}
+
+fn render_offset(offset : Int?, param_offset : Int) -> (String, Array[@ast.Value]) {
+  match offset {
+    Some(n) => (" OFFSET $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
+    None => ("", [])
   }
 }
 

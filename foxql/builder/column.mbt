@@ -58,6 +58,18 @@ pub fn[T] Column::to_ref(self : Column[T]) -> @ast.ColumnRef {
   @ast.ColumnRef::{ name: self.name, table: self.table }
 }
 
+///|
+/// Sort ascending.
+pub fn[T] Column::asc(self : Column[T]) -> @ast.OrderByClause {
+  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Asc }
+}
+
+///|
+/// Sort descending.
+pub fn[T] Column::desc(self : Column[T]) -> @ast.OrderByClause {
+  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Desc }
+}
+
 // ---------------------------------------------------------------------------
 // Equality operators
 // ---------------------------------------------------------------------------

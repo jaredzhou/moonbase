@@ -6,6 +6,11 @@ pub(all) struct SelectStmt {
   table : String
   columns : Array[ColumnRef]  // empty = SELECT *
   where_clause : Expr?
+  order_by : Array[OrderByClause]
+  limit : Int?
+  offset : Int?
+  distinct : Bool
+  distinct_on : Array[ColumnRef]
 } derive(Debug, Eq)
 
 ///|

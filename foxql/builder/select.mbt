@@ -1,21 +1,34 @@
 // SelectBuilder — fluent builder for SELECT statements.
 
 ///|
-/// A fluent builder for a SELECT query.  Terminal: `.to_sql()`.
+/// A fluent builder for a SELECT query.  Terminal: `.to_sql()` or `.build()`.
 pub(all) struct SelectBuilder {
   table : Table
   columns : Array[@ast.ColumnRef]
   where_clause : @ast.Expr?
+  order_by : Array[@ast.OrderByClause]
+  limit : Int?
+  offset : Int?
+  distinct : Bool
+  distinct_on : Array[@ast.ColumnRef]
 } derive(Debug, Eq)
 
 ///|
 /// Create a new SelectBuilder.  Internal — users call `table.select(..)` instead.
-/// Pass an empty list or omit the argument for `SELECT *`.
 pub fn SelectBuilder::new(
   table : Table,
   columns : Array[@ast.ColumnRef],
 ) -> SelectBuilder {
-  SelectBuilder::{ table, columns, where_clause: None }
+  SelectBuilder::{
+    table,
+    columns,
+    where_clause: None,
+    order_by: [],
+    limit: None,
+    offset: None,
+    distinct: false,
+    distinct_on: [],
+  }
 }
 
 ///|
@@ -28,12 +41,60 @@ pub fn SelectBuilder::where_(
 }
 
 ///|
+/// Add an ORDER BY clause.  Chain multiple times for multiple columns.
+pub fn SelectBuilder::order_by(
+  self : SelectBuilder,
+  clause : @ast.OrderByClause,
+) -> SelectBuilder {
+  self.order_by.push(clause)
+  self
+}
+
+///|
+/// Attach a LIMIT clause.
+pub fn SelectBuilder::limit(
+  self : SelectBuilder,
+  n : Int,
+) -> SelectBuilder {
+  SelectBuilder::{ ..self, limit: Some(n) }
+}
+
+///|
+/// Attach an OFFSET clause.
+pub fn SelectBuilder::offset(
+  self : SelectBuilder,
+  n : Int,
+) -> SelectBuilder {
+  SelectBuilder::{ ..self, offset: Some(n) }
+}
+
+///|
+/// Add SELECT DISTINCT.
+pub fn SelectBuilder::distinct(self : SelectBuilder) -> SelectBuilder {
+  SelectBuilder::{ ..self, distinct: true }
+}
+
+///|
+/// Add SELECT DISTINCT ON (columns).
+pub fn SelectBuilder::distinct_on(
+  self : SelectBuilder,
+  cols : Array[&AnyColumn],
+) -> SelectBuilder {
+  SelectBuilder::{ ..self, distinct_on: cols.map(c=>c.to_ref()) }
+}
+
+///|
 /// Produce the AST node without rendering.
 pub fn SelectBuilder::build(self : SelectBuilder) -> @ast.SelectStmt {
   @ast.SelectStmt::{
     table: self.table.qualified_name(),
     columns: self.columns,
     where_clause: self.where_clause,
+    order_by: self.order_by,
+    limit: self.limit,
+    offset: self.offset,
+    distinct: self.distinct,
+    distinct_on: self.distinct_on,
   }
 }
 

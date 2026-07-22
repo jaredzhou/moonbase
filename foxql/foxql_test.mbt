@@ -497,6 +497,125 @@ test "delete with returning" {
 }
 
 // ---------------------------------------------------------------------------
+// ORDER BY, LIMIT, OFFSET, DISTINCT
+// ---------------------------------------------------------------------------
+
+///|
+test "select order by asc" {
+  let (sql, args) = users.table
+    .select()
+    .order_by(users.name.asc())
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT * FROM users ORDER BY users.name ASC",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select order by desc" {
+  let (sql, args) = users.table
+    .select()
+    .order_by(users.age.desc())
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT * FROM users ORDER BY users.age DESC",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select order by multiple columns" {
+  let (sql, args) = users.table
+    .select(columns=[users.name, users.age])
+    .order_by(users.age.desc())
+    .order_by(users.name.asc())
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT users.name, users.age FROM users ORDER BY users.age DESC, users.name ASC",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select limit" {
+  let (sql, args) = users.table
+    .select()
+    .limit(10)
+    .to_sql()
+
+  inspect(sql, content="SELECT * FROM users LIMIT $1")
+  assert_true(args is [n] && n is Int(10))
+}
+
+///|
+test "select limit offset" {
+  let (sql, args) = users.table
+    .select()
+    .limit(10)
+    .offset(20)
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT * FROM users LIMIT $1 OFFSET $2",
+  )
+  assert_true(args is [l, o] && l is Int(10) && o is Int(20))
+}
+
+///|
+test "select distinct" {
+  let (sql, args) = users.table
+    .select(columns=[users.name])
+    .distinct()
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT DISTINCT users.name FROM users",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select distinct on" {
+  let (sql, args) = users.table
+    .select(columns=[users.name, users.age])
+    .distinct_on([users.name])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT DISTINCT ON (users.name) users.name, users.age FROM users",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select all modifiers combined" {
+  let (sql, args) = users.table
+    .select(columns=[users.name, users.age])
+    .distinct()
+    .where_(users.age.gte(18))
+    .order_by(users.name.asc())
+    .limit(5)
+    .offset(10)
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT DISTINCT users.name, users.age FROM users WHERE users.age >= $1 ORDER BY users.name ASC LIMIT $2 OFFSET $3",
+  )
+  assert_true(args is [a, l, o] && a is Int(18) && l is Int(5) && o is Int(10))
+}
+
+// ---------------------------------------------------------------------------
 // Type-state verification (compile-time — verified by moon check)
 //
 // These are NOT runtime tests.  The following calls should produce a
