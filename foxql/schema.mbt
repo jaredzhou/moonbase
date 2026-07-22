@@ -7,6 +7,18 @@
 //   4. Use .col("name"), .select(), .insert(), etc. just like a static proxy.
 
 // ---------------------------------------------------------------------------
+// FieldResolver — map string field names to ColumnRefs
+// ---------------------------------------------------------------------------
+
+///|
+/// Trait for resolving string field names to ColumnRefs.
+/// Used by queryx and other dynamic query builders.
+pub(open) trait FieldResolver {
+  fn resolve_column(Self, field : String) -> @ast.ColumnRef?
+  fn table_name(Self) -> String
+}
+
+// ---------------------------------------------------------------------------
 // SchemaColumn — one column's metadata
 // ---------------------------------------------------------------------------
 
@@ -64,6 +76,25 @@ pub fn Schema::table(self : Schema, name : String) -> SchemaTable {
 pub(all) struct SchemaTable {
   table_name : String
   columns : Map[String, @ast.SqlType]
+}
+
+///|
+pub impl FieldResolver for SchemaTable with fn resolve_column(
+  self : SchemaTable,
+  field : String,
+) -> @ast.ColumnRef? {
+  if self.has_column(field) {
+    Some(self.col(field))
+  } else {
+    None
+  }
+}
+
+///|
+pub impl FieldResolver for SchemaTable with fn table_name(
+  _self : SchemaTable,
+) -> String {
+  _self.table_name
 }
 
 ///|
