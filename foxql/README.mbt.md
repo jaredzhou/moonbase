@@ -40,19 +40,38 @@ let users : UserTable = {
   name: Column::new("name", "users", SqlType::Text),
   age: Column::new("age", "users", SqlType::Integer),
 }
+
+///|
+struct OrdersTable {
+  table : Table
+  id : Column[Int]
+  user_id : Column[Int]
+  amount : Column[Int]
+}
+
+///|
+let orders : OrdersTable = {
+  table: Table::new("orders"),
+  id: Column::new("id", "orders", SqlType::Integer),
+  user_id: Column::new("user_id", "orders", SqlType::Integer),
+  amount: Column::new("amount", "orders", SqlType::Integer),
+}
 ```
 
 ## SELECT
 
 ```moonbit nocheck
-// SELECT * FROM users
-users.table.select().to_sql()
+let (sql, args) = users.table.select().to_sql()
+// sql  = "SELECT * FROM users"
+// args = []
 
-// SELECT name, age FROM users
-users.table.select(columns=[users.name, users.age]).to_sql()
+let (sql, args) = users.table.select(columns=[users.name, users.age]).to_sql()
+// sql  = "SELECT users.name, users.age FROM users"
+// args = []
 
-// SELECT * FROM users WHERE age = 18
-users.table.select().where_(users.age.eq(18)).to_sql()
+let (sql, args) = users.table.select().where_(users.age.eq(18)).to_sql()
+// sql  = "SELECT * FROM users WHERE users.age = $1"
+// args = [18]
 ```
 
 ### WHERE operators
@@ -70,39 +89,70 @@ All operators are **type-safe at compile time** — `Column[Int]` gets compariso
 
 ```moonbit nocheck
 users.age.gt(18)
+// → users.age > $1  [18]
+
 users.age.between(18, 65)
+// → users.age BETWEEN $1 AND $2  [18, 65]
+
 users.name.like("Al%")
+// → users.name LIKE $1  ["Al%"]
+
 users.name.is_null()
+// → users.name IS NULL  []
+
 users.age.in_([1, 2, 3])
+// → users.age IN ($1, $2, $3)  [1, 2, 3]
 ```
 
 ### Condition composition
 
 ```moonbit nocheck
-// AND / OR — chainable, flattens automatically
-users.age.gte(18).and_(users.age.lte(65))
-users.name.eq("Alice").or_(users.name.eq("Bob"))
+let (sql, args) = users.table.select()
+  .where_(users.age.gte(18).and_(users.age.lte(65)))
+  .to_sql()
+// sql  = "SELECT * FROM users WHERE (users.age >= $1 AND users.age <= $2)"
+// args = [18, 65]
 
-// NOT — standalone function
-not_(users.age.eq(0))
+let (sql, args) = users.table.select()
+  .where_(users.name.eq("Alice").or_(users.name.eq("Bob")))
+  .to_sql()
+// sql  = "SELECT * FROM users WHERE (users.name = $1 OR users.name = $2)"
+// args = ["Alice", "Bob"]
+
+let (sql, args) = users.table.select()
+  .where_(not_(users.age.eq(0)))
+  .to_sql()
+// sql  = "SELECT * FROM users WHERE NOT (users.age = $1)"
+// args = [0]
 
 // Complex nesting
-users.age.lt(18).or_(users.age.gt(65)).and_(users.name.is_not_null())
+let (sql, args) = users.table.select()
+  .where_(users.age.lt(18).or_(users.age.gt(65)).and_(users.name.is_not_null()))
+  .to_sql()
+// sql  = "SELECT * FROM users WHERE ((users.age < $1 OR users.age > $2) AND users.name IS NOT NULL)"
+// args = [18, 65]
 ```
 
 ### ORDER BY, LIMIT, OFFSET, DISTINCT
 
 ```moonbit nocheck
-users.table.select()
+let (sql, args) = users.table.select()
   .order_by(users.name.asc())
   .order_by(users.age.desc())
   .limit(10)
   .offset(20)
   .to_sql()
+// sql  = "SELECT * FROM users ORDER BY users.name ASC, users.age DESC LIMIT $1 OFFSET $2"
+// args = [10, 20]
 
-// DISTINCT / DISTINCT ON
-users.table.select(columns=[users.name]).distinct().to_sql()
-users.table.select(columns=[users.name, users.age]).distinct_on([users.name]).to_sql()
+let (sql, args) = users.table.select(columns=[users.name]).distinct().to_sql()
+// sql  = "SELECT DISTINCT users.name FROM users"
+// args = []
+
+let (sql, args) = users.table.select(columns=[users.name, users.age])
+  .distinct_on([users.name]).to_sql()
+// sql  = "SELECT DISTINCT ON (users.name) users.name, users.age FROM users"
+// args = []
 ```
 
 ## INSERT / UPDATE / DELETE
@@ -110,21 +160,24 @@ users.table.select(columns=[users.name, users.age]).distinct_on([users.name]).to
 ### INSERT
 
 ```moonbit nocheck
-// Single row
-users.table.insert([users.name, users.age])
+let (sql, args) = users.table.insert([users.name, users.age])
   .values(["Alice", 30])
   .to_sql()
+// sql  = "INSERT INTO users (name, age) VALUES ($1, $2)"
+// args = ["Alice", 30]
 
-// Multi-row
-users.table.insert([users.name, users.age])
+let (sql, args) = users.table.insert([users.name, users.age])
   .rows([["Alice", 30], ["Bob", 25]])
   .to_sql()
+// sql  = "INSERT INTO users (name, age) VALUES ($1, $2), ($3, $4)"
+// args = ["Alice", 30, "Bob", 25]
 
-// With RETURNING
-users.table.insert([users.name, users.age])
+let (sql, args) = users.table.insert([users.name, users.age])
   .values(["Alice", 30])
   .returning([users.id])
   .to_sql()
+// sql  = "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING users.id"
+// args = ["Alice", 30]
 ```
 
 ### UPDATE
@@ -132,12 +185,14 @@ users.table.insert([users.name, users.age])
 Type-state enforced: `.where_()` is **required** before `.to_sql()`.
 
 ```mbt nocheck
-users.table.update()
+let (sql, args) = users.table.update()
   .set(users.name, "Dave")
   .set(users.age, 99)
   .where_(users.id.eq(1))
   .returning([users.id, users.name])
   .to_sql()
+// sql  = "UPDATE users SET users.name = $1, users.age = $2 WHERE users.id = $3 RETURNING users.id, users.name"
+// args = ["Dave", 99, 1]
 ```
 
 ### DELETE
@@ -145,66 +200,54 @@ users.table.update()
 Type-state enforced: `.where_()` is **required** before `.to_sql()`.
 
 ```mbt nocheck
-users.table.delete()
+let (sql, args) = users.table.delete()
   .where_(users.age.lt(18))
   .returning([users.id])
   .to_sql()
+// sql  = "DELETE FROM users WHERE users.age < $1 RETURNING users.id"
+// args = [18]
 ```
 
 ### ON CONFLICT (upsert)
 
 ```mbt nocheck
-// DO NOTHING
-users.table.insert([users.name, users.age])
+let (sql, args) = users.table.insert([users.name, users.age])
   .values(["Alice", 30])
   .on_conflict([users.name])
   .do_nothing()
   .to_sql()
+// sql  = "INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING"
+// args = ["Alice", 30]
 
-// DO UPDATE
-users.table.insert([users.name, users.age])
+let (sql, args) = users.table.insert([users.name, users.age])
   .values(["Alice", 30])
   .on_conflict([users.name])
   .do_update(users.age, 30)
   .to_sql()
+// sql  = "INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET users.age = $3"
+// args = ["Alice", 30, 30]
 ```
 
 ## JOIN
 
 ```moonbit nocheck
-struct OrdersTable {
-  table : Table
-  id : Column[Int]
-  user_id : Column[Int]
-  amount : Column[Int]
-}
-
-let orders : OrdersTable = {
-  table: Table::new("orders"),
-  id: Column::new("id", "orders", SqlType::Integer),
-  user_id: Column::new("user_id", "orders", SqlType::Integer),
-  amount: Column::new("amount", "orders", SqlType::Integer),
-}
-
-// INNER JOIN with ON condition (column-to-column via eq_col)
-users.table
+let (sql, args) = users.table
   .select(columns=[users.name, orders.amount])
   .join(orders.table, users.id.eq_col(orders.user_id))
   .where_(orders.amount.gt(100))
   .order_by(orders.amount.desc())
   .to_sql()
-// SELECT users.name, orders.amount
-// FROM users
-// INNER JOIN orders ON users.id = orders.user_id
-// WHERE orders.amount > $1
-// ORDER BY orders.amount DESC
+// sql  = "SELECT users.name, orders.amount FROM users"
+//        " INNER JOIN orders ON users.id = orders.user_id"
+//        " WHERE orders.amount > $1"
+//        " ORDER BY orders.amount DESC"
+// args = [100]
 ```
 
 ## Aggregation & GROUP BY
 
 ```moonbit nocheck
-// Aggregation functions: count, sum, avg, min, max, count_star
-orders.table
+let (sql, args) = orders.table
   .select(columns=[orders.user_id])
   .agg(sum(orders.amount))
   .agg(count_star())
@@ -212,30 +255,39 @@ orders.table
   .having(sum(orders.amount).gt(1000))
   .order_by(orders.user_id.asc())
   .to_sql()
-// SELECT orders.user_id, SUM(orders.amount), COUNT(*)
-// FROM orders
-// GROUP BY orders.user_id
-// HAVING SUM(orders.amount) > $1
-// ORDER BY orders.user_id ASC
+// sql  = "SELECT orders.user_id, SUM(orders.amount), COUNT(*)"
+//        " FROM orders"
+//        " GROUP BY orders.user_id"
+//        " HAVING SUM(orders.amount) > $1"
+//        " ORDER BY orders.user_id ASC"
+// args = [1000]
 ```
 
 ## Subqueries
 
 ```moonbit nocheck
 // WHERE … IN (SELECT …)
-let sub = orders.table.select(columns=[orders.user_id]).where_(orders.amount.gt(100)).build()
-users.table.select().where_(users.id.in_select(sub)).to_sql()
+let sub = orders.table.select(columns=[orders.user_id])
+  .where_(orders.amount.gt(100)).build()
+let (sql, args) = users.table.select()
+  .where_(users.id.in_select(sub)).to_sql()
+// sql  = "SELECT * FROM users WHERE users.id IN (SELECT orders.user_id FROM orders WHERE orders.amount > $1)"
+// args = [100]
 
 // Scalar subquery
-let max_age = users.table.select(columns=[users.age]).order_by(users.age.desc()).limit(1).build()
-users.table.select().where_(users.age.eq_select(max_age)).to_sql()
+let max_age = users.table.select(columns=[users.age])
+  .order_by(users.age.desc()).limit(1).build()
+let (sql, args) = users.table.select()
+  .where_(users.age.eq_select(max_age)).to_sql()
+// sql  = "SELECT * FROM users WHERE users.age = (SELECT users.age FROM users ORDER BY users.age DESC LIMIT $1)"
+// args = [1]
 ```
 
 ## Schema-qualified tables
 
 ```moonbit nocheck
-///|
 let table = Table::new("profiles", schema="public")
+// → "public"."profiles"
 ```
 
 ## Building AST nodes
@@ -243,7 +295,6 @@ let table = Table::new("profiles", schema="public")
 Use `.build()` instead of `.to_sql()` to get the AST node for subqueries:
 
 ```moonbit nocheck
-///|
 let stmt : SelectStmt = users.table.select().where_(users.age.gt(18)).build()
 ```
 
