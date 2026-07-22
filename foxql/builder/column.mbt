@@ -1,0 +1,178 @@
+// Column[T] — a statically-typed column reference.
+//
+// Users declare one field per column inside their table proxy struct.
+// The type parameter T determines which operator methods are available:
+//
+//   Column[Int]    → eq, neq, gt, gte, lt, lte, in_, between, is_null
+//   Column[String] → eq, neq, like, in_, is_null
+//   Column[Bool]   → eq, neq, is_null
+
+///|
+/// A typed column reference in a specific table.
+pub(all) struct Column[T] {
+  name : String
+  table : String
+  sql_type : @ast.SqlType
+} derive(Debug, Eq)
+
+///|
+/// Trait that erases T — exposes column identity for heterogeneous column lists.
+pub trait AnyColumn {
+  fn name(Self) -> String
+  fn table_name(Self) -> String
+  fn sql_type(Self) -> @ast.SqlType
+}
+
+pub fn &AnyColumn::to_ref(self : &AnyColumn) -> @ast.ColumnRef {
+  @ast.ColumnRef::{ name: self.name(), table: self.table_name() }
+}
+///|
+pub impl[T] AnyColumn for Column[T] with fn name(self : Column[T]) -> String {
+  self.name
+}
+
+///|
+pub impl[T] AnyColumn for Column[T] with fn table_name(self : Column[T]) -> String {
+  self.table
+}
+
+///|
+pub impl[T] AnyColumn for Column[T] with fn sql_type(self : Column[T]) -> @ast.SqlType {
+  self.sql_type
+}
+
+
+///|
+/// Create a new column reference.
+pub fn[T] Column::new(
+  name : String,
+  table : String,
+  sql_type : @ast.SqlType,
+) -> Column[T] {
+  Column::{ name, table, sql_type }
+}
+
+///|
+/// Produce a type-erased ColumnRef.
+pub fn[T] Column::to_ref(self : Column[T]) -> @ast.ColumnRef {
+  @ast.ColumnRef::{ name: self.name, table: self.table }
+}
+
+// ---------------------------------------------------------------------------
+// Equality operators
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T : @ast.ToValue] Column::eq(
+  self : Column[T],
+  value : T,
+) -> @ast.Expr {
+  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Eq, value.to_value())
+}
+
+///|
+pub fn[T : @ast.ToValue] Column::neq(
+  self : Column[T],
+  value : T,
+) -> @ast.Expr {
+  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Neq, value.to_value())
+}
+
+// ---------------------------------------------------------------------------
+// Null operators
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T] Column::is_null(self : Column[T]) -> @ast.Expr {
+  @ast.Expr::IsNull(self.to_ref())
+}
+
+///|
+pub fn[T] Column::is_not_null(self : Column[T]) -> @ast.Expr {
+  @ast.Expr::IsNotNull(self.to_ref())
+}
+
+// ---------------------------------------------------------------------------
+// Comparison operators
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T : @ast.ToValue] Column::gt(
+  self : Column[T],
+  value : T,
+) -> @ast.Expr {
+  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Gt, value.to_value())
+}
+
+///|
+pub fn[T : @ast.ToValue] Column::gte(
+  self : Column[T],
+  value : T,
+) -> @ast.Expr {
+  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Gte, value.to_value())
+}
+
+///|
+pub fn[T : @ast.ToValue] Column::lt(
+  self : Column[T],
+  value : T,
+) -> @ast.Expr {
+  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Lt, value.to_value())
+}
+
+///|
+pub fn[T : @ast.ToValue] Column::lte(
+  self : Column[T],
+  value : T,
+) -> @ast.Expr {
+  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Lte, value.to_value())
+}
+
+// ---------------------------------------------------------------------------
+// String operators
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T] Column::like(
+  self : Column[T],
+  pattern : String,
+) -> @ast.Expr {
+  @ast.Expr::Compare(
+    self.to_ref(),
+    @ast.Operator::Like,
+    @ast.Value::String(pattern),
+  )
+}
+
+///|
+pub fn[T] Column::not_like(
+  self : Column[T],
+  pattern : String,
+) -> @ast.Expr {
+  @ast.Expr::Compare(
+    self.to_ref(),
+    @ast.Operator::NotLike,
+    @ast.Value::String(pattern),
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Range / set operators
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T : @ast.ToValue] Column::in_vals(
+  self : Column[T],
+  vals : Array[T],
+) -> @ast.Expr {
+  @ast.Expr::InList(self.to_ref(), vals.map(fn(v) { v.to_value() }))
+}
+
+///|
+pub fn[T : @ast.ToValue] Column::between(
+  self : Column[T],
+  lo : T,
+  hi : T,
+) -> @ast.Expr {
+  @ast.Expr::Between(self.to_ref(), lo.to_value(), hi.to_value())
+}
