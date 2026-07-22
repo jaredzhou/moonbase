@@ -296,27 +296,27 @@ pub fn[T : Comparable + @ast.ToValue] Column::between(
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn count[T](col : Column[T]) -> @ast.Aggregation {
+pub fn[T] count(col : Column[T]) -> @ast.Aggregation {
   @ast.Aggregation::Count(Some(col.to_ref()))
 }
 
 ///|
-pub fn sum[T](col : Column[T]) -> @ast.Aggregation {
+pub fn[T] sum(col : Column[T]) -> @ast.Aggregation {
   @ast.Aggregation::Sum(col.to_ref())
 }
 
 ///|
-pub fn avg[T](col : Column[T]) -> @ast.Aggregation {
+pub fn[T] avg(col : Column[T]) -> @ast.Aggregation {
   @ast.Aggregation::Avg(col.to_ref())
 }
 
 ///|
-pub fn min[T](col : Column[T]) -> @ast.Aggregation {
+pub fn[T] min(col : Column[T]) -> @ast.Aggregation {
   @ast.Aggregation::Min(col.to_ref())
 }
 
 ///|
-pub fn max[T](col : Column[T]) -> @ast.Aggregation {
+pub fn[T] max(col : Column[T]) -> @ast.Aggregation {
   @ast.Aggregation::Max(col.to_ref())
 }
 

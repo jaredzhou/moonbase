@@ -47,27 +47,27 @@ pub fn not_(expr : Expr) -> Expr {
 }
 
 ///| COUNT(column) aggregation.
-pub fn count[T](col : Column[T]) -> Aggregation {
+pub fn[T] count(col : Column[T]) -> Aggregation {
   @builder.count(col)
 }
 
 ///| SUM(column) aggregation.
-pub fn sum[T](col : Column[T]) -> Aggregation {
+pub fn[T] sum(col : Column[T]) -> Aggregation {
   @builder.sum(col)
 }
 
 ///| AVG(column) aggregation.
-pub fn avg[T](col : Column[T]) -> Aggregation {
+pub fn[T] avg(col : Column[T]) -> Aggregation {
   @builder.avg(col)
 }
 
 ///| MIN(column) aggregation.
-pub fn min[T](col : Column[T]) -> Aggregation {
+pub fn[T] min(col : Column[T]) -> Aggregation {
   @builder.min(col)
 }
 
 ///| MAX(column) aggregation.
-pub fn max[T](col : Column[T]) -> Aggregation {
+pub fn[T] max(col : Column[T]) -> Aggregation {
   @builder.max(col)
 }
 
