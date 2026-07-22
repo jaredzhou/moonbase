@@ -126,6 +126,13 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
       let agg_sql = render_aggregation(agg)
       (agg_sql + " " + op.to_sql_op() + " $1", [val])
     }
+    @ast.Expr::CompareSelect(col, op, sub) => {
+      let (sub_sql, sub_args) = select_stmt_to_sql(sub)
+      (
+        col.table + "." + col.name + " " + op.to_sql_op() + " (" + sub_sql + ")",
+        sub_args,
+      )
+    }
   }
 }
 

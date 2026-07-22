@@ -206,6 +206,55 @@ pub fn[T] Column::in_select(
 }
 
 ///|
+/// Compare column with a scalar subquery.
+pub fn[T] Column::eq_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::CompareSelect(self.to_ref(), @ast.Operator::Eq, subquery)
+}
+
+///|
+pub fn[T] Column::neq_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::CompareSelect(self.to_ref(), @ast.Operator::Neq, subquery)
+}
+
+///|
+pub fn[T] Column::gt_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::CompareSelect(self.to_ref(), @ast.Operator::Gt, subquery)
+}
+
+///|
+pub fn[T] Column::gte_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::CompareSelect(self.to_ref(), @ast.Operator::Gte, subquery)
+}
+
+///|
+pub fn[T] Column::lt_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::CompareSelect(self.to_ref(), @ast.Operator::Lt, subquery)
+}
+
+///|
+pub fn[T] Column::lte_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::CompareSelect(self.to_ref(), @ast.Operator::Lte, subquery)
+}
+
+///|
 pub fn[T : @ast.ToValue] Column::between(
   self : Column[T],
   lo : T,

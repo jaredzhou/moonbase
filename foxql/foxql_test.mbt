@@ -812,6 +812,50 @@ test "insert on conflict do update with returning" {
 }
 
 // ---------------------------------------------------------------------------
+// Subqueries (scalar)
+// ---------------------------------------------------------------------------
+
+///|
+test "where eq scalar subquery" {
+  let sub = orders.table
+    .select(columns=[orders.amount])
+    .where_(orders.user_id.eq(1))
+    .order_by(orders.amount.desc())
+    .limit(1)
+    .build()
+
+  let (sql, args) = users.table
+    .select()
+    .where_(users.age.eq_select(sub))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT * FROM users WHERE users.age = (SELECT orders.amount FROM orders WHERE orders.user_id = $1 ORDER BY orders.amount DESC LIMIT $2)",
+  )
+  assert_true(args is [a, l] && a is Int(1) && l is Int(1))
+}
+
+///|
+test "where gt scalar subquery" {
+  let sub = orders.table
+    .select(columns=[orders.amount])
+    .where_(orders.user_id.eq(1))
+    .build()
+
+  let (sql, args) = users.table
+    .select()
+    .where_(users.age.gt_select(sub))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT * FROM users WHERE users.age > (SELECT orders.amount FROM orders WHERE orders.user_id = $1)",
+  )
+  assert_true(args is [a] && a is Int(1))
+}
+
+// ---------------------------------------------------------------------------
 // Type-state verification (compile-time — verified by moon check)
 //
 // These are NOT runtime tests.  The following calls should produce a

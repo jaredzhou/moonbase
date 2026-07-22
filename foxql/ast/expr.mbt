@@ -37,6 +37,7 @@ pub(all) enum Expr {
   IsNull(ColumnRef)
   IsNotNull(ColumnRef)
   AggCompare(Aggregation, Operator, Value)
+  CompareSelect(ColumnRef, Operator, SelectStmt)
 } derive(Debug, Eq)
 
 ///|
