@@ -36,41 +36,6 @@ let (token, claims) = parser.parse("eyJhbG...", method)
 assert_eq!(claims.subject?, "user123")
 ```
 
-### mooncedar
-
-A full [Cedar](https://www.cedarpolicy.com/) policy engine implemented in MoonBit, featuring:
-
-- **Parser** — lexer and recursive descent parser for Cedar policy syntax
-- **AST** — expression builder and policy builder with chainable API
-- **Evaluator** — expression evaluation, scope matching, pluggable entity stores (trait-based)
-- **Authorizer** — `evaluate`, `reauthorize`, `concretize`, `is_authorized`
-
-```moonbit
-// Dependencies: "jaredzhou/mooncedar", "jaredzhou/mooncedar/parser",
-//               "jaredzhou/mooncedar/evaluator", "jaredzhou/mooncedar/ast",
-//               "moonbitlang/core/json"
-
-let policies = @parser.parse_policies(
-  #|permit (principal == User::"alice", action == Action::"view", resource in Album::"jane_vacation");|
-)
-
-let entities_src = #|[{"uid":{"type":"Photo","id":"VacationPhoto94.jpg"},"attrs":{},"tags":{},"parents":[{"type":"Album","id":"jane_vacation"}]}]
-let store = @json.from_json(@json.parse(entities_src))
-
-let req = @evaluator.Request::{
-  principal: @evaluator.concrete_uid("User", "alice"),
-  action: @evaluator.concrete_uid("Action", "view"),
-  resource: @evaluator.concrete_uid("Photo", "VacationPhoto94.jpg"),
-  context: @evaluator.Context::Concrete(@ast.Value::Record(Map([]))),
-}
-
-let result = @mooncedar.is_authorized(req, policies.iter(), store)
-match result.decision {
-  @mooncedar.Decision::Allow => println("allowed!")
-  _ => println("denied!")
-}
-```
-
 ## Getting Started
 
 ```bash

@@ -1,25 +1,25 @@
 # MoonBase — Agent Guide
 
-A [MoonBit](https://www.moonbitlang.com/) workspace monorepo with three modules: `jaredzhou/libs`, `jaredzhou/mooncedar`, and `jaredzhou/moonstore`. All target `native`.
+A [MoonBit](https://www.moonbitlang.com/) workspace monorepo with two modules in-repo: `jaredzhou/libs` and `jaredzhou/moonstore`. `jaredzhou/mooncedar` is linked from `../mooncedar` as a local workspace member. All target `native`.
 
 ## Workspace Overview
 
 Defined in `moon.work`:
 
 ```
-members = ["./libs", "./mooncedar", "./moonstore"]
+members = ["./libs", "../mooncedar", "./moonstore"]
 ```
 
 Dependency graph:
 
 ```
 moonbitlang/x@0.4.45
-  ├── jaredzhou/libs         (url, jwt sub-packages)
-  ├── jaredzhou/mooncedar    (ast, parser, evaluator sub-packages; independent)
-  └── jaredzhou/moonstore    depends on jaredzhou/libs, jaredzhou/mooncedar, jaredzhou/pony (external)
+  ├── jaredzhou/libs         (url, jwt, time sub-packages)
+  ├── jaredzhou/mooncedar    (ast, parser, evaluator sub-packages; external repo linked locally)
+  └── jaredzhou/moonstore    depends on jaredzhou/libs, jaredzhou/mooncedar@0.1.5, jaredzhou/pony (external)
 ```
 
-When you change `libs`, `moonstore` must be rechecked because it imports `jaredzhou/libs`. `mooncedar` has no internal workspace dependencies.
+When you change `libs`, `moonstore` must be rechecked because it imports `jaredzhou/libs`.
 
 ## Workspace vs Module Commands
 
@@ -42,7 +42,7 @@ moon check
 moon test --all
 
 # Run tests for a specific module
-moon test --package jaredzhou/mooncedar
+moon test --package jaredzhou/moonstore
 
 # Update snapshot tests (when behaviour changes intentionally)
 moon test --update
@@ -62,7 +62,6 @@ moon check --unused
 # Act on a specific module from the workspace root (with -C)
 moon -C libs publish
 moon -C pony publish
-moon -C mooncedar publish
 ```
 
 ### Pre-commit
@@ -91,38 +90,6 @@ git config core.hooksPath .githooks
 moon test --package jaredzhou/libs
 ```
 
-### `jaredzhou/mooncedar` — Cedar Policy Engine
-
-**External deps:** `moonbitlang/x@0.4.45` (no workspace deps)
-
-**Sub-packages (chained dependency):**
-
-```
-ast (no internal deps)
-  └── parser (depends on ast)
-  └── evaluator (depends on ast)
-        └── root mooncedar (re-exports ast, parser, evaluator)
-```
-
-```bash
-# Run mooncedar tests only
-moon test --package jaredzhou/mooncedar
-
-# Run a single test file
-moon test --package jaredzhou/mooncedar --test authorizer_wbtest.mbt
-```
-
-Active development area. See `mooncedar/checkpoint.md` for the feature tracker (~8000 LOC, 546 tests).
-
-**Development workflow for mooncedar:**
-
-1. Make changes to `ast/`, `parser/`, `evaluator/`, or `authorizer.mbt`
-2. Run `moon check --deny-warn` (catches type errors, fails on warnings)
-3. Run `moon fmt` (ensure clean formatting — CI runs `moon fmt --check`)
-4. Run `moon info` to regenerate `.mbti` interfaces (commit if changed)
-5. Run `moon test --package jaredzhou/mooncedar` (verify all tests pass)
-6. Update `mooncedar/checkpoint.md` to reflect new/changed items and updated test counts
-
 ### `jaredzhou/moonstore` — Object Storage Service
 
 **External deps:** `jaredzhou/pony@0.2.4`, `jaredzhou/mooncedar@0.1.1`, `jaredzhou/libs@0.1.1`, `moonbitlang/async@0.19.4`, `moonbitlang/x@0.4.45`
@@ -141,8 +108,7 @@ MoonBit packages are published to [mooncakes.io](https://mooncakes.io). The pack
 ### Publish Order (required by dependency chain)
 
 1. **`jaredzhou/libs`** — no workspace deps
-2. **`jaredzhou/mooncedar`** — independent, can be published anytime
-3. **`jaredzhou/moonstore`** — depends on `jaredzhou/libs`, `jaredzhou/mooncedar`
+2. **`jaredzhou/moonstore`** — depends on `jaredzhou/libs`, `jaredzhou/mooncedar` (external)
 
 ### Publish Steps
 
@@ -158,7 +124,6 @@ moon test --all
 
 # 4. Publish each module (moon publish is module-only, use -C from root)
 moon -C libs publish
-moon -C mooncedar publish
 moon -C moonstore publish
 ```
 
@@ -183,6 +148,20 @@ moon update
 # Upgrade an external dependency (edit moon.mod first, then:)
 moon update
 ```
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `jaredzhou/moonbase`, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the default five canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context — root `CONTEXT-MAP.md` points to per-module `CONTEXT.md` files under `libs/`, `moonstore/`, `queryx/`, and `foxql/`. See `docs/agents/domain.md`.
 
 ## Project Conventions
 

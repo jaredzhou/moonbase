@@ -1,0 +1,87 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/queryx"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+pub suberror QueryError {
+  EvalError(String)
+} derive(ToJson)
+
+// Types and methods
+pub(all) enum CmpOp {
+  Eq
+  Ne
+  Gt
+  Lt
+  Ge
+  Le
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Expr {
+  Lit(Value)
+  Field(String)
+  Compare(String, CmpOp, Value)
+  Between(String, Value, Value)
+  StrMatch(String, StrKind, String)
+  And(Array[Expr])
+  Or(Array[Expr])
+  Not(Expr)
+  Empty
+} derive(Eq, @debug.Debug)
+pub fn Expr::eval(Self, Map[String, Value]) -> Bool raise QueryError
+pub impl ToJson for Expr
+pub impl @json.FromJson for Expr
+
+pub(all) struct Order(String) derive(@debug.Debug)
+pub impl ToJson for Order
+pub impl @json.FromJson for Order
+
+pub(all) struct Page {
+  after : String
+  size : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Query {
+  filter : Expr
+  order_by : Order?
+  page : Page?
+  set : Json?
+} derive(@debug.Debug)
+pub impl ToJson for Query
+pub impl @json.FromJson for Query
+
+pub(all) enum StrKind {
+  Contains
+  StartsWith
+  EndsWith
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Value {
+  Null
+  Bool(Bool)
+  Int(Int64)
+  Float(Double)
+  String(String)
+} derive(Eq, @debug.Debug)
+pub impl ToValue for Value
+pub impl ToJson for Value
+pub impl @json.FromJson for Value
+
+// Type aliases
+
+// Traits
+pub trait ToValue {
+  fn to_value(Self) -> Value
+}
+pub impl ToValue for Bool
+pub impl ToValue for Int
+pub impl ToValue for Int64
+pub impl ToValue for Double
+pub impl ToValue for String
+

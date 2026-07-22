@@ -1,5 +1,8 @@
 members = [
   "./libs",
-  "./mooncedar",
+  "../mooncedar",
   "./moonstore",
+  "./queryx",
+  "./foxql",
+  "../moonpg",
 ]

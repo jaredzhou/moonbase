@@ -1,0 +1,7 @@
+supported_targets = "native"
+
+import {
+  "moonbitlang/core/json",
+  "jaredzhou/foxql/ast",
+  "jaredzhou/foxql/builder",
+}
