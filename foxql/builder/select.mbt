@@ -29,7 +29,7 @@ pub fn SelectBuilder::where_(
 
 ///|
 /// Produce the AST node without rendering.
-pub fn SelectBuilder::to_stmt(self : SelectBuilder) -> @ast.SelectStmt {
+pub fn SelectBuilder::build(self : SelectBuilder) -> @ast.SelectStmt {
   @ast.SelectStmt::{
     table: self.table.qualified_name(),
     columns: self.columns,
@@ -40,5 +40,5 @@ pub fn SelectBuilder::to_stmt(self : SelectBuilder) -> @ast.SelectStmt {
 ///|
 /// Render the query to a parameterised SQL string + args array.
 pub fn SelectBuilder::to_sql(self : SelectBuilder) -> (String, Array[@ast.Value]) {
-  @tosql.select_stmt_to_sql(self.to_stmt())
+  @tosql.select_stmt_to_sql(self.build())
 }

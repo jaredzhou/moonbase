@@ -236,7 +236,7 @@ test "where in_select subquery" {
   let orders = @builder.Table::new("orders")
   let user_id = @builder.Column::new("user_id", "orders", @ast.SqlType::Integer)
 
-  let sub = orders.select(columns=[user_id]).where_(user_id.gt(0)).to_stmt()
+  let sub = orders.select(columns=[user_id]).where_(user_id.gt(0)).build()
 
   let (sql, args) = users.table
     .select()
