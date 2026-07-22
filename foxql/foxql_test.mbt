@@ -687,7 +687,7 @@ test "select with join where order by" {
 test "select with count aggregation" {
   let (sql, args) = users.table
     .select(columns=[users.name])
-    .agg(users.id.count())
+    .agg(@builder.count(users.id))
     .group_by([users.name])
     .to_sql()
 
@@ -702,9 +702,9 @@ test "select with count aggregation" {
 test "select with sum and having" {
   let (sql, args) = orders.table
     .select(columns=[orders.user_id])
-    .agg(orders.amount.sum())
+    .agg(@builder.sum(orders.amount))
     .group_by([orders.user_id])
-    .having(orders.amount.sum().gt(1000))
+    .having(@builder.sum(orders.amount).gt(1000))
     .to_sql()
 
   inspect(
@@ -734,8 +734,8 @@ test "select count star with having" {
 test "select multi agg with order" {
   let (sql, args) = orders.table
     .select(columns=[orders.user_id])
-    .agg(orders.amount.sum())
-    .agg(orders.id.count())
+    .agg(@builder.sum(orders.amount))
+    .agg(@builder.count(orders.id))
     .group_by([orders.user_id])
     .order_by(orders.user_id.asc())
     .limit(10)
