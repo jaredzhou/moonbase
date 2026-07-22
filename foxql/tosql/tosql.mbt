@@ -137,10 +137,16 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
 pub fn insert_stmt_to_sql(stmt : @ast.InsertStmt) -> (String, Array[@ast.Value]) {
   let cols = render_column_names(stmt.columns)
   let (vals_sql, vals_args) = render_value_rows(stmt.values, 0)
+  let offset = vals_args.length()
+  let (conflict_part, conflict_args) = render_on_conflict(stmt.on_conflict, offset)
   let returning = render_returning(stmt.returning)
+  let all_args = vals_args
+  for a in conflict_args {
+    all_args.push(a)
+  }
   (
-    "INSERT INTO " + stmt.table + " (" + cols + ") VALUES " + vals_sql + returning,
-    vals_args,
+    "INSERT INTO " + stmt.table + " (" + cols + ") VALUES " + vals_sql + conflict_part + returning,
+    all_args,
   )
 }
 
@@ -383,6 +389,23 @@ fn render_limit(limit : Int?, param_offset : Int) -> (String, Array[@ast.Value])
 fn render_offset(offset : Int?, param_offset : Int) -> (String, Array[@ast.Value]) {
   match offset {
     Some(n) => (" OFFSET $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
+    None => ("", [])
+  }
+}
+
+fn render_on_conflict(
+  conflict : @ast.OnConflict?,
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
+  match conflict {
+    Some(@ast.OnConflict::DoNothing(target)) => (
+      " ON CONFLICT" + target + " DO NOTHING",
+      [],
+    )
+    Some(@ast.OnConflict::DoUpdate(target, sets)) => {
+      let (set_sql, set_args) = render_set_clauses(sets, param_offset)
+      (" ON CONFLICT" + target + " DO UPDATE SET " + set_sql, set_args)
+    }
     None => ("", [])
   }
 }

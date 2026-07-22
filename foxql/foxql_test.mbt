@@ -749,6 +749,69 @@ test "select multi agg with order" {
 }
 
 // ---------------------------------------------------------------------------
+// ON CONFLICT
+// ---------------------------------------------------------------------------
+
+///|
+test "insert on conflict do nothing" {
+  let (sql, args) = users.table
+    .insert([users.name, users.age])
+    .values(["Alice", 30])
+    .on_conflict([users.name])
+    .do_nothing()
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING",
+  )
+  assert_true(args is [n, a] && n is String("Alice") && a is Int(30))
+}
+
+///|
+test "insert on conflict do update" {
+  let (sql, args) = users.table
+    .insert([users.name, users.age])
+    .values(["Alice", 30])
+    .on_conflict([users.name])
+    .do_update(users.age, 99)
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET users.age = $3",
+  )
+  assert_true(
+    args is [n, a, u] &&
+    n is String("Alice") &&
+    a is Int(30) &&
+    u is Int(99),
+  )
+}
+
+///|
+test "insert on conflict do update with returning" {
+  let (sql, args) = users.table
+    .insert([users.name, users.age])
+    .values(["Bob", 25])
+    .on_conflict([users.name])
+    .do_update(users.age, 25)
+    .returning([users.id, users.age])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET users.age = $3 RETURNING users.id, users.age",
+  )
+  assert_true(
+    args is [n, a, u] &&
+    n is String("Bob") &&
+    a is Int(25) &&
+    u is Int(25),
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Type-state verification (compile-time — verified by moon check)
 //
 // These are NOT runtime tests.  The following calls should produce a
