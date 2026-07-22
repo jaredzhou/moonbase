@@ -92,11 +92,17 @@ pub fn[R : FieldResolver] to_foxql_expr(
 ) -> @ast.Expr raise QueryxError {
   match expr {
     Expr::Empty =>
-      raise QueryxError::Unsupported("Empty expression cannot be converted to SQL")
+      raise QueryxError::Unsupported(
+        "Empty expression cannot be converted to SQL",
+      )
     Expr::Lit(_) =>
-      raise QueryxError::Unsupported("Literal expression cannot be converted to SQL")
+      raise QueryxError::Unsupported(
+        "Literal expression cannot be converted to SQL",
+      )
     Expr::Field(_) =>
-      raise QueryxError::Unsupported("Field expression cannot be converted to SQL")
+      raise QueryxError::Unsupported(
+        "Field expression cannot be converted to SQL",
+      )
     Expr::Compare(field, op, val) => {
       let col = match resolver.resolve_column(field) {
         Some(c) => c
@@ -139,9 +145,7 @@ pub fn[R : FieldResolver] to_foxql_expr(
         @ast.Expr::Or(converted)
       }
     }
-    Expr::Not(inner) => {
-      @ast.Expr::Not(to_foxql_expr(inner, resolver))
-    }
+    Expr::Not(inner) => @ast.Expr::Not(to_foxql_expr(inner, resolver))
   }
 }
 
@@ -163,7 +167,10 @@ fn[R : FieldResolver] collect_exprs(
 // ---------------------------------------------------------------------------
 
 ///|
-fn strmatch_to_like(kind : StrKind, pattern : String) -> (@ast.Operator, String) {
+fn strmatch_to_like(
+  kind : StrKind,
+  pattern : String,
+) -> (@ast.Operator, String) {
   match kind {
     StrKind::Contains => (@ast.Operator::Like, "%" + pattern + "%")
     StrKind::StartsWith => (@ast.Operator::Like, pattern + "%")

@@ -103,7 +103,7 @@ pub impl AnyColumn for @ast.ColumnRef with fn table_name(self : @ast.ColumnRef) 
 }
 
 ///|
-pub impl AnyColumn for @ast.ColumnRef with fn sql_type(self : @ast.ColumnRef) -> @ast.SqlType {
+pub impl AnyColumn for @ast.ColumnRef with fn sql_type(_self : @ast.ColumnRef) -> @ast.SqlType {
   @ast.SqlType::Text
 }
 

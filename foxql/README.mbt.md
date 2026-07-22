@@ -286,6 +286,7 @@ let (sql, args) = users.table.select()
 ## Schema-qualified tables
 
 ```moonbit nocheck
+///|
 let table = Table::new("profiles", schema="public")
 // → "public"."profiles"
 ```
@@ -295,6 +296,7 @@ let table = Table::new("profiles", schema="public")
 Use `.build()` instead of `.to_sql()` to get the AST node for subqueries:
 
 ```moonbit nocheck
+///|
 let stmt : SelectStmt = users.table.select().where_(users.age.gt(18)).build()
 ```
 
@@ -326,6 +328,7 @@ foxql/
 ├── ast/          # AST types (SelectStmt, Expr, Value, ...)
 ├── builder/      # Fluent builders (Table, Column, SelectBuilder, ...)
 ├── tosql/        # SQL rendering
+├── schema.mbt    # Dynamic schema (Schema, SchemaTable)
 ├── foxql.mbt     # Re-exports (Table, Column, SqlType, count, sum, ...)
 └── foxql_test.mbt
 ```
@@ -343,4 +346,53 @@ import {
   "jaredzhou/foxql/ast",
   "jaredzhou/foxql/builder",
 }
+```
+
+## Dynamic schema (SchemaTable)
+
+> **Use only when you need runtime introspection.** For tables with a known, stable structure, prefer the static `Column[T]` proxies — they give you compile-time type safety, operator traits, and zero `abort` risk. `SchemaTable` is for building PostgREST-style dynamic APIs where table schemas are discovered at startup.
+
+```moonbit nocheck
+// 1. Introspect on startup (query information_schema in your app)
+let schema = Schema::load([
+  { table_name: "users", column_name: "id",   sql_type: SqlType::Integer },
+  { table_name: "users", column_name: "name", sql_type: SqlType::Text },
+  { table_name: "users", column_name: "age",  sql_type: SqlType::Integer },
+])
+
+let users = schema.table("users")
+
+// 2. Dynamic column access via .col("name")
+let (sql, args) = users
+  .select(columns=[users.col("name"), users.col("age")])
+  .where_(users.col("age").gt(18).and_(users.col("name").like("A%")))
+  .order_by(users.col("name").asc())
+  .limit(10)
+  .to_sql()
+// sql  = "SELECT users.name, users.age FROM users"
+//        " WHERE (users.age > $1 AND users.name LIKE $2)"
+//        " ORDER BY users.name ASC LIMIT $3"
+// args = [18, "A%", 10]
+
+// 3. Mutations work the same way
+users.insert([users.col("name"), users.col("age")])
+  .values(["Alice", 30])
+  .returning([users.col("id")])
+  .to_sql()
+// sql  = "INSERT INTO users (name, age) VALUES ($1, $2) RETURNING users.id"
+// args = ["Alice", 30]
+
+users.update()
+  .set(users.col("name"), "Bob")
+  .where_(users.col("id").eq(1))
+  .to_sql()
+// sql  = "UPDATE users SET users.name = $1 WHERE users.id = $2"
+// args = ["Bob", 1]
+```
+
+`SchemaTable` also implements `FieldResolver`, so queryx `to_select` works with a single argument:
+
+```moonbit nocheck
+let query : Query = from_json!(...)
+let (sql, args) = to_select(query, users).to_sql()
 ```

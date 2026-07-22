@@ -42,7 +42,7 @@ pub fn Schema::load(columns : Array[SchemaColumn]) -> Schema {
       }
     }
   }
-  Schema::{ tables }
+  Schema::{ tables, }
 }
 
 ///|
@@ -100,10 +100,7 @@ pub fn SchemaTable::insert(
   self : SchemaTable,
   columns : Array[&@builder.AnyColumn],
 ) -> @builder.InsertBuilder {
-  @builder.InsertBuilder::new(
-    @builder.Table::new(self.table_name),
-    columns,
-  )
+  @builder.InsertBuilder::new(@builder.Table::new(self.table_name), columns)
 }
 
 ///|

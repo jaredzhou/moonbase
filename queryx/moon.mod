@@ -11,20 +11,20 @@
 
 name = "jaredzhou/queryx"
 
-version = "0.1.0"
+version = "0.2.0"
 
 readme = "README.mbt.md"
 
-repository = ""
+repository = "https://github.com/jaredzhou/moonbase"
 
 license = "Apache-2.0"
 
-keywords = [ ]
+keywords = [ "query", "filter", "json", "dsl" ]
 
 preferred_target = "native"
 
-description = "JSON-queryable filter DSL with eval and to/from JSON"
+description = "JSON-queryable filter DSL with foxql SQL builder bridge"
 
 import {
-  "jaredzhou/foxql@0.1.0",
+  "jaredzhou/foxql@0.1.2",
 }
