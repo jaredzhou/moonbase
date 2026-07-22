@@ -6,6 +6,7 @@ pub(all) struct SelectBuilder {
   table : Table
   columns : Array[@ast.ColumnRef]
   where_clause : @ast.Expr?
+  joins : Array[@ast.JoinClause]
   order_by : Array[@ast.OrderByClause]
   limit : Int?
   offset : Int?
@@ -23,6 +24,7 @@ pub fn SelectBuilder::new(
     table,
     columns,
     where_clause: None,
+    joins: [],
     order_by: [],
     limit: None,
     offset: None,
@@ -38,6 +40,19 @@ pub fn SelectBuilder::where_(
   condition : @ast.Expr,
 ) -> SelectBuilder {
   SelectBuilder::{ ..self, where_clause: Some(condition) }
+}
+
+///|
+/// Add an INNER JOIN clause.
+pub fn SelectBuilder::join(
+  self : SelectBuilder,
+  other : Table,
+  on : @ast.Expr,
+) -> SelectBuilder {
+  self.joins.push(
+    @ast.JoinClause::{ table: other.qualified_name(), on },
+  )
+  self
 }
 
 ///|
@@ -90,6 +105,7 @@ pub fn SelectBuilder::build(self : SelectBuilder) -> @ast.SelectStmt {
     table: self.table.qualified_name(),
     columns: self.columns,
     where_clause: self.where_clause,
+    joins: self.joins,
     order_by: self.order_by,
     limit: self.limit,
     offset: self.offset,

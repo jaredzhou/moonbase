@@ -98,6 +98,15 @@ pub fn[T : @ast.ToValue] Column::neq(
   @ast.Expr::Compare(self.to_ref(), @ast.Operator::Neq, value.to_value())
 }
 
+///|
+/// Compare two columns for equality (for JOIN ON).
+pub fn[T] Column::eq_col(
+  self : Column[T],
+  other : Column[T],
+) -> @ast.Expr {
+  @ast.Expr::CompareCols(self.to_ref(), @ast.Operator::Eq, other.to_ref())
+}
+
 // ---------------------------------------------------------------------------
 // Null operators
 // ---------------------------------------------------------------------------

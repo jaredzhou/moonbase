@@ -18,6 +18,20 @@ let users : UserTable = {
   age: @builder.Column::new("age", "users", @ast.SqlType::Integer),
 }
 
+struct OrdersTable {
+  table : @builder.Table
+  id : @builder.Column[Int]
+  user_id : @builder.Column[Int]
+  amount : @builder.Column[Int]
+}
+
+let orders : OrdersTable = {
+  table: @builder.Table::new("orders"),
+  id: @builder.Column::new("id", "orders", @ast.SqlType::Integer),
+  user_id: @builder.Column::new("user_id", "orders", @ast.SqlType::Integer),
+  amount: @builder.Column::new("amount", "orders", @ast.SqlType::Integer),
+}
+
 ///|
 test "select star with where eq" {
   let (sql, args) = users.table
@@ -613,6 +627,56 @@ test "select all modifiers combined" {
     content="SELECT DISTINCT users.name, users.age FROM users WHERE users.age >= $1 ORDER BY users.name ASC LIMIT $2 OFFSET $3",
   )
   assert_true(args is [a, l, o] && a is Int(18) && l is Int(5) && o is Int(10))
+}
+
+// ---------------------------------------------------------------------------
+// JOIN
+// ---------------------------------------------------------------------------
+
+///|
+test "select with inner join" {
+  let (sql, args) = users.table
+    .select(columns=[users.name, orders.amount])
+    .join(orders.table, users.id.eq_col(orders.user_id))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select with join and where" {
+  let (sql, args) = users.table
+    .select(columns=[users.name, orders.amount])
+    .join(orders.table, users.id.eq_col(orders.user_id))
+    .where_(orders.amount.gt(100))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id WHERE orders.amount > $1",
+  )
+  assert_true(args is [a] && a is Int(100))
+}
+
+///|
+test "select with join where order by" {
+  let (sql, args) = users.table
+    .select(columns=[users.name, orders.amount])
+    .join(orders.table, users.id.eq_col(orders.user_id))
+    .where_(orders.amount.gte(50))
+    .order_by(orders.amount.desc())
+    .limit(10)
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id WHERE orders.amount >= $1 ORDER BY orders.amount DESC LIMIT $2",
+  )
+  assert_true(args is [a, l] && a is Int(50) && l is Int(10))
 }
 
 // ---------------------------------------------------------------------------

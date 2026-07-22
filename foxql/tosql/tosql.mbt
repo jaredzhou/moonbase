@@ -42,7 +42,13 @@ pub fn select_stmt_to_sql(stmt : @ast.SelectStmt) -> (String, Array[@ast.Value])
   } else {
     render_columns(stmt.columns)
   }
-  let (where_part, args0) = render_where(stmt.where_clause)
+  let (join_part, args_join) = render_joins(stmt.joins)
+  let (where_part, where_args) = render_where(stmt.where_clause)
+  let renumbered_where = renumber_placeholders(where_part, args_join.length())
+  let args0 = args_join
+  for a in where_args {
+    args0.push(a)
+  }
   let order_part = render_order_by(stmt.order_by)
   let (limit_part, limit_args) = render_limit(stmt.limit, args0.length())
   for a in limit_args {
@@ -52,13 +58,15 @@ pub fn select_stmt_to_sql(stmt : @ast.SelectStmt) -> (String, Array[@ast.Value])
   for a in offset_args {
     args0.push(a)
   }
+  let where_final = if where_part == "" { "" } else { renumbered_where }
   (
     "SELECT " +
     distinct_part +
     columns_part +
     " FROM " +
     stmt.table +
-    where_part +
+    join_part +
+    where_final +
     order_part +
     limit_part +
     offset_part,
@@ -73,6 +81,12 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
     @ast.Expr::Compare(col, op, val) => {
       let sql = col.table + "." + col.name + " " + op.to_sql_op() + " $1"
       (sql, [val])
+    }
+    @ast.Expr::CompareCols(left, op, right) => {
+      (
+        left.table + "." + left.name + " " + op.to_sql_op() + " " + right.table + "." + right.name,
+        [],
+      )
     }
     @ast.Expr::And(conditions) => {
       render_composed(" AND ", conditions)
@@ -241,6 +255,30 @@ fn render_set_clauses_rec(
     let prefix = if i == 0 { "" } else { ", " }
     let next = c.column.table + "." + c.column.name + " = $" + n.to_string()
     render_set_clauses_rec(clauses, i + 1, param_offset, acc_sql + prefix + next, acc_args)
+  }
+}
+
+fn render_joins(joins : Array[@ast.JoinClause]) -> (String, Array[@ast.Value]) {
+  render_joins_rec(joins, 0, "", [])
+}
+
+fn render_joins_rec(
+  joins : Array[@ast.JoinClause],
+  i : Int,
+  acc_sql : String,
+  acc_args : Array[@ast.Value],
+) -> (String, Array[@ast.Value]) {
+  if i >= joins.length() {
+    (acc_sql, acc_args)
+  } else {
+    let j = joins[i]
+    let (on_sql, on_args) = expr_to_sql(j.on)
+    let renumbered = renumber_placeholders(on_sql, acc_args.length())
+    for a in on_args {
+      acc_args.push(a)
+    }
+    let next = " INNER JOIN " + j.table + " ON " + renumbered
+    render_joins_rec(joins, i + 1, acc_sql + next, acc_args)
   }
 }
 

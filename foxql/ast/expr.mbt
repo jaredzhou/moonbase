@@ -6,6 +6,7 @@ pub(all) struct SelectStmt {
   table : String
   columns : Array[ColumnRef]  // empty = SELECT *
   where_clause : Expr?
+  joins : Array[JoinClause]
   order_by : Array[OrderByClause]
   limit : Int?
   offset : Int?
@@ -17,6 +18,7 @@ pub(all) struct SelectStmt {
 /// A WHERE clause expression — a tree of comparisons joined by AND / OR / NOT.
 pub(all) enum Expr {
   Compare(ColumnRef, Operator, Value)
+  CompareCols(ColumnRef, Operator, ColumnRef)
   And(Array[Expr])
   Or(Array[Expr])
   Not(Expr)
