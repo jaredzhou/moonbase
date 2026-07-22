@@ -81,8 +81,153 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
 }
 
 // ---------------------------------------------------------------------------
+// Mutation statements — INSERT / UPDATE / DELETE
+// ---------------------------------------------------------------------------
+
+///|
+pub fn insert_stmt_to_sql(stmt : @ast.InsertStmt) -> (String, Array[@ast.Value]) {
+  let cols = render_column_names(stmt.columns)
+  let (vals_sql, vals_args) = render_value_rows(stmt.values, 0)
+  let returning = render_returning(stmt.returning)
+  (
+    "INSERT INTO " + stmt.table + " (" + cols + ") VALUES " + vals_sql + returning,
+    vals_args,
+  )
+}
+
+///|
+pub fn update_stmt_to_sql(stmt : @ast.UpdateStmt) -> (String, Array[@ast.Value]) {
+  let (set_sql, set_args) = render_set_clauses(stmt.set_clauses, 0)
+  let (where_sql, where_args) = expr_to_sql(stmt.where_clause)
+  let all_args = set_args
+  let offset = set_args.length()
+  let renumbered = renumber_placeholders(where_sql, offset)
+  for a in where_args {
+    all_args.push(a)
+  }
+  let returning = render_returning(stmt.returning)
+  (
+    "UPDATE " + stmt.table + " SET " + set_sql + " WHERE " + renumbered + returning,
+    all_args,
+  )
+}
+
+///|
+pub fn delete_stmt_to_sql(stmt : @ast.DeleteStmt) -> (String, Array[@ast.Value]) {
+  let (where_sql, where_args) = expr_to_sql(stmt.where_clause)
+  let returning = render_returning(stmt.returning)
+  (
+    "DELETE FROM " + stmt.table + " WHERE " + where_sql + returning,
+    where_args,
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
+
+fn render_column_names(cols : Array[@ast.ColumnRef]) -> String {
+  render_column_names_rec(cols, 0, "")
+}
+
+fn render_column_names_rec(
+  cols : Array[@ast.ColumnRef],
+  i : Int,
+  acc : String,
+) -> String {
+  if i >= cols.length() {
+    acc
+  } else {
+    let prefix = if i == 0 { "" } else { ", " }
+    render_column_names_rec(cols, i + 1, acc + prefix + cols[i].name)
+  }
+}
+
+fn render_value_rows(
+  rows : Array[Array[@ast.Value]],
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
+  render_value_rows_rec(rows, 0, param_offset, "", [])
+}
+
+fn render_value_rows_rec(
+  rows : Array[Array[@ast.Value]],
+  i : Int,
+  param_offset : Int,
+  acc_sql : String,
+  acc_args : Array[@ast.Value],
+) -> (String, Array[@ast.Value]) {
+  if i >= rows.length() {
+    (acc_sql, acc_args)
+  } else {
+    let row = rows[i]
+    let (row_sql, row_args) = render_value_row(row, param_offset + acc_args.length())
+    for a in row_args {
+      acc_args.push(a)
+    }
+    let prefix = if i == 0 { "" } else { ", " }
+    render_value_rows_rec(rows, i + 1, param_offset, acc_sql + prefix + "(" + row_sql + ")", acc_args)
+  }
+}
+
+fn render_value_row(
+  vals : Array[@ast.Value],
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
+  render_value_row_rec(vals, 0, param_offset, "", [])
+}
+
+fn render_value_row_rec(
+  vals : Array[@ast.Value],
+  i : Int,
+  param_offset : Int,
+  acc_sql : String,
+  acc_args : Array[@ast.Value],
+) -> (String, Array[@ast.Value]) {
+  if i >= vals.length() {
+    (acc_sql, acc_args)
+  } else {
+    let n = param_offset + acc_args.length() + 1
+    acc_args.push(vals[i])
+    let prefix = if i == 0 { "" } else { ", " }
+    render_value_row_rec(vals, i + 1, param_offset, acc_sql + prefix + "$" + n.to_string(), acc_args)
+  }
+}
+
+fn render_set_clauses(
+  clauses : Array[@ast.SetClause],
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
+  render_set_clauses_rec(clauses, 0, param_offset, "", [])
+}
+
+fn render_set_clauses_rec(
+  clauses : Array[@ast.SetClause],
+  i : Int,
+  param_offset : Int,
+  acc_sql : String,
+  acc_args : Array[@ast.Value],
+) -> (String, Array[@ast.Value]) {
+  if i >= clauses.length() {
+    (acc_sql, acc_args)
+  } else {
+    let c = clauses[i]
+    let n = param_offset + acc_args.length() + 1
+    acc_args.push(c.value)
+    let prefix = if i == 0 { "" } else { ", " }
+    let next = c.column.table + "." + c.column.name + " = $" + n.to_string()
+    render_set_clauses_rec(clauses, i + 1, param_offset, acc_sql + prefix + next, acc_args)
+  }
+}
+
+fn render_returning(cols : Array[@ast.ColumnRef]?) -> String {
+  match cols {
+    Some(cs) if cs.length() > 0 => {
+      " RETURNING " + render_columns(cs)
+    }
+    _ => ""
+  }
+}
 
 fn render_columns(cols : Array[@ast.ColumnRef]) -> String {
   render_columns_rec(cols, 0, "")

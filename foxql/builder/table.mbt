@@ -38,3 +38,24 @@ pub fn Table::select(
   let refs = columns.unwrap_or([]).map(c=>c.to_ref())
   SelectBuilder::new(self, refs)
 }
+
+///|
+/// Start building an INSERT query on this table.
+pub fn Table::insert(
+  self : Table,
+  columns : Array[&AnyColumn],
+) -> InsertBuilder {
+  InsertBuilder::new(self, columns)
+}
+
+///|
+/// Start building an UPDATE query on this table.  Requires `.where_()` before `.to_sql()`.
+pub fn Table::update(self : Table) -> UpdateBuilder {
+  UpdateBuilder::new(self)
+}
+
+///|
+/// Start building a DELETE query on this table.  Requires `.where_()` before `.to_sql()`.
+pub fn Table::delete(self : Table) -> DeleteBuilder {
+  DeleteBuilder::new(self)
+}

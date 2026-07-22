@@ -1,0 +1,68 @@
+// UpdateBuilder — fluent builder for UPDATE statements, with type-state.
+//
+// Type-state via separate types:
+//   Table::update()           → UpdateBuilder  (pending — no WHERE yet)
+//   UpdateBuilder::where_(..) → UpdateReady    (ready — can call to_sql)
+
+///|
+/// A pending UPDATE builder.  Must call `.where_()` before `.to_sql()`.
+pub(all) struct UpdateBuilder {
+  table : Table
+  set_clauses : Array[@ast.SetClause]
+} derive(Debug, Eq)
+
+///|
+/// A complete UPDATE builder with a WHERE clause.  Terminal: `.to_sql()`.
+pub(all) struct UpdateReady {
+  table : Table
+  set_clauses : Array[@ast.SetClause]
+  where_clause : @ast.Expr
+  returning : Array[@ast.ColumnRef]?
+} derive(Debug, Eq)
+
+///|
+/// Create a new UpdateBuilder.  Internal — users call `table.update()`.
+pub fn UpdateBuilder::new(table : Table) -> UpdateBuilder {
+  UpdateBuilder::{ table, set_clauses: [] }
+}
+
+///|
+/// Add a SET clause.
+pub fn UpdateBuilder::set(
+  self : UpdateBuilder,
+  column : @ast.ColumnRef,
+  value : @ast.Value,
+) -> UpdateBuilder {
+  self.set_clauses.push(@ast.SetClause::{ column, value })
+  UpdateBuilder::{ ..self, set_clauses: self.set_clauses }
+}
+
+///|
+/// Attach a WHERE clause.  Promotes to UpdateReady.
+pub fn UpdateBuilder::where_(
+  self : UpdateBuilder,
+  condition : @ast.Expr,
+) -> UpdateReady {
+  UpdateReady::{ table: self.table, set_clauses: self.set_clauses, where_clause: condition, returning: None }
+}
+
+///|
+/// Attach a RETURNING clause.
+pub fn UpdateReady::returning(
+  self : UpdateReady,
+  cols : Array[&AnyColumn],
+) -> UpdateReady {
+  UpdateReady::{ ..self, returning: Some(cols.map(c=>c.to_ref())) }
+}
+
+///|
+/// Render the query to a parameterised SQL string + args array.
+pub fn UpdateReady::to_sql(self : UpdateReady) -> (String, Array[@ast.Value]) {
+  let node = @ast.UpdateStmt::{
+    table: self.table.qualified_name(),
+    set_clauses: self.set_clauses,
+    where_clause: self.where_clause,
+    returning: self.returning,
+  }
+  @tosql.update_stmt_to_sql(node)
+}

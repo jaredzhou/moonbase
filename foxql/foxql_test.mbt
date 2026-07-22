@@ -368,3 +368,140 @@ test "where multiple or_ flattens" {
     c is String("C"),
   )
 }
+
+// ---------------------------------------------------------------------------
+// Mutation: INSERT
+// ---------------------------------------------------------------------------
+
+///|
+test "insert single row" {
+  let (sql, args) = users.table
+    .insert([users.name, users.age])
+    .values([@ast.Value::String("Alice"), @ast.Value::Int(30)])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2)",
+  )
+  assert_true(args is [n, a] && n is String("Alice") && a is Int(30))
+}
+
+///|
+test "insert multi row" {
+  let (sql, args) = users.table
+    .insert([users.name, users.age])
+    .rows([
+      [@ast.Value::String("Alice"), @ast.Value::Int(30)],
+      [@ast.Value::String("Bob"), @ast.Value::Int(25)],
+    ])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2), ($3, $4)",
+  )
+  assert_true(
+    args is [a, b, c, d] &&
+    a is String("Alice") &&
+    b is Int(30) &&
+    c is String("Bob") &&
+    d is Int(25),
+  )
+}
+
+///|
+test "insert with returning" {
+  let (sql, args) = users.table
+    .insert([users.name, users.age])
+    .values([@ast.Value::String("Charlie"), @ast.Value::Int(42)])
+    .returning([users.id])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2) RETURNING users.id",
+  )
+  assert_true(args is [n, a] && n is String("Charlie") && a is Int(42))
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: UPDATE
+// ---------------------------------------------------------------------------
+
+///|
+test "update set with where" {
+  let (sql, args) = users.table
+    .update()
+    .set(users.name.to_ref(), @ast.Value::String("Dave"))
+    .set(users.age.to_ref(), @ast.Value::Int(99))
+    .where_(users.id.eq(1))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="UPDATE users SET users.name = $1, users.age = $2 WHERE users.id = $3",
+  )
+  assert_true(
+    args is [n, a, i] &&
+    n is String("Dave") &&
+    a is Int(99) &&
+    i is Int(1),
+  )
+}
+
+///|
+test "update with returning" {
+  let (sql, args) = users.table
+    .update()
+    .set(users.age.to_ref(), @ast.Value::Int(55))
+    .where_(users.id.eq(1))
+    .returning([users.name, users.age])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="UPDATE users SET users.age = $1 WHERE users.id = $2 RETURNING users.name, users.age",
+  )
+  assert_true(args is [a, i] && a is Int(55) && i is Int(1))
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: DELETE
+// ---------------------------------------------------------------------------
+
+///|
+test "delete with where" {
+  let (sql, args) = users.table
+    .delete()
+    .where_(users.id.eq(1))
+    .to_sql()
+
+  inspect(sql, content="DELETE FROM users WHERE users.id = $1")
+  assert_true(args is [i] && i is Int(1))
+}
+
+///|
+test "delete with returning" {
+  let (sql, args) = users.table
+    .delete()
+    .where_(users.age.lt(18))
+    .returning([users.id, users.name])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="DELETE FROM users WHERE users.age < $1 RETURNING users.id, users.name",
+  )
+  assert_true(args is [a] && a is Int(18))
+}
+
+// ---------------------------------------------------------------------------
+// Type-state verification (compile-time — verified by moon check)
+//
+// These are NOT runtime tests.  The following calls should produce a
+// compile error because .to_sql() is not available without .where_():
+//
+//   users.table.update().set(...).to_sql()     // error: UpdateBuilder has no to_sql
+//   users.table.delete().to_sql()               // error: DeleteBuilder has no to_sql
+// ---------------------------------------------------------------------------
