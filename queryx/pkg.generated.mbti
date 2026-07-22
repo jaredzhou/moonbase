@@ -2,16 +2,33 @@
 package "jaredzhou/queryx"
 
 import {
+  "jaredzhou/foxql",
+  "jaredzhou/foxql/ast",
+  "jaredzhou/foxql/builder",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
 // Values
+pub fn[R : @foxql.FieldResolver] to_foxql_expr(Expr, R) -> @ast.Expr raise QueryxError
+
+pub fn to_foxql_op(CmpOp) -> @ast.Operator
+
+pub fn to_foxql_value(Value) -> @ast.Value
+
+pub fn[R : @foxql.FieldResolver] to_select(Query, R) -> @builder.SelectBuilder raise QueryxError
 
 // Errors
 pub suberror QueryError {
   EvalError(String)
 } derive(ToJson)
+
+pub suberror QueryxError {
+  Unsupported(String)
+  UnknownField(String)
+  EmptyAnd
+  EmptyOr
+} derive(@debug.Debug)
 
 // Types and methods
 pub(all) enum CmpOp {

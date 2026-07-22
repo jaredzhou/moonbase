@@ -150,6 +150,7 @@ pub trait AnyColumn {
   fn table_name(Self) -> String
   fn sql_type(Self) -> @ast.SqlType
 }
+pub impl AnyColumn for @ast.ColumnRef
 pub fn &AnyColumn::asc(Self) -> @ast.OrderByClause
 pub fn &AnyColumn::desc(Self) -> @ast.OrderByClause
 pub fn &AnyColumn::to_ref(Self) -> @ast.ColumnRef

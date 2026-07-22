@@ -4,6 +4,7 @@ package "jaredzhou/foxql"
 import {
   "jaredzhou/foxql/ast",
   "jaredzhou/foxql/builder",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -24,6 +25,29 @@ pub fn[T] sum(@builder.Column[T]) -> @ast.Aggregation
 // Errors
 
 // Types and methods
+pub(all) struct Schema {
+  tables : Map[String, Map[String, @ast.SqlType]]
+}
+pub fn Schema::load(Array[SchemaColumn]) -> Self
+pub fn Schema::table(Self, String) -> SchemaTable
+
+pub(all) struct SchemaColumn {
+  table_name : String
+  column_name : String
+  sql_type : @ast.SqlType
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SchemaTable {
+  table_name : String
+  columns : Map[String, @ast.SqlType]
+}
+pub fn SchemaTable::col(Self, String) -> @ast.ColumnRef
+pub fn SchemaTable::delete(Self) -> @builder.DeleteBuilder
+pub fn SchemaTable::has_column(Self, String) -> Bool
+pub fn SchemaTable::insert(Self, Array[&@builder.AnyColumn]) -> @builder.InsertBuilder
+pub fn SchemaTable::select(Self, columns? : Array[&@builder.AnyColumn]) -> @builder.SelectBuilder
+pub fn SchemaTable::update(Self) -> @builder.UpdateBuilder
+pub impl FieldResolver for SchemaTable
 
 // Type aliases
 pub using @ast {type Aggregation}
@@ -47,4 +71,8 @@ pub using @builder {type Table}
 pub using @ast {type Value}
 
 // Traits
+pub(open) trait FieldResolver {
+  fn resolve_column(Self, String) -> @ast.ColumnRef?
+  fn table_name(Self) -> String
+}
 

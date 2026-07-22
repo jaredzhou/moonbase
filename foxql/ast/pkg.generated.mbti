@@ -30,6 +30,12 @@ pub(all) struct ColumnRef {
   name : String
   table : String
 } derive(Eq, @debug.Debug)
+pub fn ColumnRef::eq(Self, &ToValue) -> Expr
+pub fn ColumnRef::gt(Self, &ToValue) -> Expr
+pub fn ColumnRef::gte(Self, &ToValue) -> Expr
+pub fn ColumnRef::lt(Self, &ToValue) -> Expr
+pub fn ColumnRef::lte(Self, &ToValue) -> Expr
+pub fn ColumnRef::neq(Self, &ToValue) -> Expr
 
 pub(all) struct DeleteStmt {
   table : String

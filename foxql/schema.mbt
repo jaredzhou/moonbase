@@ -91,9 +91,7 @@ pub impl FieldResolver for SchemaTable with fn resolve_column(
 }
 
 ///|
-pub impl FieldResolver for SchemaTable with fn table_name(
-  _self : SchemaTable,
-) -> String {
+pub impl FieldResolver for SchemaTable with fn table_name(_self : SchemaTable) -> String {
   _self.table_name
 }
 
