@@ -5,31 +5,31 @@
 
 /// Table proxy — one struct + one global per database table.
 struct UserTable {
-  table : @builder.Table
-  id : @builder.Column[Int]
-  name : @builder.Column[String]
-  age : @builder.Column[Int]
+  table : Table
+  id : Column[Int]
+  name : Column[String]
+  age : Column[Int]
 }
 
 let users : UserTable = {
-  table: @builder.Table::new("users"),
-  id: @builder.Column::new("id", "users", @ast.SqlType::Integer),
-  name: @builder.Column::new("name", "users", @ast.SqlType::Text),
-  age: @builder.Column::new("age", "users", @ast.SqlType::Integer),
+  table: Table::new("users"),
+  id: Column::new("id", "users", SqlType::Integer),
+  name: Column::new("name", "users", SqlType::Text),
+  age: Column::new("age", "users", SqlType::Integer),
 }
 
 struct OrdersTable {
-  table : @builder.Table
-  id : @builder.Column[Int]
-  user_id : @builder.Column[Int]
-  amount : @builder.Column[Int]
+  table : Table
+  id : Column[Int]
+  user_id : Column[Int]
+  amount : Column[Int]
 }
 
 let orders : OrdersTable = {
-  table: @builder.Table::new("orders"),
-  id: @builder.Column::new("id", "orders", @ast.SqlType::Integer),
-  user_id: @builder.Column::new("user_id", "orders", @ast.SqlType::Integer),
-  amount: @builder.Column::new("amount", "orders", @ast.SqlType::Integer),
+  table: Table::new("orders"),
+  id: Column::new("id", "orders", SqlType::Integer),
+  user_id: Column::new("user_id", "orders", SqlType::Integer),
+  amount: Column::new("amount", "orders", SqlType::Integer),
 }
 
 ///|
@@ -61,7 +61,7 @@ test "select columns with where eq" {
 
 ///|
 test "select star without where" {
-  let items = @builder.Table::new("items")
+  let items = Table::new("items")
 
   let (sql, args) = items.select().to_sql()
 
@@ -84,8 +84,8 @@ test "select with string eq" {
 
 ///|
 test "select with qualified schema table" {
-  let table = @builder.Table::new("profiles", schema="public")
-  let id = @builder.Column::new("id", "profiles", @ast.SqlType::Integer)
+  let table = Table::new("profiles", schema="public")
+  let id = Column::new("id", "profiles", SqlType::Integer)
 
   let (sql, args) = table
     .select()
@@ -247,8 +247,8 @@ test "where in_ list" {
 
 ///|
 test "where in_select subquery" {
-  let orders = @builder.Table::new("orders")
-  let user_id = @builder.Column::new("user_id", "orders", @ast.SqlType::Integer)
+  let orders = Table::new("orders")
+  let user_id = Column::new("user_id", "orders", SqlType::Integer)
 
   let sub = orders.select(columns=[user_id]).where_(user_id.gt(0)).build()
 
@@ -300,7 +300,7 @@ test "where with or_ composition" {
 test "where with not_ composition" {
   let (sql, args) = users.table
     .select()
-    .where_(@ast.not_(users.age.eq(0)))
+    .where_(not_(users.age.eq(0)))
     .to_sql()
 
   inspect(
@@ -348,7 +348,7 @@ test "where nested and/or" {
 test "where complex nested not with and" {
   let (sql, args) = users.table
     .select()
-    .where_(@ast.not_(users.age.in_([1, 2, 3])).and_(users.name.like("A%")))
+    .where_(not_(users.age.in_([1, 2, 3])).and_(users.name.like("A%")))
     .to_sql()
 
   inspect(
@@ -687,7 +687,7 @@ test "select with join where order by" {
 test "select with count aggregation" {
   let (sql, args) = users.table
     .select(columns=[users.name])
-    .agg(@builder.count(users.id))
+    .agg(count(users.id))
     .group_by([users.name])
     .to_sql()
 
@@ -702,9 +702,9 @@ test "select with count aggregation" {
 test "select with sum and having" {
   let (sql, args) = orders.table
     .select(columns=[orders.user_id])
-    .agg(@builder.sum(orders.amount))
+    .agg(sum(orders.amount))
     .group_by([orders.user_id])
-    .having(@builder.sum(orders.amount).gt(1000))
+    .having(sum(orders.amount).gt(1000))
     .to_sql()
 
   inspect(
@@ -718,9 +718,9 @@ test "select with sum and having" {
 test "select count star with having" {
   let (sql, args) = orders.table
     .select(columns=[orders.user_id])
-    .agg(@builder.count_star())
+    .agg(count_star())
     .group_by([orders.user_id])
-    .having(@builder.count_star().gt(5))
+    .having(count_star().gt(5))
     .to_sql()
 
   inspect(
@@ -734,8 +734,8 @@ test "select count star with having" {
 test "select multi agg with order" {
   let (sql, args) = orders.table
     .select(columns=[orders.user_id])
-    .agg(@builder.sum(orders.amount))
-    .agg(@builder.count(orders.id))
+    .agg(sum(orders.amount))
+    .agg(count(orders.id))
     .group_by([orders.user_id])
     .order_by(orders.user_id.asc())
     .limit(10)
