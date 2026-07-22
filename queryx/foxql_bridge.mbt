@@ -17,37 +17,6 @@ pub suberror QueryxError {
 } derive(Debug)
 
 // ---------------------------------------------------------------------------
-// FieldResolver — map queryx field names to foxql ColumnRefs
-// ---------------------------------------------------------------------------
-
-///|
-/// Trait for resolving queryx string field names to foxql ColumnRefs.
-/// Also provides the table name so to_select doesn't need a separate Table argument.
-pub(open) trait FieldResolver {
-  fn resolve_column(Self, field : String) -> @ast.ColumnRef?
-  fn table_name(Self) -> String
-}
-
-///|
-pub impl FieldResolver for @foxql.SchemaTable with fn resolve_column(
-  self : @foxql.SchemaTable,
-  field : String,
-) -> @ast.ColumnRef? {
-  if self.has_column(field) {
-    Some(self.col(field))
-  } else {
-    None
-  }
-}
-
-///|
-pub impl FieldResolver for @foxql.SchemaTable with fn table_name(
-  self : @foxql.SchemaTable,
-) -> String {
-  self.table_name
-}
-
-// ---------------------------------------------------------------------------
 // Value conversion
 // ---------------------------------------------------------------------------
 
@@ -86,7 +55,7 @@ pub fn to_foxql_op(op : CmpOp) -> @ast.Operator {
 
 ///|
 /// Convert a queryx Expr to a foxql Expr.
-pub fn[R : FieldResolver] to_foxql_expr(
+pub fn[R : @foxql.FieldResolver] to_foxql_expr(
   expr : Expr,
   resolver : R,
 ) -> @ast.Expr raise QueryxError {
@@ -150,7 +119,7 @@ pub fn[R : FieldResolver] to_foxql_expr(
 }
 
 ///|
-fn[R : FieldResolver] collect_exprs(
+fn[R : @foxql.FieldResolver] collect_exprs(
   exprs : Array[Expr],
   resolver : R,
 ) -> Array[@ast.Expr] raise QueryxError {
@@ -185,7 +154,7 @@ fn strmatch_to_like(
 ///|
 /// Convert a queryx Query to a foxql SelectBuilder (WHERE, ORDER BY, LIMIT).
 /// The resolver provides both field→column mapping and the table name.
-pub fn[R : FieldResolver] to_select(
+pub fn[R : @foxql.FieldResolver] to_select(
   query : Query,
   resolver : R,
 ) -> @builder.SelectBuilder raise QueryxError {
@@ -207,7 +176,7 @@ pub fn[R : FieldResolver] to_select(
 }
 
 ///|
-fn[R : FieldResolver] apply_order(
+fn[R : @foxql.FieldResolver] apply_order(
   builder : @builder.SelectBuilder,
   order : Order,
   resolver : R,
@@ -221,7 +190,7 @@ fn[R : FieldResolver] apply_order(
 }
 
 ///|
-fn[R : FieldResolver] apply_order_parts(
+fn[R : @foxql.FieldResolver] apply_order_parts(
   builder : @builder.SelectBuilder,
   parts : Array[String],
   i : Int,

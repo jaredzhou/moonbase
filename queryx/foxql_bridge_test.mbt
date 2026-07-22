@@ -38,7 +38,7 @@ let user : User = {
 }
 
 ///|
-impl FieldResolver for User with fn resolve_column(self : User, field : String) -> @ast.ColumnRef? {
+impl @foxql.FieldResolver for User with fn resolve_column(self : User, field : String) -> @ast.ColumnRef? {
   match field {
     "id" => Some(self.id.to_ref())
     "name" => Some(self.name.to_ref())
@@ -48,7 +48,7 @@ impl FieldResolver for User with fn resolve_column(self : User, field : String) 
 }
 
 ///|
-impl FieldResolver for User with fn table_name(_self : User) -> String {
+impl @foxql.FieldResolver for User with fn table_name(_self : User) -> String {
   "users"
 }
 
