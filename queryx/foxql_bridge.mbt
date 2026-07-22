@@ -2,7 +2,19 @@
 //
 // Usage:
 //   1. Implement FieldResolver for your table proxy struct.
-//   2. Call to_foxql_expr() or apply_select() to convert.
+//   2. Call to_foxql_expr() or to_select() to convert.
+
+// ---------------------------------------------------------------------------
+// Error
+// ---------------------------------------------------------------------------
+
+///|
+pub suberror QueryxError {
+  Unsupported(String)
+  UnknownField(String)
+  EmptyAnd
+  EmptyOr
+} derive(Debug)
 
 // ---------------------------------------------------------------------------
 // FieldResolver — map queryx field names to foxql ColumnRefs
@@ -53,54 +65,61 @@ pub fn to_foxql_op(op : CmpOp) -> @ast.Operator {
 
 ///|
 /// Convert a queryx Expr to a foxql Expr.
-/// Returns None for Empty, Lit, and Field (no SQL condition).
 pub fn[R : FieldResolver] to_foxql_expr(
   expr : Expr,
   resolver : R,
-) -> @ast.Expr? {
+) -> @ast.Expr raise QueryxError {
   match expr {
-    Expr::Empty => None
-    Expr::Lit(_) => None
-    Expr::Field(_) => None
+    Expr::Empty =>
+      raise QueryxError::Unsupported("Empty expression cannot be converted to SQL")
+    Expr::Lit(_) =>
+      raise QueryxError::Unsupported("Literal expression cannot be converted to SQL")
+    Expr::Field(_) =>
+      raise QueryxError::Unsupported("Field expression cannot be converted to SQL")
     Expr::Compare(field, op, val) => {
       let col = match resolver.resolve_column(field) {
         Some(c) => c
-        None => return None
+        None => raise QueryxError::UnknownField(field)
       }
-      Some(@ast.Expr::Compare(col, to_foxql_op(op), to_foxql_value(val)))
+      @ast.Expr::Compare(col, to_foxql_op(op), to_foxql_value(val))
     }
     Expr::Between(field, lo, hi) => {
       let col = match resolver.resolve_column(field) {
         Some(c) => c
-        None => return None
+        None => raise QueryxError::UnknownField(field)
       }
-      Some(
-        @ast.Expr::Between(col, to_foxql_value(lo), to_foxql_value(hi)),
-      )
+      @ast.Expr::Between(col, to_foxql_value(lo), to_foxql_value(hi))
     }
     Expr::StrMatch(field, kind, pattern) => {
       let col = match resolver.resolve_column(field) {
         Some(c) => c
-        None => return None
+        None => raise QueryxError::UnknownField(field)
       }
       let (op, sql_pattern) = strmatch_to_like(kind, pattern)
-      Some(
-        @ast.Expr::Compare(col, op, @ast.Value::String(sql_pattern)),
-      )
+      @ast.Expr::Compare(col, op, @ast.Value::String(sql_pattern))
     }
     Expr::And(sub_exprs) => {
       let converted = collect_exprs(sub_exprs, resolver)
-      make_composed(fn(x) { @ast.Expr::And(x) }, converted)
+      if converted.length() == 0 {
+        raise QueryxError::EmptyAnd
+      } else if converted.length() == 1 {
+        converted[0]
+      } else {
+        @ast.Expr::And(converted)
+      }
     }
     Expr::Or(sub_exprs) => {
       let converted = collect_exprs(sub_exprs, resolver)
-      make_composed(fn(x) { @ast.Expr::Or(x) }, converted)
+      if converted.length() == 0 {
+        raise QueryxError::EmptyOr
+      } else if converted.length() == 1 {
+        converted[0]
+      } else {
+        @ast.Expr::Or(converted)
+      }
     }
     Expr::Not(inner) => {
-      match to_foxql_expr(inner, resolver) {
-        Some(e) => Some(@ast.Expr::Not(e))
-        None => None
-      }
+      @ast.Expr::Not(to_foxql_expr(inner, resolver))
     }
   }
 }
@@ -109,29 +128,13 @@ pub fn[R : FieldResolver] to_foxql_expr(
 fn[R : FieldResolver] collect_exprs(
   exprs : Array[Expr],
   resolver : R,
-) -> Array[@ast.Expr] {
+) -> Array[@ast.Expr] raise QueryxError {
   let converted : Array[@ast.Expr] = []
   for e in exprs {
-    match to_foxql_expr(e, resolver) {
-      Some(c) => converted.push(c)
-      None => ()
-    }
+    let c = to_foxql_expr(e, resolver)
+    converted.push(c)
   }
   converted
-}
-
-///|
-fn make_composed(
-  cons : (Array[@ast.Expr]) -> @ast.Expr,
-  parts : Array[@ast.Expr],
-) -> @ast.Expr? {
-  if parts.length() == 0 {
-    None
-  } else if parts.length() == 1 {
-    Some(parts[0])
-  } else {
-    Some(cons(parts))
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -152,28 +155,29 @@ fn strmatch_to_like(kind : StrKind, pattern : String) -> (@ast.Operator, String)
 // ---------------------------------------------------------------------------
 
 ///|
-/// Apply a queryx Query to a foxql SelectBuilder (WHERE, ORDER BY, LIMIT, OFFSET).
-pub fn[R : FieldResolver] apply_select(
+/// Convert a queryx Query to a foxql SelectBuilder (WHERE, ORDER BY, LIMIT).
+pub fn[R : FieldResolver] to_select(
   query : Query,
-  builder : @builder.SelectBuilder,
+  table : @builder.Table,
   resolver : R,
-) -> @builder.SelectBuilder {
-  let b1 = match to_foxql_expr(query.filter, resolver) {
-    Some(cond) => builder.where_(cond)
-    None => builder
+) -> @builder.SelectBuilder raise QueryxError {
+  let builder = @builder.SelectBuilder::new(table, [])
+  let filtered = if query.filter is Expr::Empty {
+    builder
+  } else {
+    builder.where_(to_foxql_expr(query.filter, resolver))
   }
-  let b2 = match query.order_by {
-    Some(order) => apply_order(b1, order, resolver)
-    None => b1
+  let ordered = match query.order_by {
+    Some(order) => apply_order(filtered, order, resolver)
+    None => filtered
   }
   match query.page {
-    Some(page) => b2.limit(page.size)
-    None => b2
+    Some(page) => ordered.limit(page.size)
+    None => ordered
   }
 }
 
 ///|
-/// Apply a queryx Order string to a foxql SelectBuilder.
 fn[R : FieldResolver] apply_order(
   builder : @builder.SelectBuilder,
   order : Order,

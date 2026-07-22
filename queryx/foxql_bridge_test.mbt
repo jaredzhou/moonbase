@@ -33,7 +33,7 @@ impl FieldResolver for User with fn resolve_column(
 ///|
 test "bridge: compare eq" {
   let expr = Expr::Compare("age", CmpOp::Eq, Value::Int(18L))
-  let foxql_expr = to_foxql_expr(expr, user).unwrap()
+  let foxql_expr = to_foxql_expr(expr, user)
   let (sql, args) = @builder.SelectBuilder::new(user.table, []).where_(
     foxql_expr,
   ).to_sql()
@@ -45,7 +45,7 @@ test "bridge: compare eq" {
 ///|
 test "bridge: between" {
   let expr = Expr::Between("age", Value::Int(18L), Value::Int(65L))
-  let foxql_expr = to_foxql_expr(expr, user).unwrap()
+  let foxql_expr = to_foxql_expr(expr, user)
   let (sql, args) = @builder.SelectBuilder::new(user.table, []).where_(
     foxql_expr,
   ).to_sql()
@@ -60,7 +60,7 @@ test "bridge: between" {
 ///|
 test "bridge: strmatch contains" {
   let expr = Expr::StrMatch("name", StrKind::Contains, "tom")
-  let foxql_expr = to_foxql_expr(expr, user).unwrap()
+  let foxql_expr = to_foxql_expr(expr, user)
   let (sql, args) = @builder.SelectBuilder::new(user.table, []).where_(
     foxql_expr,
   ).to_sql()
@@ -77,7 +77,7 @@ test "bridge: and composition" {
       Expr::StrMatch("name", StrKind::StartsWith, "A"),
     ],
   )
-  let foxql_expr = to_foxql_expr(expr, user).unwrap()
+  let foxql_expr = to_foxql_expr(expr, user)
   let (sql, args) = @builder.SelectBuilder::new(user.table, []).where_(
     foxql_expr,
   ).to_sql()
@@ -90,22 +90,36 @@ test "bridge: and composition" {
 }
 
 ///|
-test "bridge: empty filter" {
+test "bridge: empty filter raises" {
   let expr = Expr::Empty
-  let result = to_foxql_expr(expr, user)
-  assert_true(result is None)
+  try {
+    let _ = to_foxql_expr(expr, user)
+    abort("expected error")
+  } catch {
+    _ => ()
+  }
 }
 
 ///|
-test "bridge: query apply_select with where and limit" {
+test "bridge: unknown field raises" {
+  let expr = Expr::Compare("nope", CmpOp::Eq, Value::Null)
+  try {
+    let _ = to_foxql_expr(expr, user)
+    abort("expected error")
+  } catch {
+    _ => ()
+  }
+}
+
+///|
+test "bridge: to_select with where and limit" {
   let input : Json = {
     "filter": { "name": { "contains": "tom" } },
     "order_by": [{ "age": "desc" }],
     "page": { "after": "", "size": 10.0 },
   }
   let query : Query = @json.from_json(input)
-  let builder = @builder.SelectBuilder::new(user.table, [])
-  let result = apply_select(query, builder, user)
+  let result = to_select(query, user.table, user)
 
   let (sql, args) = result.to_sql()
 
