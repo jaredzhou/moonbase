@@ -93,6 +93,21 @@ pub impl[T] AnyColumn for Column[T] with fn sql_type(self : Column[T]) -> @ast.S
 }
 
 ///|
+pub impl AnyColumn for @ast.ColumnRef with fn name(self : @ast.ColumnRef) -> String {
+  self.name
+}
+
+///|
+pub impl AnyColumn for @ast.ColumnRef with fn table_name(self : @ast.ColumnRef) -> String {
+  self.table
+}
+
+///|
+pub impl AnyColumn for @ast.ColumnRef with fn sql_type(self : @ast.ColumnRef) -> @ast.SqlType {
+  @ast.SqlType::Text
+}
+
+///|
 /// Create a new column reference.
 pub fn[T] Column::new(
   name : String,

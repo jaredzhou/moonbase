@@ -86,6 +86,50 @@ test "bridge: schema table to_select" {
 }
 
 ///|
+test "bridge: schema table insert" {
+  let (sql, args) = users_schema
+    .insert([users_schema.col("name"), users_schema.col("age")])
+    .values(["Alice", 30])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="INSERT INTO users (name, age) VALUES ($1, $2)",
+  )
+  assert_true(args is [n, a] && n is String("Alice") && a is Int(30))
+}
+
+///|
+test "bridge: schema table update" {
+  let (sql, args) = users_schema
+    .update()
+    .set(users_schema.col("name"), "Bob")
+    .where_(users_schema.col("id").eq(1))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="UPDATE users SET users.name = $1 WHERE users.id = $2",
+  )
+  assert_true(args is [n, i] && n is String("Bob") && i is Int(1))
+}
+
+///|
+test "bridge: schema table delete" {
+  let (sql, args) = users_schema
+    .delete()
+    .where_(users_schema.col("id").eq(1))
+    .returning([users_schema.col("id")])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="DELETE FROM users WHERE users.id = $1 RETURNING users.id",
+  )
+  assert_true(args is [i] && i is Int(1))
+}
+
+///|
 test "bridge: schema table unknown field raises" {
   let query : Query = @json.from_json(
     { "filter": { "nope": 1.0 } },

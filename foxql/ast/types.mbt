@@ -57,6 +57,37 @@ pub(all) struct ColumnRef {
   table : String
 } derive(Debug, Eq)
 
+///|
+/// Compare with a value (for dynamic ColumnRefs).
+pub fn ColumnRef::eq(self : ColumnRef, value : &ToValue) -> Expr {
+  Expr::Compare(self, Operator::Eq, value.to_value())
+}
+
+///|
+pub fn ColumnRef::neq(self : ColumnRef, value : &ToValue) -> Expr {
+  Expr::Compare(self, Operator::Neq, value.to_value())
+}
+
+///|
+pub fn ColumnRef::gt(self : ColumnRef, value : &ToValue) -> Expr {
+  Expr::Compare(self, Operator::Gt, value.to_value())
+}
+
+///|
+pub fn ColumnRef::gte(self : ColumnRef, value : &ToValue) -> Expr {
+  Expr::Compare(self, Operator::Gte, value.to_value())
+}
+
+///|
+pub fn ColumnRef::lt(self : ColumnRef, value : &ToValue) -> Expr {
+  Expr::Compare(self, Operator::Lt, value.to_value())
+}
+
+///|
+pub fn ColumnRef::lte(self : ColumnRef, value : &ToValue) -> Expr {
+  Expr::Compare(self, Operator::Lte, value.to_value())
+}
+
 // ---------------------------------------------------------------------------
 // Bridge to moonpg — foxql Values can be passed directly to conn.query().
 // ---------------------------------------------------------------------------
