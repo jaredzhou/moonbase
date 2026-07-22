@@ -1,11 +1,39 @@
 // Column[T] — a statically-typed column reference.
 //
-// Users declare one field per column inside their table proxy struct.
-// The type parameter T determines which operator methods are available:
+// The type parameter T controls which operators are available at compile time:
 //
-//   Column[Int]    → eq, neq, gt, gte, lt, lte, in_, between, is_null
-//   Column[String] → eq, neq, like, in_, is_null
-//   Column[Bool]   → eq, neq, is_null
+//   Column[Int] / Column[Double] → eq, neq, gt, gte, lt, lte, between, in_, is_null
+//   Column[String]               → eq, neq, like, not_like, in_, is_null
+//   Column[Bool]                 → eq, neq, is_null
+
+// ---------------------------------------------------------------------------
+// Operator marker traits
+// ---------------------------------------------------------------------------
+
+///| Trait for types that support comparison operators (gt, gte, lt, lte, between).
+pub trait Comparable {
+  to_sql_type(Self) -> @ast.SqlType
+}
+
+///| Trait for types that support string operators (like, not_like).
+pub trait StringMatchable {
+  to_sql_type(Self) -> @ast.SqlType
+}
+
+///|
+pub impl Comparable for Int with fn to_sql_type(self : Int) -> @ast.SqlType {
+  @ast.SqlType::Integer
+}
+///|
+pub impl Comparable for Double with fn to_sql_type(self : Double) -> @ast.SqlType {
+  @ast.SqlType::DoublePrecision
+}
+///|
+pub impl StringMatchable for String with fn to_sql_type(self : String) -> @ast.SqlType {
+  @ast.SqlType::Text
+}
+
+// ---------------------------------------------------------------------------
 
 ///|
 /// A typed column reference in a specific table.
@@ -126,7 +154,7 @@ pub fn[T] Column::is_not_null(self : Column[T]) -> @ast.Expr {
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn[T : @ast.ToValue] Column::gt(
+pub fn[T : Comparable + @ast.ToValue] Column::gt(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
@@ -134,7 +162,7 @@ pub fn[T : @ast.ToValue] Column::gt(
 }
 
 ///|
-pub fn[T : @ast.ToValue] Column::gte(
+pub fn[T : Comparable + @ast.ToValue] Column::gte(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
@@ -142,7 +170,7 @@ pub fn[T : @ast.ToValue] Column::gte(
 }
 
 ///|
-pub fn[T : @ast.ToValue] Column::lt(
+pub fn[T : Comparable + @ast.ToValue] Column::lt(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
@@ -150,7 +178,7 @@ pub fn[T : @ast.ToValue] Column::lt(
 }
 
 ///|
-pub fn[T : @ast.ToValue] Column::lte(
+pub fn[T : Comparable + @ast.ToValue] Column::lte(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
@@ -162,7 +190,7 @@ pub fn[T : @ast.ToValue] Column::lte(
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn[T] Column::like(
+pub fn[T : StringMatchable] Column::like(
   self : Column[T],
   pattern : String,
 ) -> @ast.Expr {
@@ -174,7 +202,7 @@ pub fn[T] Column::like(
 }
 
 ///|
-pub fn[T] Column::not_like(
+pub fn[T : StringMatchable] Column::not_like(
   self : Column[T],
   pattern : String,
 ) -> @ast.Expr {
@@ -255,7 +283,7 @@ pub fn[T] Column::lte_select(
 }
 
 ///|
-pub fn[T : @ast.ToValue] Column::between(
+pub fn[T : Comparable + @ast.ToValue] Column::between(
   self : Column[T],
   lo : T,
   hi : T,
