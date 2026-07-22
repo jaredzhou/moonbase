@@ -3,5 +3,4 @@ members = [
   "./moonstore",
   "./queryx",
   "./foxql",
-  "../moonpg",
 ]
