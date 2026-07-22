@@ -22,8 +22,29 @@ pub suberror QueryxError {
 
 ///|
 /// Trait for resolving queryx string field names to foxql ColumnRefs.
+/// Also provides the table name so to_select doesn't need a separate Table argument.
 pub(open) trait FieldResolver {
   fn resolve_column(Self, field : String) -> @ast.ColumnRef?
+  fn table_name(Self) -> String
+}
+
+///|
+pub impl FieldResolver for @foxql.SchemaTable with fn resolve_column(
+  self : @foxql.SchemaTable,
+  field : String,
+) -> @ast.ColumnRef? {
+  if self.has_column(field) {
+    Some(self.col(field))
+  } else {
+    None
+  }
+}
+
+///|
+pub impl FieldResolver for @foxql.SchemaTable with fn table_name(
+  self : @foxql.SchemaTable,
+) -> String {
+  self.table_name
 }
 
 // ---------------------------------------------------------------------------
@@ -156,11 +177,12 @@ fn strmatch_to_like(kind : StrKind, pattern : String) -> (@ast.Operator, String)
 
 ///|
 /// Convert a queryx Query to a foxql SelectBuilder (WHERE, ORDER BY, LIMIT).
+/// The resolver provides both field→column mapping and the table name.
 pub fn[R : FieldResolver] to_select(
   query : Query,
-  table : @builder.Table,
   resolver : R,
 ) -> @builder.SelectBuilder raise QueryxError {
+  let table = @builder.Table::new(resolver.table_name())
   let builder = @builder.SelectBuilder::new(table, [])
   let filtered = if query.filter is Expr::Empty {
     builder

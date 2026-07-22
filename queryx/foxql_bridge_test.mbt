@@ -1,5 +1,38 @@
 // Blackbox tests for queryx → foxql bridge.
 
+// ---------------------------------------------------------------------------
+// Schema for SchemaTable tests
+// ---------------------------------------------------------------------------
+
+let test_schema : @foxql.Schema = @foxql.Schema::load(
+  [
+    {
+      table_name: "users",
+      column_name: "id",
+      sql_type: @ast.SqlType::Integer,
+    },
+    {
+      table_name: "users",
+      column_name: "name",
+      sql_type: @ast.SqlType::Text,
+    },
+    {
+      table_name: "users",
+      column_name: "age",
+      sql_type: @ast.SqlType::Integer,
+    },
+    {
+      table_name: "orders",
+      column_name: "amount",
+      sql_type: @ast.SqlType::Integer,
+    },
+  ],
+)
+
+let users_schema : @foxql.SchemaTable = test_schema.table("users")
+
+// ---------------------------------------------------------------------------
+
 struct User {
   table : @builder.Table
   id : @builder.Column[Int]
@@ -23,6 +56,45 @@ impl FieldResolver for User with fn resolve_column(
     "name" => Some(self.name.to_ref())
     "age" => Some(self.age.to_ref())
     _ => None
+  }
+}
+
+impl FieldResolver for User with fn table_name(self : User) -> String {
+  "users"
+}
+
+// ---------------------------------------------------------------------------
+// SchemaTable → to_select
+// ---------------------------------------------------------------------------
+
+///|
+test "bridge: schema table to_select" {
+  let input : Json = {
+    "filter": { "name": { "contains": "tom" }, "age": { "gt": 18.0 } },
+    "order_by": [{ "age": "desc" }],
+    "page": { "after": "", "size": 10.0 },
+  }
+  let query : Query = @json.from_json(input)
+  let builder = to_select(query, users_schema)
+  let (sql, args) = builder.to_sql()
+
+  inspect(
+    sql,
+    content="SELECT * FROM users WHERE (users.name LIKE $1 AND users.age > $2) ORDER BY users.age DESC LIMIT $3",
+  )
+  assert_true(args is [s, a, l] && s is String("%tom%") && a is Int(18) && l is Int(10))
+}
+
+///|
+test "bridge: schema table unknown field raises" {
+  let query : Query = @json.from_json(
+    { "filter": { "nope": 1.0 } },
+  )
+  try {
+    let _builder = to_select(query, users_schema)
+    abort("expected error")
+  } catch {
+    _ => ()
   }
 }
 
@@ -119,9 +191,8 @@ test "bridge: to_select with where and limit" {
     "page": { "after": "", "size": 10.0 },
   }
   let query : Query = @json.from_json(input)
-  let result = to_select(query, user.table, user)
-
-  let (sql, args) = result.to_sql()
+  let builder = to_select(query, user)
+  let (sql, args) = builder.to_sql()
 
   inspect(
     sql,
