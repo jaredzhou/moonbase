@@ -377,7 +377,7 @@ test "where multiple or_ flattens" {
 test "insert single row" {
   let (sql, args) = users.table
     .insert([users.name, users.age])
-    .values([@ast.Value::String("Alice"), @ast.Value::Int(30)])
+    .values(["Alice", 30])
     .to_sql()
 
   inspect(
@@ -392,8 +392,8 @@ test "insert multi row" {
   let (sql, args) = users.table
     .insert([users.name, users.age])
     .rows([
-      [@ast.Value::String("Alice"), @ast.Value::Int(30)],
-      [@ast.Value::String("Bob"), @ast.Value::Int(25)],
+      ["Alice", 30],
+      ["Bob", 25],
     ])
     .to_sql()
 
@@ -414,7 +414,7 @@ test "insert multi row" {
 test "insert with returning" {
   let (sql, args) = users.table
     .insert([users.name, users.age])
-    .values([@ast.Value::String("Charlie"), @ast.Value::Int(42)])
+    .values(["Charlie", 42])
     .returning([users.id])
     .to_sql()
 
@@ -433,8 +433,8 @@ test "insert with returning" {
 test "update set with where" {
   let (sql, args) = users.table
     .update()
-    .set(users.name.to_ref(), @ast.Value::String("Dave"))
-    .set(users.age.to_ref(), @ast.Value::Int(99))
+    .set(users.name, "Dave")
+    .set(users.age, 99)
     .where_(users.id.eq(1))
     .to_sql()
 
@@ -454,7 +454,7 @@ test "update set with where" {
 test "update with returning" {
   let (sql, args) = users.table
     .update()
-    .set(users.age.to_ref(), @ast.Value::Int(55))
+    .set(users.age, 55)
     .where_(users.id.eq(1))
     .returning([users.name, users.age])
     .to_sql()

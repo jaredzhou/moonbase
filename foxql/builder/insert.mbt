@@ -19,21 +19,21 @@ pub fn InsertBuilder::new(
 }
 
 ///|
-/// Add a single-row VALUES clause.
+/// Add a single-row VALUES clause.  Pass values as &ToValue trait objects.
 pub fn InsertBuilder::values(
   self : InsertBuilder,
-  vals : Array[@ast.Value],
+  vals : Array[&@ast.ToValue],
 ) -> InsertBuilder {
-  InsertBuilder::{ ..self, values: [vals] }
+  InsertBuilder::{ ..self, values: [vals.map(fn(v) { v.to_value() })] }
 }
 
 ///|
 /// Add a multi-row VALUES clause.
 pub fn InsertBuilder::rows(
   self : InsertBuilder,
-  rows : Array[Array[@ast.Value]],
+  rows : Array[Array[&@ast.ToValue]],
 ) -> InsertBuilder {
-  InsertBuilder::{ ..self, values: rows }
+  InsertBuilder::{ ..self, values: rows.map(fn(row) { row.map(fn(v) { v.to_value() }) }) }
 }
 
 ///|

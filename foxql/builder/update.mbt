@@ -27,14 +27,16 @@ pub fn UpdateBuilder::new(table : Table) -> UpdateBuilder {
 }
 
 ///|
-/// Add a SET clause.
+/// Add a SET clause.  Column as &AnyColumn, value as &ToValue.
 pub fn UpdateBuilder::set(
   self : UpdateBuilder,
-  column : @ast.ColumnRef,
-  value : @ast.Value,
+  column : &AnyColumn,
+  value : &@ast.ToValue,
 ) -> UpdateBuilder {
-  self.set_clauses.push(@ast.SetClause::{ column, value })
-  UpdateBuilder::{ ..self, set_clauses: self.set_clauses }
+  self.set_clauses.push(
+    @ast.SetClause::{ column: column.to_ref(), value: value.to_value() },
+  )
+  self
 }
 
 ///|
