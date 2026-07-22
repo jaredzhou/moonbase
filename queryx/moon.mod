@@ -11,7 +11,7 @@
 
 name = "jaredzhou/queryx"
 
-version = "0.2.0"
+version = "0.2.1"
 
 readme = "README.mbt.md"
 
@@ -26,5 +26,5 @@ preferred_target = "native"
 description = "JSON-queryable filter DSL with foxql SQL builder bridge"
 
 import {
-  "jaredzhou/foxql@0.1.2",
+  "jaredzhou/foxql@0.1.3",
 }
