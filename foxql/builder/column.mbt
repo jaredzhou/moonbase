@@ -213,3 +213,39 @@ pub fn[T : @ast.ToValue] Column::between(
 ) -> @ast.Expr {
   @ast.Expr::Between(self.to_ref(), lo.to_value(), hi.to_value())
 }
+
+// ---------------------------------------------------------------------------
+// Aggregation functions
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T] Column::count(self : Column[T]) -> @ast.Aggregation {
+  @ast.Aggregation::Count(Some(self.to_ref()))
+}
+
+///|
+pub fn[T] Column::sum(self : Column[T]) -> @ast.Aggregation {
+  @ast.Aggregation::Sum(self.to_ref())
+}
+
+///|
+pub fn[T] Column::avg(self : Column[T]) -> @ast.Aggregation {
+  @ast.Aggregation::Avg(self.to_ref())
+}
+
+///|
+pub fn[T] Column::min(self : Column[T]) -> @ast.Aggregation {
+  @ast.Aggregation::Min(self.to_ref())
+}
+
+///|
+pub fn[T] Column::max(self : Column[T]) -> @ast.Aggregation {
+  @ast.Aggregation::Max(self.to_ref())
+}
+
+///|
+/// COUNT(*) — count all rows.
+pub fn count_star() -> @ast.Aggregation {
+  @ast.Aggregation::Count(None)
+}
+

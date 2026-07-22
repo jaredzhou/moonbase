@@ -680,6 +680,75 @@ test "select with join where order by" {
 }
 
 // ---------------------------------------------------------------------------
+// GROUP BY + HAVING + aggregations
+// ---------------------------------------------------------------------------
+
+///|
+test "select with count aggregation" {
+  let (sql, args) = users.table
+    .select(columns=[users.name])
+    .agg(users.id.count())
+    .group_by([users.name])
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT users.name, COUNT(users.id) FROM users GROUP BY users.name",
+  )
+  assert_true(args is [])
+}
+
+///|
+test "select with sum and having" {
+  let (sql, args) = orders.table
+    .select(columns=[orders.user_id])
+    .agg(orders.amount.sum())
+    .group_by([orders.user_id])
+    .having(orders.amount.sum().gt(1000))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT orders.user_id, SUM(orders.amount) FROM orders GROUP BY orders.user_id HAVING SUM(orders.amount) > $1",
+  )
+  assert_true(args is [n] && n is Int(1000))
+}
+
+///|
+test "select count star with having" {
+  let (sql, args) = orders.table
+    .select(columns=[orders.user_id])
+    .agg(@builder.count_star())
+    .group_by([orders.user_id])
+    .having(@builder.count_star().gt(5))
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT orders.user_id, COUNT(*) FROM orders GROUP BY orders.user_id HAVING COUNT(*) > $1",
+  )
+  assert_true(args is [n] && n is Int(5))
+}
+
+///|
+test "select multi agg with order" {
+  let (sql, args) = orders.table
+    .select(columns=[orders.user_id])
+    .agg(orders.amount.sum())
+    .agg(orders.id.count())
+    .group_by([orders.user_id])
+    .order_by(orders.user_id.asc())
+    .limit(10)
+    .to_sql()
+
+  inspect(
+    sql,
+    content="SELECT orders.user_id, SUM(orders.amount), COUNT(orders.id) FROM orders GROUP BY orders.user_id ORDER BY orders.user_id ASC LIMIT $1",
+  )
+  assert_true(args is [n] && n is Int(10))
+}
+
+// ---------------------------------------------------------------------------
 // Type-state verification (compile-time — verified by moon check)
 //
 // These are NOT runtime tests.  The following calls should produce a

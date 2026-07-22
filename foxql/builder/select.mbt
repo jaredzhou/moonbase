@@ -5,8 +5,11 @@
 pub(all) struct SelectBuilder {
   table : Table
   columns : Array[@ast.ColumnRef]
+  aggregates : Array[@ast.Aggregation]
   where_clause : @ast.Expr?
   joins : Array[@ast.JoinClause]
+  group_by : Array[@ast.ColumnRef]
+  having : @ast.Expr?
   order_by : Array[@ast.OrderByClause]
   limit : Int?
   offset : Int?
@@ -23,8 +26,11 @@ pub fn SelectBuilder::new(
   SelectBuilder::{
     table,
     columns,
+    aggregates: [],
     where_clause: None,
     joins: [],
+    group_by: [],
+    having: None,
     order_by: [],
     limit: None,
     offset: None,
@@ -99,13 +105,47 @@ pub fn SelectBuilder::distinct_on(
 }
 
 ///|
+/// Add an aggregate expression to the SELECT list.
+pub fn SelectBuilder::agg(
+  self : SelectBuilder,
+  a : @ast.Aggregation,
+) -> SelectBuilder {
+  self.aggregates.push(a)
+  self
+}
+
+///|
+/// Add a GROUP BY clause.
+pub fn SelectBuilder::group_by(
+  self : SelectBuilder,
+  cols : Array[&AnyColumn],
+) -> SelectBuilder {
+  SelectBuilder::{ ..self, group_by: cols.map(c=>c.to_ref()) }
+}
+
+///|
+/// Attach a HAVING clause (must be after GROUP BY).
+pub fn SelectBuilder::having(
+  self : SelectBuilder,
+  condition : @ast.Expr,
+) -> SelectBuilder {
+  SelectBuilder::{ ..self, having: Some(condition) }
+}
+
+///|
 /// Produce the AST node without rendering.
 pub fn SelectBuilder::build(self : SelectBuilder) -> @ast.SelectStmt {
+  let sel_cols = self.columns.map(fn(c) { @ast.SelectExpr::Col(c) })
+  for a in self.aggregates {
+    sel_cols.push(@ast.SelectExpr::Agg(a))
+  }
   @ast.SelectStmt::{
     table: self.table.qualified_name(),
-    columns: self.columns,
+    columns: sel_cols,
     where_clause: self.where_clause,
     joins: self.joins,
+    group_by: self.group_by,
+    having: self.having,
     order_by: self.order_by,
     limit: self.limit,
     offset: self.offset,

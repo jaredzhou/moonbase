@@ -40,13 +40,18 @@ pub fn select_stmt_to_sql(stmt : @ast.SelectStmt) -> (String, Array[@ast.Value])
   let columns_part = if stmt.columns.length() == 0 {
     "*"
   } else {
-    render_columns(stmt.columns)
+    render_select_list(stmt.columns)
   }
   let (join_part, args_join) = render_joins(stmt.joins)
   let (where_part, where_args) = render_where(stmt.where_clause)
   let renumbered_where = renumber_placeholders(where_part, args_join.length())
   let args0 = args_join
   for a in where_args {
+    args0.push(a)
+  }
+  let group_part = render_group_by(stmt.group_by)
+  let (having_part, having_args) = render_having(stmt.having, args0.length())
+  for a in having_args {
     args0.push(a)
   }
   let order_part = render_order_by(stmt.order_by)
@@ -67,6 +72,8 @@ pub fn select_stmt_to_sql(stmt : @ast.SelectStmt) -> (String, Array[@ast.Value])
     stmt.table +
     join_part +
     where_final +
+    group_part +
+    having_part +
     order_part +
     limit_part +
     offset_part,
@@ -114,6 +121,10 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
     }
     @ast.Expr::IsNotNull(col) => {
       (col.table + "." + col.name + " IS NOT NULL", [])
+    }
+    @ast.Expr::AggCompare(agg, op, val) => {
+      let agg_sql = render_aggregation(agg)
+      (agg_sql + " " + op.to_sql_op() + " $1", [val])
     }
   }
 }
@@ -255,6 +266,59 @@ fn render_set_clauses_rec(
     let prefix = if i == 0 { "" } else { ", " }
     let next = c.column.table + "." + c.column.name + " = $" + n.to_string()
     render_set_clauses_rec(clauses, i + 1, param_offset, acc_sql + prefix + next, acc_args)
+  }
+}
+
+fn render_select_list(cols : Array[@ast.SelectExpr]) -> String {
+  render_select_list_rec(cols, 0, "")
+}
+
+fn render_select_list_rec(
+  cols : Array[@ast.SelectExpr],
+  i : Int,
+  acc : String,
+) -> String {
+  if i >= cols.length() {
+    acc
+  } else {
+    let prefix = if i == 0 { "" } else { ", " }
+    let next = match cols[i] {
+      @ast.SelectExpr::Col(c) => c.table + "." + c.name
+      @ast.SelectExpr::Agg(a) => render_aggregation(a)
+    }
+    render_select_list_rec(cols, i + 1, acc + prefix + next)
+  }
+}
+
+fn render_aggregation(agg : @ast.Aggregation) -> String {
+  match agg {
+    @ast.Aggregation::Count(None) => "COUNT(*)"
+    @ast.Aggregation::Count(Some(c)) => "COUNT(" + c.table + "." + c.name + ")"
+    @ast.Aggregation::Sum(c) => "SUM(" + c.table + "." + c.name + ")"
+    @ast.Aggregation::Avg(c) => "AVG(" + c.table + "." + c.name + ")"
+    @ast.Aggregation::Min(c) => "MIN(" + c.table + "." + c.name + ")"
+    @ast.Aggregation::Max(c) => "MAX(" + c.table + "." + c.name + ")"
+  }
+}
+
+fn render_group_by(cols : Array[@ast.ColumnRef]) -> String {
+  if cols.length() == 0 {
+    ""
+  } else {
+    " GROUP BY " + render_columns(cols)
+  }
+}
+
+fn render_having(
+  cond : @ast.Expr?,
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
+  match cond {
+    Some(c) => {
+      let (sql, args) = expr_to_sql(c)
+      (renumber_placeholders(" HAVING " + sql, param_offset), args)
+    }
+    None => ("", [])
   }
 }
 

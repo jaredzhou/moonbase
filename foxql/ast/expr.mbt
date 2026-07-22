@@ -1,12 +1,21 @@
 // AST statements (Stmt) and the WHERE-clause expression tree (Expr).
 
 ///|
+/// An item in the SELECT list — either a column reference or an aggregate call.
+pub(all) enum SelectExpr {
+  Col(ColumnRef)
+  Agg(Aggregation)
+} derive(Debug, Eq)
+
+///|
 /// A SELECT statement.
 pub(all) struct SelectStmt {
   table : String
-  columns : Array[ColumnRef]  // empty = SELECT *
+  columns : Array[SelectExpr]  // empty = SELECT *
   where_clause : Expr?
   joins : Array[JoinClause]
+  group_by : Array[ColumnRef]
+  having : Expr?
   order_by : Array[OrderByClause]
   limit : Int?
   offset : Int?
@@ -27,6 +36,7 @@ pub(all) enum Expr {
   Between(ColumnRef, Value, Value)
   IsNull(ColumnRef)
   IsNotNull(ColumnRef)
+  AggCompare(Aggregation, Operator, Value)
 } derive(Debug, Eq)
 
 ///|
@@ -133,3 +143,55 @@ pub(all) enum Aggregation {
   Min(ColumnRef)
   Max(ColumnRef)
 } derive(Debug, Eq)
+
+// ---------------------------------------------------------------------------
+// Aggregation operators (for HAVING clauses)
+// ---------------------------------------------------------------------------
+
+///|
+pub fn[T : ToValue] Aggregation::gt(
+  self : Aggregation,
+  value : T,
+) -> Expr {
+  Expr::AggCompare(self, Operator::Gt, value.to_value())
+}
+
+///|
+pub fn[T : ToValue] Aggregation::gte(
+  self : Aggregation,
+  value : T,
+) -> Expr {
+  Expr::AggCompare(self, Operator::Gte, value.to_value())
+}
+
+///|
+pub fn[T : ToValue] Aggregation::lt(
+  self : Aggregation,
+  value : T,
+) -> Expr {
+  Expr::AggCompare(self, Operator::Lt, value.to_value())
+}
+
+///|
+pub fn[T : ToValue] Aggregation::lte(
+  self : Aggregation,
+  value : T,
+) -> Expr {
+  Expr::AggCompare(self, Operator::Lte, value.to_value())
+}
+
+///|
+pub fn[T : ToValue] Aggregation::eq(
+  self : Aggregation,
+  value : T,
+) -> Expr {
+  Expr::AggCompare(self, Operator::Eq, value.to_value())
+}
+
+///|
+pub fn[T : ToValue] Aggregation::neq(
+  self : Aggregation,
+  value : T,
+) -> Expr {
+  Expr::AggCompare(self, Operator::Neq, value.to_value())
+}
