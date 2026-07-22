@@ -54,8 +54,8 @@ pub fn Expr::or_(
 
 ///|
 /// Wrap an expression with NOT.
-pub fn Expr::not_(self : Expr) -> Expr {
-  Expr::Not(self)
+pub fn not_(expr : Expr) -> Expr {
+  Expr::Not(expr)
 }
 
 ///|

@@ -233,13 +233,10 @@ test "where in_ list" {
 
 ///|
 test "where in_select subquery" {
+  let orders = @builder.Table::new("orders")
   let user_id = @builder.Column::new("user_id", "orders", @ast.SqlType::Integer)
 
-  let sub = @ast.SelectStmt::{
-    table: "orders",
-    columns: [@ast.ColumnRef::{ name: "user_id", table: "orders" }],
-    where_clause: Some(user_id.gt(0)),
-  }
+  let sub = orders.select(columns=[user_id]).where_(user_id.gt(0)).to_stmt()
 
   let (sql, args) = users.table
     .select()
@@ -289,7 +286,7 @@ test "where with or_ composition" {
 test "where with not_ composition" {
   let (sql, args) = users.table
     .select()
-    .where_(users.age.eq(0).not_())
+    .where_(@ast.not_(users.age.eq(0)))
     .to_sql()
 
   inspect(
@@ -337,7 +334,7 @@ test "where nested and/or" {
 test "where complex nested not with and" {
   let (sql, args) = users.table
     .select()
-    .where_(users.age.in_([1, 2, 3]).not_().and_(users.name.like("A%")))
+    .where_(@ast.not_(users.age.in_([1, 2, 3])).and_(users.name.like("A%")))
     .to_sql()
 
   inspect(

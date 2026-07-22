@@ -28,12 +28,17 @@ pub fn SelectBuilder::where_(
 }
 
 ///|
-/// Render the query to a parameterised SQL string + args array.
-pub fn SelectBuilder::to_sql(self : SelectBuilder) -> (String, Array[@ast.Value]) {
-  let node = @ast.SelectStmt::{
+/// Produce the AST node without rendering.
+pub fn SelectBuilder::to_stmt(self : SelectBuilder) -> @ast.SelectStmt {
+  @ast.SelectStmt::{
     table: self.table.qualified_name(),
     columns: self.columns,
     where_clause: self.where_clause,
   }
-  @tosql.select_stmt_to_sql(node)
+}
+
+///|
+/// Render the query to a parameterised SQL string + args array.
+pub fn SelectBuilder::to_sql(self : SelectBuilder) -> (String, Array[@ast.Value]) {
+  @tosql.select_stmt_to_sql(self.to_stmt())
 }
