@@ -16,6 +16,7 @@ pub(all) enum Expr {
   Or(Array[Expr])
   Not(Expr)
   InList(ColumnRef, Array[Value])
+  InSelect(ColumnRef, SelectStmt)
   Between(ColumnRef, Value, Value)
   IsNull(ColumnRef)
   IsNotNull(ColumnRef)
@@ -49,6 +50,12 @@ pub fn Expr::or_(
     }
     _ => Expr::Or([self, other])
   }
+}
+
+///|
+/// Wrap an expression with NOT.
+pub fn Expr::not_(self : Expr) -> Expr {
+  Expr::Not(self)
 }
 
 ///|

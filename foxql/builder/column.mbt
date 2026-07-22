@@ -161,11 +161,19 @@ pub fn[T] Column::not_like(
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn[T : @ast.ToValue] Column::in_vals(
+pub fn[T : @ast.ToValue] Column::in_(
   self : Column[T],
   vals : Array[T],
 ) -> @ast.Expr {
   @ast.Expr::InList(self.to_ref(), vals.map(fn(v) { v.to_value() }))
+}
+
+///|
+pub fn[T] Column::in_select(
+  self : Column[T],
+  subquery : @ast.SelectStmt,
+) -> @ast.Expr {
+  @ast.Expr::InSelect(self.to_ref(), subquery)
 }
 
 ///|

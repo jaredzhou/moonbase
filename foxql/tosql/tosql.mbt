@@ -64,6 +64,10 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
       let (placeholders, args) = render_value_list(vals)
       (col.table + "." + col.name + " IN (" + placeholders + ")", args)
     }
+    @ast.Expr::InSelect(col, sub) => {
+      let (sub_sql, sub_args) = select_stmt_to_sql(sub)
+      (col.table + "." + col.name + " IN (" + sub_sql + ")", sub_args)
+    }
     @ast.Expr::Between(col, lo, hi) => {
       (col.table + "." + col.name + " BETWEEN $1 AND $2", [lo, hi])
     }
