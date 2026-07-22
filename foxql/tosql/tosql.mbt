@@ -10,16 +10,18 @@ pub trait ToSql {
 }
 
 ///|
-impl ToSql for @ast.SelectStmt with fn to_sql(
-  self : @ast.SelectStmt,
-) -> (String, Array[@ast.Value]) {
+pub impl ToSql for @ast.SelectStmt with fn to_sql(self : @ast.SelectStmt) -> (
+  String,
+  Array[@ast.Value],
+) {
   select_stmt_to_sql(self)
 }
 
 ///|
-impl ToSql for @ast.Expr with fn to_sql(
-  self : @ast.Expr,
-) -> (String, Array[@ast.Value]) {
+pub impl ToSql for @ast.Expr with fn to_sql(self : @ast.Expr) -> (
+  String,
+  Array[@ast.Value],
+) {
   expr_to_sql(self)
 }
 
@@ -29,7 +31,9 @@ impl ToSql for @ast.Expr with fn to_sql(
 
 ///|
 /// Render a SelectStmt to parameterised SQL.
-pub fn select_stmt_to_sql(stmt : @ast.SelectStmt) -> (String, Array[@ast.Value]) {
+pub fn select_stmt_to_sql(
+  stmt : @ast.SelectStmt,
+) -> (String, Array[@ast.Value]) {
   let distinct_part = if stmt.distinct_on.length() > 0 {
     "DISTINCT ON (" + render_columns(stmt.distinct_on) + ") "
   } else if stmt.distinct {
@@ -89,18 +93,21 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
       let sql = col.table + "." + col.name + " " + op.to_sql_op() + " $1"
       (sql, [val])
     }
-    @ast.Expr::CompareCols(left, op, right) => {
+    @ast.Expr::CompareCols(left, op, right) =>
       (
-        left.table + "." + left.name + " " + op.to_sql_op() + " " + right.table + "." + right.name,
+        left.table +
+        "." +
+        left.name +
+        " " +
+        op.to_sql_op() +
+        " " +
+        right.table +
+        "." +
+        right.name,
         [],
       )
-    }
-    @ast.Expr::And(conditions) => {
-      render_composed(" AND ", conditions)
-    }
-    @ast.Expr::Or(conditions) => {
-      render_composed(" OR ", conditions)
-    }
+    @ast.Expr::And(conditions) => render_composed(" AND ", conditions)
+    @ast.Expr::Or(conditions) => render_composed(" OR ", conditions)
     @ast.Expr::Not(inner) => {
       let (sub_sql, sub_args) = expr_to_sql(inner)
       ("NOT (" + sub_sql + ")", sub_args)
@@ -113,15 +120,11 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
       let (sub_sql, sub_args) = select_stmt_to_sql(sub)
       (col.table + "." + col.name + " IN (" + sub_sql + ")", sub_args)
     }
-    @ast.Expr::Between(col, lo, hi) => {
+    @ast.Expr::Between(col, lo, hi) =>
       (col.table + "." + col.name + " BETWEEN $1 AND $2", [lo, hi])
-    }
-    @ast.Expr::IsNull(col) => {
-      (col.table + "." + col.name + " IS NULL", [])
-    }
-    @ast.Expr::IsNotNull(col) => {
+    @ast.Expr::IsNull(col) => (col.table + "." + col.name + " IS NULL", [])
+    @ast.Expr::IsNotNull(col) =>
       (col.table + "." + col.name + " IS NOT NULL", [])
-    }
     @ast.Expr::AggCompare(agg, op, val) => {
       let agg_sql = render_aggregation(agg)
       (agg_sql + " " + op.to_sql_op() + " $1", [val])
@@ -141,24 +144,38 @@ pub fn expr_to_sql(expr : @ast.Expr) -> (String, Array[@ast.Value]) {
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn insert_stmt_to_sql(stmt : @ast.InsertStmt) -> (String, Array[@ast.Value]) {
+pub fn insert_stmt_to_sql(
+  stmt : @ast.InsertStmt,
+) -> (String, Array[@ast.Value]) {
   let cols = render_column_names(stmt.columns)
   let (vals_sql, vals_args) = render_value_rows(stmt.values, 0)
   let offset = vals_args.length()
-  let (conflict_part, conflict_args) = render_on_conflict(stmt.on_conflict, offset)
+  let (conflict_part, conflict_args) = render_on_conflict(
+    stmt.on_conflict,
+    offset,
+  )
   let returning = render_returning(stmt.returning)
   let all_args = vals_args
   for a in conflict_args {
     all_args.push(a)
   }
   (
-    "INSERT INTO " + stmt.table + " (" + cols + ") VALUES " + vals_sql + conflict_part + returning,
+    "INSERT INTO " +
+    stmt.table +
+    " (" +
+    cols +
+    ") VALUES " +
+    vals_sql +
+    conflict_part +
+    returning,
     all_args,
   )
 }
 
 ///|
-pub fn update_stmt_to_sql(stmt : @ast.UpdateStmt) -> (String, Array[@ast.Value]) {
+pub fn update_stmt_to_sql(
+  stmt : @ast.UpdateStmt,
+) -> (String, Array[@ast.Value]) {
   let (set_sql, set_args) = render_set_clauses(stmt.set_clauses, 0)
   let (where_sql, where_args) = expr_to_sql(stmt.where_clause)
   let all_args = set_args
@@ -169,29 +186,36 @@ pub fn update_stmt_to_sql(stmt : @ast.UpdateStmt) -> (String, Array[@ast.Value])
   }
   let returning = render_returning(stmt.returning)
   (
-    "UPDATE " + stmt.table + " SET " + set_sql + " WHERE " + renumbered + returning,
+    "UPDATE " +
+    stmt.table +
+    " SET " +
+    set_sql +
+    " WHERE " +
+    renumbered +
+    returning,
     all_args,
   )
 }
 
 ///|
-pub fn delete_stmt_to_sql(stmt : @ast.DeleteStmt) -> (String, Array[@ast.Value]) {
+pub fn delete_stmt_to_sql(
+  stmt : @ast.DeleteStmt,
+) -> (String, Array[@ast.Value]) {
   let (where_sql, where_args) = expr_to_sql(stmt.where_clause)
   let returning = render_returning(stmt.returning)
-  (
-    "DELETE FROM " + stmt.table + " WHERE " + where_sql + returning,
-    where_args,
-  )
+  ("DELETE FROM " + stmt.table + " WHERE " + where_sql + returning, where_args)
 }
 
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
 
+///|
 fn render_column_names(cols : Array[@ast.ColumnRef]) -> String {
   render_column_names_rec(cols, 0, "")
 }
 
+///|
 fn render_column_names_rec(
   cols : Array[@ast.ColumnRef],
   i : Int,
@@ -205,6 +229,7 @@ fn render_column_names_rec(
   }
 }
 
+///|
 fn render_value_rows(
   rows : Array[Array[@ast.Value]],
   param_offset : Int,
@@ -212,6 +237,7 @@ fn render_value_rows(
   render_value_rows_rec(rows, 0, param_offset, "", [])
 }
 
+///|
 fn render_value_rows_rec(
   rows : Array[Array[@ast.Value]],
   i : Int,
@@ -223,15 +249,25 @@ fn render_value_rows_rec(
     (acc_sql, acc_args)
   } else {
     let row = rows[i]
-    let (row_sql, row_args) = render_value_row(row, param_offset + acc_args.length())
+    let (row_sql, row_args) = render_value_row(
+      row,
+      param_offset + acc_args.length(),
+    )
     for a in row_args {
       acc_args.push(a)
     }
     let prefix = if i == 0 { "" } else { ", " }
-    render_value_rows_rec(rows, i + 1, param_offset, acc_sql + prefix + "(" + row_sql + ")", acc_args)
+    render_value_rows_rec(
+      rows,
+      i + 1,
+      param_offset,
+      acc_sql + prefix + "(" + row_sql + ")",
+      acc_args,
+    )
   }
 }
 
+///|
 fn render_value_row(
   vals : Array[@ast.Value],
   param_offset : Int,
@@ -239,6 +275,7 @@ fn render_value_row(
   render_value_row_rec(vals, 0, param_offset, "", [])
 }
 
+///|
 fn render_value_row_rec(
   vals : Array[@ast.Value],
   i : Int,
@@ -252,10 +289,17 @@ fn render_value_row_rec(
     let n = param_offset + acc_args.length() + 1
     acc_args.push(vals[i])
     let prefix = if i == 0 { "" } else { ", " }
-    render_value_row_rec(vals, i + 1, param_offset, acc_sql + prefix + "$" + n.to_string(), acc_args)
+    render_value_row_rec(
+      vals,
+      i + 1,
+      param_offset,
+      acc_sql + prefix + "$" + n.to_string(),
+      acc_args,
+    )
   }
 }
 
+///|
 fn render_set_clauses(
   clauses : Array[@ast.SetClause],
   param_offset : Int,
@@ -263,6 +307,7 @@ fn render_set_clauses(
   render_set_clauses_rec(clauses, 0, param_offset, "", [])
 }
 
+///|
 fn render_set_clauses_rec(
   clauses : Array[@ast.SetClause],
   i : Int,
@@ -278,14 +323,22 @@ fn render_set_clauses_rec(
     acc_args.push(c.value)
     let prefix = if i == 0 { "" } else { ", " }
     let next = c.column.table + "." + c.column.name + " = $" + n.to_string()
-    render_set_clauses_rec(clauses, i + 1, param_offset, acc_sql + prefix + next, acc_args)
+    render_set_clauses_rec(
+      clauses,
+      i + 1,
+      param_offset,
+      acc_sql + prefix + next,
+      acc_args,
+    )
   }
 }
 
+///|
 fn render_select_list(cols : Array[@ast.SelectExpr]) -> String {
   render_select_list_rec(cols, 0, "")
 }
 
+///|
 fn render_select_list_rec(
   cols : Array[@ast.SelectExpr],
   i : Int,
@@ -303,6 +356,7 @@ fn render_select_list_rec(
   }
 }
 
+///|
 fn render_aggregation(agg : @ast.Aggregation) -> String {
   match agg {
     @ast.Aggregation::Count(None) => "COUNT(*)"
@@ -314,6 +368,7 @@ fn render_aggregation(agg : @ast.Aggregation) -> String {
   }
 }
 
+///|
 fn render_group_by(cols : Array[@ast.ColumnRef]) -> String {
   if cols.length() == 0 {
     ""
@@ -322,6 +377,7 @@ fn render_group_by(cols : Array[@ast.ColumnRef]) -> String {
   }
 }
 
+///|
 fn render_having(
   cond : @ast.Expr?,
   param_offset : Int,
@@ -335,10 +391,12 @@ fn render_having(
   }
 }
 
+///|
 fn render_joins(joins : Array[@ast.JoinClause]) -> (String, Array[@ast.Value]) {
   render_joins_rec(joins, 0, "", [])
 }
 
+///|
 fn render_joins_rec(
   joins : Array[@ast.JoinClause],
   i : Int,
@@ -359,6 +417,7 @@ fn render_joins_rec(
   }
 }
 
+///|
 fn render_order_by(clauses : Array[@ast.OrderByClause]) -> String {
   if clauses.length() == 0 {
     ""
@@ -367,6 +426,7 @@ fn render_order_by(clauses : Array[@ast.OrderByClause]) -> String {
   }
 }
 
+///|
 fn render_order_by_rec(
   clauses : Array[@ast.OrderByClause],
   i : Int,
@@ -386,29 +446,38 @@ fn render_order_by_rec(
   }
 }
 
-fn render_limit(limit : Int?, param_offset : Int) -> (String, Array[@ast.Value]) {
+///|
+fn render_limit(
+  limit : Int?,
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
   match limit {
-    Some(n) => (" LIMIT $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
+    Some(n) =>
+      (" LIMIT $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
     None => ("", [])
   }
 }
 
-fn render_offset(offset : Int?, param_offset : Int) -> (String, Array[@ast.Value]) {
+///|
+fn render_offset(
+  offset : Int?,
+  param_offset : Int,
+) -> (String, Array[@ast.Value]) {
   match offset {
-    Some(n) => (" OFFSET $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
+    Some(n) =>
+      (" OFFSET $" + (param_offset + 1).to_string(), [@ast.Value::Int(n)])
     None => ("", [])
   }
 }
 
+///|
 fn render_on_conflict(
   conflict : @ast.OnConflict?,
   param_offset : Int,
 ) -> (String, Array[@ast.Value]) {
   match conflict {
-    Some(@ast.OnConflict::DoNothing(target)) => (
-      " ON CONFLICT" + target + " DO NOTHING",
-      [],
-    )
+    Some(@ast.OnConflict::DoNothing(target)) =>
+      (" ON CONFLICT" + target + " DO NOTHING", [])
     Some(@ast.OnConflict::DoUpdate(target, sets)) => {
       let (set_sql, set_args) = render_set_clauses(sets, param_offset)
       (" ON CONFLICT" + target + " DO UPDATE SET " + set_sql, set_args)
@@ -417,19 +486,20 @@ fn render_on_conflict(
   }
 }
 
+///|
 fn render_returning(cols : Array[@ast.ColumnRef]?) -> String {
   match cols {
-    Some(cs) if cs.length() > 0 => {
-      " RETURNING " + render_columns(cs)
-    }
+    Some(cs) if cs.length() > 0 => " RETURNING " + render_columns(cs)
     _ => ""
   }
 }
 
+///|
 fn render_columns(cols : Array[@ast.ColumnRef]) -> String {
   render_columns_rec(cols, 0, "")
 }
 
+///|
 fn render_columns_rec(
   cols : Array[@ast.ColumnRef],
   i : Int,
@@ -444,9 +514,8 @@ fn render_columns_rec(
   }
 }
 
-fn render_where(
-  cond : @ast.Expr?,
-) -> (String, Array[@ast.Value]) {
+///|
+fn render_where(cond : @ast.Expr?) -> (String, Array[@ast.Value]) {
   match cond {
     Some(c) => {
       let (sql, args) = expr_to_sql(c)
@@ -456,6 +525,7 @@ fn render_where(
   }
 }
 
+///|
 fn render_composed(
   sep : String,
   conditions : Array[@ast.Expr],
@@ -463,6 +533,7 @@ fn render_composed(
   render_composed_rec(conditions, 0, sep, "", [])
 }
 
+///|
 fn render_composed_rec(
   conditions : Array[@ast.Expr],
   i : Int,
@@ -488,10 +559,12 @@ fn render_composed_rec(
   }
 }
 
+///|
 fn render_value_list(vals : Array[@ast.Value]) -> (String, Array[@ast.Value]) {
   render_value_list_rec(vals, 0, "", [])
 }
 
+///|
 fn render_value_list_rec(
   vals : Array[@ast.Value],
   i : Int,
@@ -513,6 +586,7 @@ fn render_value_list_rec(
   }
 }
 
+///|
 fn renumber_placeholders(sql : String, offset : Int) -> String {
   if offset == 0 {
     return sql
@@ -520,6 +594,7 @@ fn renumber_placeholders(sql : String, offset : Int) -> String {
   renumber_placeholders_rec(sql, offset, 0, "")
 }
 
+///|
 fn renumber_placeholders_rec(
   sql : String,
   offset : Int,
@@ -547,10 +622,12 @@ fn renumber_placeholders_rec(
   }
 }
 
+///|
 fn parse_number(sql : String, i : Int) -> (Int, Int) {
   parse_number_rec(sql, i, 0)
 }
 
+///|
 fn parse_number_rec(sql : String, i : Int, acc : Int) -> (Int, Int) {
   if i >= sql.length() {
     (acc, i)
@@ -564,9 +641,29 @@ fn parse_number_rec(sql : String, i : Int, acc : Int) -> (Int, Int) {
   }
 }
 
+///|
 fn digit_value(s : String) -> Int {
-  if s == "0" { 0 } else if s == "1" { 1 } else if s == "2" { 2 } else
-  if s == "3" { 3 } else if s == "4" { 4 } else if s == "5" { 5 } else
-  if s == "6" { 6 } else if s == "7" { 7 } else if s == "8" { 8 } else
-  if s == "9" { 9 } else { -1 }
+  if s == "0" {
+    0
+  } else if s == "1" {
+    1
+  } else if s == "2" {
+    2
+  } else if s == "3" {
+    3
+  } else if s == "4" {
+    4
+  } else if s == "5" {
+    5
+  } else if s == "6" {
+    6
+  } else if s == "7" {
+    7
+  } else if s == "8" {
+    8
+  } else if s == "9" {
+    9
+  } else {
+    -1
+  }
 }

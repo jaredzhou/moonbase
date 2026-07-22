@@ -21,7 +21,7 @@ pub(all) struct DeleteReady {
 ///|
 /// Create a new DeleteBuilder.  Internal — users call `table.delete()`.
 pub fn DeleteBuilder::new(table : Table) -> DeleteBuilder {
-  DeleteBuilder::{ table }
+  DeleteBuilder::{ table, }
 }
 
 ///|
@@ -39,7 +39,7 @@ pub fn DeleteReady::returning(
   self : DeleteReady,
   cols : Array[&AnyColumn],
 ) -> DeleteReady {
-  DeleteReady::{ ..self, returning: Some(cols.map(c=>c.to_ref())) }
+  DeleteReady::{ ..self, returning: Some(cols.map(c => c.to_ref())) }
 }
 
 ///|

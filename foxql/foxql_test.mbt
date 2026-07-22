@@ -3,6 +3,7 @@
 // Standard pattern: define a table proxy struct per database table, then use
 // its fields to build queries.
 
+///|
 /// Table proxy — one struct + one global per database table.
 struct UserTable {
   table : Table
@@ -11,6 +12,7 @@ struct UserTable {
   age : Column[Int]
 }
 
+///|
 let users : UserTable = {
   table: Table::new("users"),
   id: Column::new("id", "users", SqlType::Integer),
@@ -18,6 +20,7 @@ let users : UserTable = {
   age: Column::new("age", "users", SqlType::Integer),
 }
 
+///|
 struct OrdersTable {
   table : Table
   id : Column[Int]
@@ -25,6 +28,7 @@ struct OrdersTable {
   amount : Column[Int]
 }
 
+///|
 let orders : OrdersTable = {
   table: Table::new("orders"),
   id: Column::new("id", "orders", SqlType::Integer),
@@ -34,10 +38,7 @@ let orders : OrdersTable = {
 
 ///|
 test "select star with where eq" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.age.eq(18))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.age.eq(18)).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.age = $1")
   assert_true(args is [a] && a is Int(18))
@@ -87,10 +88,7 @@ test "select with qualified schema table" {
   let table = Table::new("profiles", schema="public")
   let id = Column::new("id", "profiles", SqlType::Integer)
 
-  let (sql, args) = table
-    .select()
-    .where_(id.eq(1))
-    .to_sql()
+  let (sql, args) = table.select().where_(id.eq(1)).to_sql()
 
   inspect(sql, content="SELECT * FROM public.profiles WHERE profiles.id = $1")
   assert_true(args is [i] && i is Int(1))
@@ -102,10 +100,7 @@ test "select with qualified schema table" {
 
 ///|
 test "where neq" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.age.neq(18))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.age.neq(18)).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.age <> $1")
   assert_true(args is [a] && a is Int(18))
@@ -113,10 +108,7 @@ test "where neq" {
 
 ///|
 test "where gt" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.age.gt(30))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.age.gt(30)).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.age > $1")
   assert_true(args is [a] && a is Int(30))
@@ -124,10 +116,7 @@ test "where gt" {
 
 ///|
 test "where gte" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.age.gte(18))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.age.gte(18)).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.age >= $1")
   assert_true(args is [a] && a is Int(18))
@@ -135,10 +124,7 @@ test "where gte" {
 
 ///|
 test "where lt" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.age.lt(65))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.age.lt(65)).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.age < $1")
   assert_true(args is [a] && a is Int(65))
@@ -146,10 +132,7 @@ test "where lt" {
 
 ///|
 test "where lte" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.age.lte(64))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.age.lte(64)).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.age <= $1")
   assert_true(args is [a] && a is Int(64))
@@ -161,15 +144,9 @@ test "where lte" {
 
 ///|
 test "where like" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.name.like("Al%"))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.name.like("Al%")).to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users WHERE users.name LIKE $1",
-  )
+  inspect(sql, content="SELECT * FROM users WHERE users.name LIKE $1")
   assert_true(args is [s] && s is String("Al%"))
 }
 
@@ -180,10 +157,7 @@ test "where not_like" {
     .where_(users.name.not_like("Spam%"))
     .to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users WHERE users.name NOT LIKE $1",
-  )
+  inspect(sql, content="SELECT * FROM users WHERE users.name NOT LIKE $1")
   assert_true(args is [s] && s is String("Spam%"))
 }
 
@@ -193,10 +167,7 @@ test "where not_like" {
 
 ///|
 test "where is_null" {
-  let (sql, args) = users.table
-    .select()
-    .where_(users.name.is_null())
-    .to_sql()
+  let (sql, args) = users.table.select().where_(users.name.is_null()).to_sql()
 
   inspect(sql, content="SELECT * FROM users WHERE users.name IS NULL")
   assert_true(args is [])
@@ -224,10 +195,7 @@ test "where between" {
     .where_(users.age.between(18, 65))
     .to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users WHERE users.age BETWEEN $1 AND $2",
-  )
+  inspect(sql, content="SELECT * FROM users WHERE users.age BETWEEN $1 AND $2")
   assert_true(args is [lo, hi] && lo is Int(18) && hi is Int(65))
 }
 
@@ -238,10 +206,7 @@ test "where in_ list" {
     .where_(users.age.in_([18, 21, 30]))
     .to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users WHERE users.age IN ($1, $2, $3)",
-  )
+  inspect(sql, content="SELECT * FROM users WHERE users.age IN ($1, $2, $3)")
   assert_true(args is [a, b, c] && a is Int(18) && b is Int(21) && c is Int(30))
 }
 
@@ -298,15 +263,9 @@ test "where with or_ composition" {
 
 ///|
 test "where with not_ composition" {
-  let (sql, args) = users.table
-    .select()
-    .where_(not_(users.age.eq(0)))
-    .to_sql()
+  let (sql, args) = users.table.select().where_(not_(users.age.eq(0))).to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users WHERE NOT (users.age = $1)",
-  )
+  inspect(sql, content="SELECT * FROM users WHERE NOT (users.age = $1)")
   assert_true(args is [a] && a is Int(0))
 }
 
@@ -331,9 +290,7 @@ test "where nested and/or" {
   let (sql, args) = users.table
     .select()
     .where_(
-      users.age.lt(18)
-        .or_(users.age.gt(65))
-        .and_(users.name.is_not_null()),
+      users.age.lt(18).or_(users.age.gt(65)).and_(users.name.is_not_null()),
     )
     .to_sql()
 
@@ -394,10 +351,7 @@ test "insert single row" {
     .values(["Alice", 30])
     .to_sql()
 
-  inspect(
-    sql,
-    content="INSERT INTO users (name, age) VALUES ($1, $2)",
-  )
+  inspect(sql, content="INSERT INTO users (name, age) VALUES ($1, $2)")
   assert_true(args is [n, a] && n is String("Alice") && a is Int(30))
 }
 
@@ -405,10 +359,7 @@ test "insert single row" {
 test "insert multi row" {
   let (sql, args) = users.table
     .insert([users.name, users.age])
-    .rows([
-      ["Alice", 30],
-      ["Bob", 25],
-    ])
+    .rows([["Alice", 30], ["Bob", 25]])
     .to_sql()
 
   inspect(
@@ -457,10 +408,7 @@ test "update set with where" {
     content="UPDATE users SET users.name = $1, users.age = $2 WHERE users.id = $3",
   )
   assert_true(
-    args is [n, a, i] &&
-    n is String("Dave") &&
-    a is Int(99) &&
-    i is Int(1),
+    args is [n, a, i] && n is String("Dave") && a is Int(99) && i is Int(1),
   )
 }
 
@@ -486,10 +434,7 @@ test "update with returning" {
 
 ///|
 test "delete with where" {
-  let (sql, args) = users.table
-    .delete()
-    .where_(users.id.eq(1))
-    .to_sql()
+  let (sql, args) = users.table.delete().where_(users.id.eq(1)).to_sql()
 
   inspect(sql, content="DELETE FROM users WHERE users.id = $1")
   assert_true(args is [i] && i is Int(1))
@@ -516,29 +461,17 @@ test "delete with returning" {
 
 ///|
 test "select order by asc" {
-  let (sql, args) = users.table
-    .select()
-    .order_by(users.name.asc())
-    .to_sql()
+  let (sql, args) = users.table.select().order_by(users.name.asc()).to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users ORDER BY users.name ASC",
-  )
+  inspect(sql, content="SELECT * FROM users ORDER BY users.name ASC")
   assert_true(args is [])
 }
 
 ///|
 test "select order by desc" {
-  let (sql, args) = users.table
-    .select()
-    .order_by(users.age.desc())
-    .to_sql()
+  let (sql, args) = users.table.select().order_by(users.age.desc()).to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users ORDER BY users.age DESC",
-  )
+  inspect(sql, content="SELECT * FROM users ORDER BY users.age DESC")
   assert_true(args is [])
 }
 
@@ -559,10 +492,7 @@ test "select order by multiple columns" {
 
 ///|
 test "select limit" {
-  let (sql, args) = users.table
-    .select()
-    .limit(10)
-    .to_sql()
+  let (sql, args) = users.table.select().limit(10).to_sql()
 
   inspect(sql, content="SELECT * FROM users LIMIT $1")
   assert_true(args is [n] && n is Int(10))
@@ -570,30 +500,17 @@ test "select limit" {
 
 ///|
 test "select limit offset" {
-  let (sql, args) = users.table
-    .select()
-    .limit(10)
-    .offset(20)
-    .to_sql()
+  let (sql, args) = users.table.select().limit(10).offset(20).to_sql()
 
-  inspect(
-    sql,
-    content="SELECT * FROM users LIMIT $1 OFFSET $2",
-  )
+  inspect(sql, content="SELECT * FROM users LIMIT $1 OFFSET $2")
   assert_true(args is [l, o] && l is Int(10) && o is Int(20))
 }
 
 ///|
 test "select distinct" {
-  let (sql, args) = users.table
-    .select(columns=[users.name])
-    .distinct()
-    .to_sql()
+  let (sql, args) = users.table.select(columns=[users.name]).distinct().to_sql()
 
-  inspect(
-    sql,
-    content="SELECT DISTINCT users.name FROM users",
-  )
+  inspect(sql, content="SELECT DISTINCT users.name FROM users")
   assert_true(args is [])
 }
 
@@ -782,10 +699,7 @@ test "insert on conflict do update" {
     content="INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET users.age = $3",
   )
   assert_true(
-    args is [n, a, u] &&
-    n is String("Alice") &&
-    a is Int(30) &&
-    u is Int(99),
+    args is [n, a, u] && n is String("Alice") && a is Int(30) && u is Int(99),
   )
 }
 
@@ -804,10 +718,7 @@ test "insert on conflict do update with returning" {
     content="INSERT INTO users (name, age) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET users.age = $3 RETURNING users.id, users.age",
   )
   assert_true(
-    args is [n, a, u] &&
-    n is String("Bob") &&
-    a is Int(25) &&
-    u is Int(25),
+    args is [n, a, u] && n is String("Bob") && a is Int(25) && u is Int(25),
   )
 }
 

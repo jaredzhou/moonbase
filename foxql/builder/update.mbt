@@ -33,9 +33,10 @@ pub fn UpdateBuilder::set(
   column : &AnyColumn,
   value : &@ast.ToValue,
 ) -> UpdateBuilder {
-  self.set_clauses.push(
-    @ast.SetClause::{ column: column.to_ref(), value: value.to_value() },
-  )
+  self.set_clauses.push(@ast.SetClause::{
+    column: column.to_ref(),
+    value: value.to_value(),
+  })
   self
 }
 
@@ -45,7 +46,12 @@ pub fn UpdateBuilder::where_(
   self : UpdateBuilder,
   condition : @ast.Expr,
 ) -> UpdateReady {
-  UpdateReady::{ table: self.table, set_clauses: self.set_clauses, where_clause: condition, returning: None }
+  UpdateReady::{
+    table: self.table,
+    set_clauses: self.set_clauses,
+    where_clause: condition,
+    returning: None,
+  }
 }
 
 ///|
@@ -54,7 +60,7 @@ pub fn UpdateReady::returning(
   self : UpdateReady,
   cols : Array[&AnyColumn],
 ) -> UpdateReady {
-  UpdateReady::{ ..self, returning: Some(cols.map(c=>c.to_ref())) }
+  UpdateReady::{ ..self, returning: Some(cols.map(c => c.to_ref())) }
 }
 
 ///|

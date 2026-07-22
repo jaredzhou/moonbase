@@ -11,7 +11,7 @@ pub(all) enum SelectExpr {
 /// A SELECT statement.
 pub(all) struct SelectStmt {
   table : String
-  columns : Array[SelectExpr]  // empty = SELECT *
+  columns : Array[SelectExpr] // empty = SELECT *
   where_clause : Expr?
   joins : Array[JoinClause]
   group_by : Array[ColumnRef]
@@ -42,10 +42,7 @@ pub(all) enum Expr {
 
 ///|
 /// Combine two expressions with AND.  Flattens nested And for cleaner SQL.
-pub fn Expr::and_(
-  self : Expr,
-  other : Expr,
-) -> Expr {
+pub fn Expr::and_(self : Expr, other : Expr) -> Expr {
   match self {
     Expr::And(arr) => {
       arr.push(other)
@@ -57,10 +54,7 @@ pub fn Expr::and_(
 
 ///|
 /// Combine two expressions with OR.  Flattens nested Or for cleaner SQL.
-pub fn Expr::or_(
-  self : Expr,
-  other : Expr,
-) -> Expr {
+pub fn Expr::or_(self : Expr, other : Expr) -> Expr {
   match self {
     Expr::Or(arr) => {
       arr.push(other)
@@ -150,49 +144,31 @@ pub(all) enum Aggregation {
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn[T : ToValue] Aggregation::gt(
-  self : Aggregation,
-  value : T,
-) -> Expr {
+pub fn[T : ToValue] Aggregation::gt(self : Aggregation, value : T) -> Expr {
   Expr::AggCompare(self, Operator::Gt, value.to_value())
 }
 
 ///|
-pub fn[T : ToValue] Aggregation::gte(
-  self : Aggregation,
-  value : T,
-) -> Expr {
+pub fn[T : ToValue] Aggregation::gte(self : Aggregation, value : T) -> Expr {
   Expr::AggCompare(self, Operator::Gte, value.to_value())
 }
 
 ///|
-pub fn[T : ToValue] Aggregation::lt(
-  self : Aggregation,
-  value : T,
-) -> Expr {
+pub fn[T : ToValue] Aggregation::lt(self : Aggregation, value : T) -> Expr {
   Expr::AggCompare(self, Operator::Lt, value.to_value())
 }
 
 ///|
-pub fn[T : ToValue] Aggregation::lte(
-  self : Aggregation,
-  value : T,
-) -> Expr {
+pub fn[T : ToValue] Aggregation::lte(self : Aggregation, value : T) -> Expr {
   Expr::AggCompare(self, Operator::Lte, value.to_value())
 }
 
 ///|
-pub fn[T : ToValue] Aggregation::eq(
-  self : Aggregation,
-  value : T,
-) -> Expr {
+pub fn[T : ToValue] Aggregation::eq(self : Aggregation, value : T) -> Expr {
   Expr::AggCompare(self, Operator::Eq, value.to_value())
 }
 
 ///|
-pub fn[T : ToValue] Aggregation::neq(
-  self : Aggregation,
-  value : T,
-) -> Expr {
+pub fn[T : ToValue] Aggregation::neq(self : Aggregation, value : T) -> Expr {
   Expr::AggCompare(self, Operator::Neq, value.to_value())
 }

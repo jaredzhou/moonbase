@@ -6,7 +6,7 @@ Compile-time type-safe SQL builder for PostgreSQL in MoonBit.
 
 Add to your `moon.mod`:
 
-```moonbit
+```moonbit nocheck
 import {
   "jaredzhou/foxql@0.1.0",
 }
@@ -14,7 +14,7 @@ import {
 
 Then import in your `moon.pkg`:
 
-```moonbit
+```moonbit nocheck
 import {
   "jaredzhou/foxql",
 }
@@ -24,7 +24,8 @@ import {
 
 Define table proxies with typed columns, then build queries fluently.
 
-```moonbit
+```moonbit nocheck
+///|
 struct UserTable {
   table : Table
   id : Column[Int]
@@ -32,6 +33,7 @@ struct UserTable {
   age : Column[Int]
 }
 
+///|
 let users : UserTable = {
   table: Table::new("users"),
   id: Column::new("id", "users", SqlType::Integer),
@@ -42,7 +44,7 @@ let users : UserTable = {
 
 ## SELECT
 
-```moonbit
+```moonbit nocheck
 // SELECT * FROM users
 users.table.select().to_sql()
 
@@ -66,7 +68,7 @@ All operators are **type-safe at compile time** — `Column[Int]` gets compariso
 | String | `like`, `not_like` | `String` |
 | Null | `is_null`, `is_not_null` | All types |
 
-```moonbit
+```moonbit nocheck
 users.age.gt(18)
 users.age.between(18, 65)
 users.name.like("Al%")
@@ -76,7 +78,7 @@ users.age.in_([1, 2, 3])
 
 ### Condition composition
 
-```moonbit
+```moonbit nocheck
 // AND / OR — chainable, flattens automatically
 users.age.gte(18).and_(users.age.lte(65))
 users.name.eq("Alice").or_(users.name.eq("Bob"))
@@ -90,7 +92,7 @@ users.age.lt(18).or_(users.age.gt(65)).and_(users.name.is_not_null())
 
 ### ORDER BY, LIMIT, OFFSET, DISTINCT
 
-```moonbit
+```moonbit nocheck
 users.table.select()
   .order_by(users.name.asc())
   .order_by(users.age.desc())
@@ -107,7 +109,7 @@ users.table.select(columns=[users.name, users.age]).distinct_on([users.name]).to
 
 ### INSERT
 
-```moonbit
+```moonbit nocheck
 // Single row
 users.table.insert([users.name, users.age])
   .values(["Alice", 30])
@@ -129,7 +131,7 @@ users.table.insert([users.name, users.age])
 
 Type-state enforced: `.where_()` is **required** before `.to_sql()`.
 
-```mbt
+```mbt nocheck
 users.table.update()
   .set(users.name, "Dave")
   .set(users.age, 99)
@@ -142,7 +144,7 @@ users.table.update()
 
 Type-state enforced: `.where_()` is **required** before `.to_sql()`.
 
-```mbt
+```mbt nocheck
 users.table.delete()
   .where_(users.age.lt(18))
   .returning([users.id])
@@ -151,7 +153,7 @@ users.table.delete()
 
 ### ON CONFLICT (upsert)
 
-```mbt
+```mbt nocheck
 // DO NOTHING
 users.table.insert([users.name, users.age])
   .values(["Alice", 30])
@@ -169,7 +171,7 @@ users.table.insert([users.name, users.age])
 
 ## JOIN
 
-```moonbit
+```moonbit nocheck
 struct OrdersTable {
   table : Table
   id : Column[Int]
@@ -200,7 +202,7 @@ users.table
 
 ## Aggregation & GROUP BY
 
-```moonbit
+```moonbit nocheck
 // Aggregation functions: count, sum, avg, min, max, count_star
 orders.table
   .select(columns=[orders.user_id])
@@ -219,7 +221,7 @@ orders.table
 
 ## Subqueries
 
-```moonbit
+```moonbit nocheck
 // WHERE … IN (SELECT …)
 let sub = orders.table.select(columns=[orders.user_id]).where_(orders.amount.gt(100)).build()
 users.table.select().where_(users.id.in_select(sub)).to_sql()
@@ -231,7 +233,8 @@ users.table.select().where_(users.age.eq_select(max_age)).to_sql()
 
 ## Schema-qualified tables
 
-```moonbit
+```moonbit nocheck
+///|
 let table = Table::new("profiles", schema="public")
 ```
 
@@ -239,7 +242,8 @@ let table = Table::new("profiles", schema="public")
 
 Use `.build()` instead of `.to_sql()` to get the AST node for subqueries:
 
-```moonbit
+```moonbit nocheck
+///|
 let stmt : SelectStmt = users.table.select().where_(users.age.gt(18)).build()
 ```
 
@@ -254,7 +258,7 @@ Operator availability is checked at compile time:
 | `Column[String]` | ❌ | ✅ | ✅ |
 | `Column[Bool]` | ❌ | ❌ | ✅ |
 
-```moonbit
+```moonbit nocheck
 // These compile:
 users.age.gt(18)
 users.name.like("A%")
@@ -277,13 +281,13 @@ foxql/
 
 Import the root package for the common surface:
 
-```moonbit
+```moonbit nocheck
 import { "jaredzhou/foxql" }
 ```
 
 Or sub-packages for fine-grained control:
 
-```moonbit
+```moonbit nocheck
 import {
   "jaredzhou/foxql/ast",
   "jaredzhou/foxql/builder",

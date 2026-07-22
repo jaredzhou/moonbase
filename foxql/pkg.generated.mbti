@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/foxql"
+
+import {
+  "jaredzhou/foxql/ast",
+  "jaredzhou/foxql/builder",
+}
+
+// Values
+pub fn[T] avg(@builder.Column[T]) -> @ast.Aggregation
+
+pub fn[T] count(@builder.Column[T]) -> @ast.Aggregation
+
+pub fn count_star() -> @ast.Aggregation
+
+pub fn[T] max(@builder.Column[T]) -> @ast.Aggregation
+
+pub fn[T] min(@builder.Column[T]) -> @ast.Aggregation
+
+pub fn not_(@ast.Expr) -> @ast.Expr
+
+pub fn[T] sum(@builder.Column[T]) -> @ast.Aggregation
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @ast {type Aggregation}
+
+pub using @builder {type Column}
+
+pub using @ast {type ColumnRef}
+
+pub using @ast {type Expr}
+
+pub using @ast {type OrderByClause}
+
+pub using @ast {type OrderDirection}
+
+pub using @ast {type SelectStmt}
+
+pub using @ast {type SqlType}
+
+pub using @builder {type Table}
+
+pub using @ast {type Value}
+
+// Traits
+

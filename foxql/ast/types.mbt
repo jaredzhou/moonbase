@@ -62,7 +62,7 @@ pub(all) struct ColumnRef {
 // ---------------------------------------------------------------------------
 
 ///|
-impl @moonpg.ToValue for Value with fn to_value(self : Value) -> @moonpg.Value {
+pub impl @moonpg.ToValue for Value with fn to_value(self : Value) -> @moonpg.Value {
   match self {
     Value::Null => {
       let none : Int? = None

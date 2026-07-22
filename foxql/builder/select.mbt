@@ -55,9 +55,7 @@ pub fn SelectBuilder::join(
   other : Table,
   on : @ast.Expr,
 ) -> SelectBuilder {
-  self.joins.push(
-    @ast.JoinClause::{ table: other.qualified_name(), on },
-  )
+  self.joins.push(@ast.JoinClause::{ table: other.qualified_name(), on })
   self
 }
 
@@ -73,19 +71,13 @@ pub fn SelectBuilder::order_by(
 
 ///|
 /// Attach a LIMIT clause.
-pub fn SelectBuilder::limit(
-  self : SelectBuilder,
-  n : Int,
-) -> SelectBuilder {
+pub fn SelectBuilder::limit(self : SelectBuilder, n : Int) -> SelectBuilder {
   SelectBuilder::{ ..self, limit: Some(n) }
 }
 
 ///|
 /// Attach an OFFSET clause.
-pub fn SelectBuilder::offset(
-  self : SelectBuilder,
-  n : Int,
-) -> SelectBuilder {
+pub fn SelectBuilder::offset(self : SelectBuilder, n : Int) -> SelectBuilder {
   SelectBuilder::{ ..self, offset: Some(n) }
 }
 
@@ -101,7 +93,7 @@ pub fn SelectBuilder::distinct_on(
   self : SelectBuilder,
   cols : Array[&AnyColumn],
 ) -> SelectBuilder {
-  SelectBuilder::{ ..self, distinct_on: cols.map(c=>c.to_ref()) }
+  SelectBuilder::{ ..self, distinct_on: cols.map(c => c.to_ref()) }
 }
 
 ///|
@@ -120,7 +112,7 @@ pub fn SelectBuilder::group_by(
   self : SelectBuilder,
   cols : Array[&AnyColumn],
 ) -> SelectBuilder {
-  SelectBuilder::{ ..self, group_by: cols.map(c=>c.to_ref()) }
+  SelectBuilder::{ ..self, group_by: cols.map(c => c.to_ref()) }
 }
 
 ///|
@@ -156,6 +148,8 @@ pub fn SelectBuilder::build(self : SelectBuilder) -> @ast.SelectStmt {
 
 ///|
 /// Render the query to a parameterised SQL string + args array.
-pub fn SelectBuilder::to_sql(self : SelectBuilder) -> (String, Array[@ast.Value]) {
+pub fn SelectBuilder::to_sql(
+  self : SelectBuilder,
+) -> (String, Array[@ast.Value]) {
   @tosql.select_stmt_to_sql(self.build())
 }

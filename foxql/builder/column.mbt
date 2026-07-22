@@ -10,26 +10,30 @@
 // Operator marker traits
 // ---------------------------------------------------------------------------
 
-///| Trait for types that support comparison operators (gt, gte, lt, lte, between).
+///|
+/// Trait for types that support comparison operators (gt, gte, lt, lte, between).
 pub trait Comparable {
-  to_sql_type(Self) -> @ast.SqlType
-}
-
-///| Trait for types that support string operators (like, not_like).
-pub trait StringMatchable {
-  to_sql_type(Self) -> @ast.SqlType
+  fn to_sql_type(Self) -> @ast.SqlType
 }
 
 ///|
-pub impl Comparable for Int with fn to_sql_type(self : Int) -> @ast.SqlType {
+/// Trait for types that support string operators (like, not_like).
+pub trait StringMatchable {
+  fn to_sql_type(Self) -> @ast.SqlType
+}
+
+///|
+pub impl Comparable for Int with fn to_sql_type(_self : Int) -> @ast.SqlType {
   @ast.SqlType::Integer
 }
+
 ///|
-pub impl Comparable for Double with fn to_sql_type(self : Double) -> @ast.SqlType {
+pub impl Comparable for Double with fn to_sql_type(_self : Double) -> @ast.SqlType {
   @ast.SqlType::DoublePrecision
 }
+
 ///|
-pub impl StringMatchable for String with fn to_sql_type(self : String) -> @ast.SqlType {
+pub impl StringMatchable for String with fn to_sql_type(_self : String) -> @ast.SqlType {
   @ast.SqlType::Text
 }
 
@@ -41,6 +45,7 @@ pub(all) struct Column[T] {
   name : String
   table : String
   sql_type : @ast.SqlType
+  _marker : T?
 } derive(Debug, Eq)
 
 ///|
@@ -51,17 +56,27 @@ pub trait AnyColumn {
   fn sql_type(Self) -> @ast.SqlType
 }
 
+///|
 pub fn &AnyColumn::to_ref(self : &AnyColumn) -> @ast.ColumnRef {
   @ast.ColumnRef::{ name: self.name(), table: self.table_name() }
 }
 
+///|
 pub fn &AnyColumn::asc(self : &AnyColumn) -> @ast.OrderByClause {
-  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Asc }
+  @ast.OrderByClause::{
+    column: self.to_ref(),
+    direction: @ast.OrderDirection::Asc,
+  }
 }
 
+///|
 pub fn &AnyColumn::desc(self : &AnyColumn) -> @ast.OrderByClause {
-  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Desc }
+  @ast.OrderByClause::{
+    column: self.to_ref(),
+    direction: @ast.OrderDirection::Desc,
+  }
 }
+
 ///|
 pub impl[T] AnyColumn for Column[T] with fn name(self : Column[T]) -> String {
   self.name
@@ -77,7 +92,6 @@ pub impl[T] AnyColumn for Column[T] with fn sql_type(self : Column[T]) -> @ast.S
   self.sql_type
 }
 
-
 ///|
 /// Create a new column reference.
 pub fn[T] Column::new(
@@ -85,7 +99,7 @@ pub fn[T] Column::new(
   table : String,
   sql_type : @ast.SqlType,
 ) -> Column[T] {
-  Column::{ name, table, sql_type }
+  Column::{ name, table, sql_type, _marker: None }
 }
 
 ///|
@@ -97,13 +111,19 @@ pub fn[T] Column::to_ref(self : Column[T]) -> @ast.ColumnRef {
 ///|
 /// Sort ascending.
 pub fn[T] Column::asc(self : Column[T]) -> @ast.OrderByClause {
-  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Asc }
+  @ast.OrderByClause::{
+    column: self.to_ref(),
+    direction: @ast.OrderDirection::Asc,
+  }
 }
 
 ///|
 /// Sort descending.
 pub fn[T] Column::desc(self : Column[T]) -> @ast.OrderByClause {
-  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Desc }
+  @ast.OrderByClause::{
+    column: self.to_ref(),
+    direction: @ast.OrderDirection::Desc,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -111,27 +131,18 @@ pub fn[T] Column::desc(self : Column[T]) -> @ast.OrderByClause {
 // ---------------------------------------------------------------------------
 
 ///|
-pub fn[T : @ast.ToValue] Column::eq(
-  self : Column[T],
-  value : T,
-) -> @ast.Expr {
+pub fn[T : @ast.ToValue] Column::eq(self : Column[T], value : T) -> @ast.Expr {
   @ast.Expr::Compare(self.to_ref(), @ast.Operator::Eq, value.to_value())
 }
 
 ///|
-pub fn[T : @ast.ToValue] Column::neq(
-  self : Column[T],
-  value : T,
-) -> @ast.Expr {
+pub fn[T : @ast.ToValue] Column::neq(self : Column[T], value : T) -> @ast.Expr {
   @ast.Expr::Compare(self.to_ref(), @ast.Operator::Neq, value.to_value())
 }
 
 ///|
 /// Compare two columns for equality (for JOIN ON).
-pub fn[T] Column::eq_col(
-  self : Column[T],
-  other : Column[T],
-) -> @ast.Expr {
+pub fn[T] Column::eq_col(self : Column[T], other : Column[T]) -> @ast.Expr {
   @ast.Expr::CompareCols(self.to_ref(), @ast.Operator::Eq, other.to_ref())
 }
 
@@ -158,7 +169,12 @@ pub fn[T : Comparable + @ast.ToValue] Column::gt(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
-  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Gt, value.to_value())
+  let _ = Comparable::to_sql_type(value)
+  @ast.Expr::Compare(
+    self.to_ref(),
+    @ast.Operator::Gt,
+    @ast.ToValue::to_value(value),
+  )
 }
 
 ///|
@@ -166,7 +182,12 @@ pub fn[T : Comparable + @ast.ToValue] Column::gte(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
-  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Gte, value.to_value())
+  let _ = Comparable::to_sql_type(value)
+  @ast.Expr::Compare(
+    self.to_ref(),
+    @ast.Operator::Gte,
+    @ast.ToValue::to_value(value),
+  )
 }
 
 ///|
@@ -174,7 +195,12 @@ pub fn[T : Comparable + @ast.ToValue] Column::lt(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
-  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Lt, value.to_value())
+  let _ = Comparable::to_sql_type(value)
+  @ast.Expr::Compare(
+    self.to_ref(),
+    @ast.Operator::Lt,
+    @ast.ToValue::to_value(value),
+  )
 }
 
 ///|
@@ -182,7 +208,12 @@ pub fn[T : Comparable + @ast.ToValue] Column::lte(
   self : Column[T],
   value : T,
 ) -> @ast.Expr {
-  @ast.Expr::Compare(self.to_ref(), @ast.Operator::Lte, value.to_value())
+  let _ = Comparable::to_sql_type(value)
+  @ast.Expr::Compare(
+    self.to_ref(),
+    @ast.Operator::Lte,
+    @ast.ToValue::to_value(value),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +225,10 @@ pub fn[T : StringMatchable] Column::like(
   self : Column[T],
   pattern : String,
 ) -> @ast.Expr {
+  let _ = match self._marker {
+    Some(v) => v.to_sql_type()
+    None => @ast.SqlType::Text
+  }
   @ast.Expr::Compare(
     self.to_ref(),
     @ast.Operator::Like,
@@ -206,6 +241,10 @@ pub fn[T : StringMatchable] Column::not_like(
   self : Column[T],
   pattern : String,
 ) -> @ast.Expr {
+  let _ = match self._marker {
+    Some(v) => v.to_sql_type()
+    None => @ast.SqlType::Text
+  }
   @ast.Expr::Compare(
     self.to_ref(),
     @ast.Operator::NotLike,
@@ -288,7 +327,12 @@ pub fn[T : Comparable + @ast.ToValue] Column::between(
   lo : T,
   hi : T,
 ) -> @ast.Expr {
-  @ast.Expr::Between(self.to_ref(), lo.to_value(), hi.to_value())
+  let _ = Comparable::to_sql_type(lo)
+  @ast.Expr::Between(
+    self.to_ref(),
+    @ast.ToValue::to_value(lo),
+    @ast.ToValue::to_value(hi),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -325,4 +369,3 @@ pub fn[T] max(col : Column[T]) -> @ast.Aggregation {
 pub fn count_star() -> @ast.Aggregation {
   @ast.Aggregation::Count(None)
 }
-

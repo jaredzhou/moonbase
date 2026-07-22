@@ -13,10 +13,7 @@ pub(all) struct Table {
 
 ///|
 /// Create a table, optionally qualified with a schema.
-pub fn Table::new(
-  name : String,
-  schema? : String,
-) -> Table {
+pub fn Table::new(name : String, schema? : String) -> Table {
   Table::{ name, schema_name: schema }
 }
 
@@ -35,7 +32,7 @@ pub fn Table::select(
   self : Table,
   columns? : Array[&AnyColumn],
 ) -> SelectBuilder {
-  let refs = columns.unwrap_or([]).map(c=>c.to_ref())
+  let refs = columns.unwrap_or([]).map(c => c.to_ref())
   SelectBuilder::new(self, refs)
 }
 
