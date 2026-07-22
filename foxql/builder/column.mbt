@@ -26,6 +26,14 @@ pub trait AnyColumn {
 pub fn &AnyColumn::to_ref(self : &AnyColumn) -> @ast.ColumnRef {
   @ast.ColumnRef::{ name: self.name(), table: self.table_name() }
 }
+
+pub fn &AnyColumn::asc(self : &AnyColumn) -> @ast.OrderByClause {
+  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Asc }
+}
+
+pub fn &AnyColumn::desc(self : &AnyColumn) -> @ast.OrderByClause {
+  @ast.OrderByClause::{ column: self.to_ref(), direction: @ast.OrderDirection::Desc }
+}
 ///|
 pub impl[T] AnyColumn for Column[T] with fn name(self : Column[T]) -> String {
   self.name
